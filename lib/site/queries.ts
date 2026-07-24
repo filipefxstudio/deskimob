@@ -2,8 +2,7 @@ import { cache } from "react";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { resolveStoragePublicUrl } from "@/lib/supabase/storage-url";
-import { STORAGE_BUCKET_IMOVEIS } from "@/lib/constants/imoveis";
+import { getImovelFotoPublicUrl } from "@/lib/imoveis/foto-url";
 import type {
   Corretor,
   FinalidadeImovel,
@@ -46,7 +45,7 @@ function mapImovelRow(row: ImovelRow): Imovel {
       .sort((a, b) => a.ordem - b.ordem)
       .map((foto) => ({
         ...foto,
-        url: resolveStoragePublicUrl(foto.url, STORAGE_BUCKET_IMOVEIS),
+        url: getImovelFotoPublicUrl(foto.url),
       })),
   };
 }

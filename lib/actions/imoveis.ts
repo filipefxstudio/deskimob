@@ -20,8 +20,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   buildStoragePublicUrl,
   extractStoragePathFromPublicUrl,
-  resolveStoragePublicUrl,
 } from "@/lib/supabase/storage-url";
+import { getImovelFotoDashboardUrl } from "@/lib/imoveis/foto-url";
 import { createClienteFromImovel } from "@/lib/actions/clientes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
 import {
@@ -138,7 +138,7 @@ function normalizeImovelFotoRows<T extends { url: string }>(
 ): T[] {
   return (fotos ?? []).map((foto) => ({
     ...foto,
-    url: resolveStoragePublicUrl(foto.url, STORAGE_BUCKET_IMOVEIS),
+    url: getImovelFotoDashboardUrl(foto.url),
   }));
 }
 
@@ -392,24 +392,27 @@ async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
 async function processImageBuffer(
   corretorId: string,
   buffer: Buffer,
-): Promise<Buffer> {
+  sourceContentType: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const fallbackType = sourceContentType || "image/jpeg";
   const config = await getMarcaDaguaConfigForCorretor(corretorId);
 
   if (!config?.logo_url) {
-    return buffer;
+    return { buffer, contentType: fallbackType };
   }
 
   const logoBuffer = await fetchLogoBuffer(config.logo_url);
 
   if (!logoBuffer) {
-    return buffer;
+    return { buffer, contentType: fallbackType };
   }
 
   try {
-    return await applyWatermark(buffer, config, logoBuffer);
+    const watermarked = await applyWatermark(buffer, config, logoBuffer);
+    return { buffer: watermarked, contentType: "image/jpeg" };
   } catch (error) {
     console.error("[processImageBuffer] watermark failed", error);
-    return buffer;
+    return { buffer, contentType: fallbackType };
   }
 }
 
@@ -1735,15 +1738,16 @@ async function uploadFotosForImovel(
     const extension = foto.file.name.split(".").pop()?.toLowerCase() ?? "jpg";
     const filename = `${crypto.randomUUID()}.${extension}`;
     const storagePath = `${corretorId}/${imovelId}/${filename}`;
-    const buffer = await processImageBuffer(
+    const processed = await processImageBuffer(
       corretorId,
       Buffer.from(await foto.file.arrayBuffer()),
+      foto.file.type || "image/jpeg",
     );
 
     const { error: uploadError } = await admin.storage
       .from(STORAGE_BUCKET_IMOVEIS)
-      .upload(storagePath, buffer, {
-        contentType: foto.file.type || "image/jpeg",
+      .upload(storagePath, processed.buffer, {
+        contentType: processed.contentType,
         upsert: false,
       });
 

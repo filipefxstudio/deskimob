@@ -1,9 +1,19 @@
-export function buildStoragePublicUrl(bucket: string, storagePath: string): string {
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+function normalizeSupabaseBaseUrl(raw: string | undefined): string {
+  const trimmed = raw?.trim().replace(/\/$/, "") ?? "";
 
-  if (!base) {
+  if (!trimmed) {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured.");
   }
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
+export function buildStoragePublicUrl(bucket: string, storagePath: string): string {
+  const base = normalizeSupabaseBaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 
   const encodedPath = storagePath
     .split("/")
@@ -37,15 +47,29 @@ export function resolveStoragePublicUrl(storedUrl: string, bucket: string): stri
     return storedUrl;
   }
 
-  const path = extractStoragePathFromPublicUrl(storedUrl, bucket);
+  if (storedUrl.startsWith("/api/storage/")) {
+    return storedUrl;
+  }
+
+  let normalized = storedUrl.trim();
+
+  if (
+    !normalized.startsWith("http://") &&
+    !normalized.startsWith("https://") &&
+    normalized.includes("/storage/v1/object/public/")
+  ) {
+    normalized = `https://${normalized.replace(/^\/+/, "")}`;
+  }
+
+  const path = extractStoragePathFromPublicUrl(normalized, bucket);
 
   if (!path) {
-    return storedUrl;
+    return normalized.startsWith("http") ? normalized : storedUrl;
   }
 
   try {
     return buildStoragePublicUrl(bucket, path);
   } catch {
-    return storedUrl;
+    return normalized.startsWith("http") ? normalized : storedUrl;
   }
 }

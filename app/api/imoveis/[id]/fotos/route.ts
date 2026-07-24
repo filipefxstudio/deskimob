@@ -1,6 +1,8 @@
 import { uploadImovelFotos } from "@/lib/actions/imoveis";
 import { createClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },

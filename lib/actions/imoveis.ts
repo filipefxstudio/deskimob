@@ -21,6 +21,11 @@ import {
   buildStoragePublicUrl,
   extractStoragePathFromPublicUrl,
 } from "@/lib/supabase/storage-url";
+import {
+  bufferToUploadBody,
+  isValidImageBuffer,
+  looksLikeUtf8CorruptedBinary,
+} from "@/lib/supabase/storage-upload";
 import { getImovelFotoDashboardUrl } from "@/lib/imoveis/foto-url";
 import { createClienteFromImovel } from "@/lib/actions/clientes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
@@ -42,6 +47,7 @@ import {
 } from "@/lib/supabase/postgrest-error";
 import { generateImovelSlug } from "@/lib/utils";
 import type { PostgrestError } from "@supabase/supabase-js";
+import sharp from "sharp";
 import {
   imovelCadastroSchema,
   validateImovelParaAprovacao,
@@ -389,31 +395,72 @@ async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
   }
 }
 
-async function processImageBuffer(
-  corretorId: string,
+async function normalizeImageForStorage(
   buffer: Buffer,
-  sourceContentType: string,
-): Promise<{ buffer: Buffer; contentType: string }> {
-  const fallbackType = sourceContentType || "image/jpeg";
-  const config = await getMarcaDaguaConfigForCorretor(corretorId);
-
-  if (!config?.logo_url) {
-    return { buffer, contentType: fallbackType };
+): Promise<{ buffer: Buffer; contentType: string } | { error: string }> {
+  if (looksLikeUtf8CorruptedBinary(buffer)) {
+    return {
+      error: "Arquivo de imagem inválido. Remova a foto e envie o arquivo novamente.",
+    };
   }
 
-  const logoBuffer = await fetchLogoBuffer(config.logo_url);
-
-  if (!logoBuffer) {
-    return { buffer, contentType: fallbackType };
+  if (!isValidImageBuffer(buffer)) {
+    return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
   }
 
   try {
-    const watermarked = await applyWatermark(buffer, config, logoBuffer);
-    return { buffer: watermarked, contentType: "image/jpeg" };
+    const normalized = await sharp(buffer, { failOn: "error" })
+      .rotate()
+      .jpeg({ quality: 88 })
+      .toBuffer();
+
+    if (!isValidImageBuffer(normalized)) {
+      return { error: "Não foi possível processar a imagem." };
+    }
+
+    return { buffer: normalized, contentType: "image/jpeg" };
   } catch (error) {
-    console.error("[processImageBuffer] watermark failed", error);
-    return { buffer, contentType: fallbackType };
+    console.error("[normalizeImageForStorage] failed", error);
+    return { error: "Não foi possível processar a imagem. Tente outro arquivo." };
   }
+}
+
+async function processImageBuffer(
+  corretorId: string,
+  buffer: Buffer,
+): Promise<{ buffer: Buffer; contentType: string } | { error: string }> {
+  if (looksLikeUtf8CorruptedBinary(buffer)) {
+    return {
+      error: "Arquivo de imagem inválido. Remova a foto e envie o arquivo novamente.",
+    };
+  }
+
+  if (!isValidImageBuffer(buffer)) {
+    return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
+  }
+
+  const config = await getMarcaDaguaConfigForCorretor(corretorId);
+  let workingBuffer = buffer;
+
+  if (config?.logo_url) {
+    const logoBuffer = await fetchLogoBuffer(config.logo_url);
+
+    if (logoBuffer) {
+      try {
+        workingBuffer = await applyWatermark(buffer, config, logoBuffer);
+      } catch (error) {
+        console.error("[processImageBuffer] watermark failed", error);
+      }
+    }
+  }
+
+  const normalized = await normalizeImageForStorage(workingBuffer);
+
+  if ("error" in normalized) {
+    return normalized;
+  }
+
+  return normalized;
 }
 
 export async function getStatusImovelList(corretorId?: string): Promise<StatusImovel[]> {
@@ -1735,18 +1782,18 @@ async function uploadFotosForImovel(
   const sortedFotos = [...fotos].sort((a, b) => a.ordem - b.ordem);
 
   for (const foto of sortedFotos) {
-    const extension = foto.file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const filename = `${crypto.randomUUID()}.${extension}`;
+    const filename = `${crypto.randomUUID()}.jpg`;
     const storagePath = `${corretorId}/${imovelId}/${filename}`;
-    const processed = await processImageBuffer(
-      corretorId,
-      Buffer.from(await foto.file.arrayBuffer()),
-      foto.file.type || "image/jpeg",
-    );
+    const rawBuffer = Buffer.from(await foto.file.arrayBuffer());
+    const processed = await processImageBuffer(corretorId, rawBuffer);
+
+    if ("error" in processed) {
+      return { error: processed.error };
+    }
 
     const { error: uploadError } = await admin.storage
       .from(STORAGE_BUCKET_IMOVEIS)
-      .upload(storagePath, processed.buffer, {
+      .upload(storagePath, bufferToUploadBody(processed.buffer), {
         contentType: processed.contentType,
         upsert: false,
       });

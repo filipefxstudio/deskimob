@@ -40,6 +40,7 @@ interface ConfiguracoesTabsProps {
   motivosDesativacao: MotivoDesativacao[];
   initialTab?: string;
   canManageEquipe?: boolean;
+  isAdmin?: boolean;
 }
 
 export function ConfiguracoesTabs({
@@ -58,12 +59,18 @@ export function ConfiguracoesTabs({
   motivosDesativacao,
   initialTab = "perfil",
   canManageEquipe = false,
+  isAdmin = false,
 }: ConfiguracoesTabsProps) {
   const allTabs = ["perfil", "whatsapp", "imoveis", "atendimentos", "equipe", "site", "exportar"] as const;
   type TabValue = (typeof allTabs)[number];
-  const tabValues: readonly TabValue[] = canManageEquipe
-    ? allTabs
-    : ["perfil", "whatsapp", "imoveis", "atendimentos", "site", "exportar"];
+  const tabValues: TabValue[] = ["perfil", "whatsapp", "imoveis", "atendimentos"];
+  if (canManageEquipe) {
+    tabValues.push("equipe");
+  }
+  if (isAdmin) {
+    tabValues.push("site");
+  }
+  tabValues.push("exportar");
   const defaultTab = tabValues.includes(initialTab as TabValue) ? initialTab : "perfil";
 
   return (
@@ -74,7 +81,7 @@ export function ConfiguracoesTabs({
         <TabsTrigger value="imoveis">Imóveis</TabsTrigger>
         <TabsTrigger value="atendimentos">Atendimentos</TabsTrigger>
         {canManageEquipe ? <TabsTrigger value="equipe">Equipe</TabsTrigger> : null}
-        <TabsTrigger value="site">Meu site</TabsTrigger>
+        {isAdmin ? <TabsTrigger value="site">Meu site</TabsTrigger> : null}
         <TabsTrigger value="exportar">Exportar meus dados</TabsTrigger>
       </TabsList>
 
@@ -111,9 +118,11 @@ export function ConfiguracoesTabs({
         </TabsContent>
       ) : null}
 
-      <TabsContent value="site">
-        <AbaSite corretor={corretor} />
-      </TabsContent>
+      {isAdmin ? (
+        <TabsContent value="site">
+          <AbaSite corretor={corretor} />
+        </TabsContent>
+      ) : null}
 
       <TabsContent value="exportar">
         <AbaExportarDados />

@@ -8,9 +8,12 @@ import {
   DEFAULT_SITE_TARJA_COR,
   STORAGE_BUCKET_SITE_ASSETS,
 } from "@/lib/constants/site";
+import { requireSiteAdmin } from "@/lib/auth/equipe-access";
+import { isReservedTenantSlug } from "@/lib/site/host";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createClient } from "@/lib/supabase/server";
+import { slugify } from "@/lib/utils";
+import type { Corretor } from "@/types";
 
 export type SiteConfigActionResult = {
   success?: boolean;
@@ -52,10 +55,23 @@ export type SaveContatoInput = {
 
 export type SaveSiteDominioInput = {
   dominio_custom: string;
+  slug?: string;
 };
 
 function isValidHexColor(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value);
+}
+
+async function requireSiteAdminCorretor(): Promise<
+  { error: string } | { corretor: Corretor }
+> {
+  const ctx = await requireSiteAdmin();
+
+  if ("error" in ctx) {
+    return ctx;
+  }
+
+  return { corretor: ctx.corretor };
 }
 
 async function uploadSiteAsset(
@@ -63,11 +79,13 @@ async function uploadSiteAsset(
   fieldName: string,
   fileName: string,
 ): Promise<SiteConfigActionResult & { url?: string }> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
+
+  const { corretor } = access;
 
   const file = formData.get(fieldName) as File | null;
 
@@ -109,11 +127,13 @@ async function uploadSiteAsset(
 export async function saveIdentidadeVisual(
   data: SaveIdentidadeVisualInput,
 ): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
+
+  const { corretor } = access;
 
   const primaria = data.site_cor_primaria.trim() || DEFAULT_SITE_COR_PRIMARIA;
   const secundaria = data.site_cor_secundaria.trim() || DEFAULT_SITE_COR_SECUNDARIA;
@@ -146,12 +166,13 @@ export async function saveIdentidadeVisual(
 }
 
 export async function uploadLogo(formData: FormData): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
 
+  const { corretor } = access;
   const uploadResult = await uploadSiteAsset(formData, "logo", "logo");
 
   if (uploadResult.error || !uploadResult.url) {
@@ -175,11 +196,13 @@ export async function uploadLogo(formData: FormData): Promise<SiteConfigActionRe
 }
 
 export async function uploadFavicon(formData: FormData): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  const access = await requireSiteAdminCorretor();
+
+  if ("error" in access) {
+    return access;
   }
 
+  const { corretor } = access;
   const uploadResult = await uploadSiteAsset(formData, "favicon", "favicon");
   if (uploadResult.error || !uploadResult.url) {
     return uploadResult;
@@ -200,12 +223,13 @@ export async function uploadFavicon(formData: FormData): Promise<SiteConfigActio
 }
 
 export async function uploadHero(formData: FormData): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
 
+  const { corretor } = access;
   const uploadResult = await uploadSiteAsset(formData, "hero", "hero");
 
   if (uploadResult.error || !uploadResult.url) {
@@ -231,11 +255,13 @@ export async function uploadHero(formData: FormData): Promise<SiteConfigActionRe
 }
 
 export async function removeHero(): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
+
+  const { corretor } = access;
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -256,10 +282,13 @@ export async function removeHero(): Promise<SiteConfigActionResult> {
 }
 
 export async function saveHeroPage(data: SaveHeroPageInput): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  const access = await requireSiteAdminCorretor();
+
+  if ("error" in access) {
+    return access;
   }
+
+  const { corretor } = access;
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -283,12 +312,13 @@ export async function saveHeroPage(data: SaveHeroPageInput): Promise<SiteConfigA
 }
 
 export async function uploadSobreFoto(formData: FormData): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
 
+  const { corretor } = access;
   const uploadResult = await uploadSiteAsset(formData, "foto", "sobre");
 
   if (uploadResult.error || !uploadResult.url) {
@@ -314,11 +344,13 @@ export async function uploadSobreFoto(formData: FormData): Promise<SiteConfigAct
 }
 
 export async function saveSobrePage(data: SaveSobreInput): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
+
+  const { corretor } = access;
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -342,11 +374,13 @@ export async function saveSobrePage(data: SaveSobreInput): Promise<SiteConfigAct
 }
 
 export async function saveContatoPage(data: SaveContatoInput): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+  const access = await requireSiteAdminCorretor();
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  if ("error" in access) {
+    return access;
   }
+
+  const { corretor } = access;
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -379,26 +413,90 @@ export async function saveContatoPage(data: SaveContatoInput): Promise<SiteConfi
   return { success: true, message: "Página Contato salva." };
 }
 
-export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteConfigActionResult> {
-  const corretor = await getCorretorForUser();
+async function resolveSiteSlugUpdate(
+  corretor: Corretor,
+  rawSlug: string | undefined,
+): Promise<{ slug?: string; error?: string } | { skip: true }> {
+  if (rawSlug === undefined) {
+    return { skip: true };
+  }
 
-  if (!corretor) {
-    return { error: "Sessão expirada. Faça login novamente." };
+  const normalized = slugify(rawSlug.trim());
+
+  if (!normalized || normalized.length < 2) {
+    return { error: "Informe um slug válido com pelo menos 2 caracteres." };
+  }
+
+  if (isReservedTenantSlug(normalized)) {
+    return { error: "Este slug não pode ser usado." };
+  }
+
+  if (normalized === corretor.slug) {
+    return { skip: true };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: existing } = await supabase
     .from("corretores")
-    .update({
-      dominio_custom: data.dominio_custom.trim() || null,
-    })
-    .eq("id", corretor.id);
+    .select("id")
+    .eq("slug", normalized)
+    .neq("id", corretor.id)
+    .maybeSingle();
+
+  if (existing) {
+    return { error: "Este slug já está em uso." };
+  }
+
+  return { slug: normalized };
+}
+
+export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteConfigActionResult> {
+  const access = await requireSiteAdminCorretor();
+
+  if ("error" in access) {
+    return access;
+  }
+
+  const { corretor } = access;
+  const slugResult = await resolveSiteSlugUpdate(corretor, data.slug);
+
+  if ("error" in slugResult && slugResult.error) {
+    return { error: slugResult.error };
+  }
+
+  const supabase = await createClient();
+  const updatePayload: { dominio_custom: string | null; slug?: string } = {
+    dominio_custom: data.dominio_custom.trim() || null,
+  };
+
+  if ("slug" in slugResult && slugResult.slug) {
+    updatePayload.slug = slugResult.slug;
+  }
+
+  const { error } = await supabase.from("corretores").update(updatePayload).eq("id", corretor.id);
 
   if (error) {
-    return { error: "Não foi possível salvar o domínio." };
+    if (error.code === "23505") {
+      return { error: "Este slug já está em uso." };
+    }
+    return { error: "Não foi possível salvar as configurações do site." };
   }
 
   revalidatePath("/dashboard/configuracoes");
+  revalidatePath("/dashboard");
 
-  return { success: true, message: "Domínio salvo." };
+  if (corretor.slug) {
+    revalidatePath(`/${corretor.slug}`);
+  }
+
+  if ("slug" in slugResult && slugResult.slug) {
+    revalidatePath(`/${slugResult.slug}`);
+  }
+
+  const slugChanged = "slug" in slugResult && Boolean(slugResult.slug);
+
+  return {
+    success: true,
+    message: slugChanged ? "Slug e domínio salvos." : "Domínio salvo.",
+  };
 }

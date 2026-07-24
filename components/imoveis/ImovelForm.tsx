@@ -41,7 +41,6 @@ import {
   getProximoCodigoPreview,
   reprovarImovel,
   updateImovel,
-  uploadImovelFotos,
 } from "@/lib/actions/imoveis";
 import {
   podeAprovarImovel,
@@ -367,9 +366,21 @@ export function ImovelForm({
         formData.append(`file:${foto.id}`, foto.file);
       }
 
-      const result = await uploadImovelFotos(imovelId, formData);
-      if (result.error) {
-        return { error: result.error };
+      const response = await fetch(`/api/imoveis/${imovelId}/fotos`, {
+        method: "POST",
+        body: formData,
+      });
+
+      let result: { error?: string; success?: boolean; imovelId?: string };
+
+      try {
+        result = (await response.json()) as typeof result;
+      } catch {
+        return { error: "Resposta inválida ao enviar fotos." };
+      }
+
+      if (!response.ok || result.error) {
+        return { error: result.error ?? "Não foi possível enviar as fotos." };
       }
     }
 

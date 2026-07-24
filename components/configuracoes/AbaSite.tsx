@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ExternalLink, Loader2, Trash2 } from "lucide-react";
 
 import {
@@ -388,20 +389,26 @@ function ContatoTab({ corretor }: { corretor: Corretor }) {
 }
 
 export function AbaSite({ corretor }: AbaSiteProps) {
+  const router = useRouter();
+  const [slug, setSlug] = useState(corretor.slug);
   const [dominioCustom, setDominioCustom] = useState(corretor.dominio_custom ?? "");
   const [dominioFeedback, setDominioFeedback] = useState<string | null>(null);
   const [dominioError, setDominioError] = useState<string | null>(null);
   const [isDominioPending, startDominioTransition] = useTransition();
-  const siteUrl = corretor.slug ? `/${corretor.slug}` : null;
+  const siteUrl = slug ? `/${slug}` : null;
 
   function handleDominioSubmit(event: React.FormEvent) {
     event.preventDefault();
     setDominioFeedback(null);
     setDominioError(null);
     startDominioTransition(async () => {
-      const result = await saveSiteDominio({ dominio_custom: dominioCustom });
+      const result = await saveSiteDominio({
+        dominio_custom: dominioCustom,
+        slug,
+      });
       if (result.error) { setDominioError(result.error); return; }
       setDominioFeedback(result.message ?? "Domínio salvo.");
+      router.refresh();
     });
   }
 
@@ -420,7 +427,17 @@ export function AbaSite({ corretor }: AbaSiteProps) {
         <form onSubmit={handleDominioSubmit} className="space-y-3 rounded-lg border bg-muted/20 p-4">
           <div className="space-y-2">
             <Label htmlFor="slug">Slug do site</Label>
-            <Input id="slug" value={corretor.slug} readOnly disabled />
+            <Input
+              id="slug"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="meu-nome"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p className="text-xs text-muted-foreground">
+              Endereço do site: /{slug || "seu-slug"}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="dominio_custom">Domínio personalizado</Label>

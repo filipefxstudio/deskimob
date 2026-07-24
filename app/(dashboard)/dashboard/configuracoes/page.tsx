@@ -39,7 +39,7 @@ export default async function ConfiguracoesPage({
     redirect("/login");
   }
 
-  const { corretor, canManageEquipe } = ctx;
+  const { corretor, canManageEquipe, isAdmin } = ctx;
 
   const params = await searchParams;
   const initialTab = typeof params.aba === "string" ? params.aba : "perfil";
@@ -95,6 +95,7 @@ export default async function ConfiguracoesPage({
           motivosDesativacao={motivosDesativacao}
           initialTab={initialTab}
           canManageEquipe={canManageEquipe}
+          isAdmin={isAdmin}
         />
     </div>
   );

@@ -1,5 +1,5 @@
 import { uploadImovelFotos } from "@/lib/actions/imoveis";
-import { FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE } from "@/lib/imoveis/foto-compress";
+import { FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE } from "@/lib/imoveis/foto-compress.constants";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";

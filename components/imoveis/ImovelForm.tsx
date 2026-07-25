@@ -47,7 +47,7 @@ import {
   FOTO_UPLOAD_BATCH_SIZE,
   FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
   parseFotoUploadHttpError,
-} from "@/lib/imoveis/foto-compress";
+} from "@/lib/imoveis/foto-compress.constants";
 import {
   podeAprovarImovel,
   podeMostrarEnviarAprovacaoNoFormulario,

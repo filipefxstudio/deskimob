@@ -29,7 +29,7 @@ import {
   FOTO_MAX_BYTES_LABEL,
   FOTO_MAX_HEIGHT,
   FOTO_MAX_WIDTH,
-} from "@/lib/imoveis/foto-compress";
+} from "@/lib/imoveis/foto-compress.constants";
 import { cn } from "@/lib/utils";
 
 export interface FotoItem {

@@ -66,11 +66,10 @@ export function getStatusIdBySlug(
 }
 
 export function buildDefaultImoveisFilters(statusList: StatusImovel[]): ImoveisFilterState {
-  const disponivelId = getDisponivelStatusId(statusList);
-
+  void statusList;
   return {
     ...defaultImoveisFilters,
-    statusIds: disponivelId ? [disponivelId] : [],
+    statusIds: [],
   };
 }
 
@@ -98,13 +97,8 @@ export function isDefaultStatusFilter(
   statusIds: string[],
   statusList: StatusImovel[],
 ): boolean {
-  const disponivelId = getDisponivelStatusId(statusList);
-
-  if (!disponivelId) {
-    return statusIds.length === 0;
-  }
-
-  return statusIds.length === 1 && statusIds[0] === disponivelId;
+  void statusList;
+  return statusIds.length === 0;
 }
 
 const MINIMO_OPCOES: { value: MinimoNumericoFilter; label: string }[] = [

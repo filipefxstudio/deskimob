@@ -10,7 +10,7 @@ import {
   STORAGE_BUCKET_MARCA_DAGUA,
 } from "@/lib/constants/imoveis";
 import {
-  clampListLimit,
+  clampImovelListLimit,
   clampListOffset,
   type ListQueryOptions,
 } from "@/lib/constants/listings";
@@ -1634,11 +1634,31 @@ export async function getImoveis(options?: ListQueryOptions): Promise<Imovel[]> 
     return [];
   }
 
-  const limit = clampListLimit(options?.limit);
+  const limit = clampImovelListLimit(options?.limit);
   const offset = clampListOffset(options?.offset);
 
   const supabase = await createClient();
-  return fetchImoveisRows(supabase, corretor.id, limit, offset);
+  const rows = await fetchImoveisRows(supabase, corretor.id, limit, offset);
+
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  try {
+    const admin = createServiceRoleClient();
+    const fallbackRows = await fetchImoveisRows(admin, corretor.id, limit, offset);
+
+    if (fallbackRows.length > 0) {
+      console.warn("[getImoveis] authenticated query returned empty; used service role fallback", {
+        corretorId: corretor.id,
+      });
+    }
+
+    return fallbackRows;
+  } catch (error) {
+    console.error("[getImoveis] service role fallback unavailable", error);
+    return rows;
+  }
 }
 
 export type ImovelListingBadge = "proposta" | "negocio_fechado";

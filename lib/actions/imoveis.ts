@@ -26,6 +26,7 @@ import {
 } from "@/lib/supabase/storage-upload";
 import { getImovelFotoDashboardUrl } from "@/lib/imoveis/foto-url";
 import { createClienteFromImovel } from "@/lib/actions/clientes";
+import { getMarcaDaguaConfigByCorretorId } from "@/lib/actions/configuracoes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
 import {
   ensureStatusImovelDefaults,
@@ -51,7 +52,7 @@ import {
   validateImovelParaAprovacao,
   type ImovelFormValues,
 } from "@/lib/validations/imovel";
-import type { Imovel, MarcaDaguaConfig, PlanoAssinatura, StatusImovel, StatusImovelSlug } from "@/types";
+import type { Imovel, PlanoAssinatura, StatusImovel, StatusImovelSlug } from "@/types";
 
 export type ImovelActionResult = {
   success?: boolean;
@@ -376,19 +377,6 @@ async function resolveStatusSlug(
   return slugFromStatusRecord(status);
 }
 
-async function getMarcaDaguaConfigForCorretor(
-  corretorId: string,
-): Promise<MarcaDaguaConfig | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("marca_dagua_config")
-    .select("*")
-    .eq("corretor_id", corretorId)
-    .maybeSingle();
-
-  return (data as MarcaDaguaConfig | null) ?? null;
-}
-
 async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
   try {
     const response = await fetch(logoUrl);
@@ -411,7 +399,7 @@ async function processImageBuffer(
     return processed;
   }
 
-  const config = await getMarcaDaguaConfigForCorretor(corretorId);
+  const config = await getMarcaDaguaConfigByCorretorId(corretorId);
 
   if (config?.logo_url) {
     const logoBuffer = await fetchLogoBuffer(config.logo_url);

@@ -23,6 +23,7 @@ import { mapAuthErrorFromSupabase } from "@/lib/auth/errors";
 import { enviarConviteEquipe } from "@/lib/email/invite";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { logPostgrestError } from "@/lib/supabase/postgrest-error";
 import { createClient } from "@/lib/supabase/server";
 import type { Corretor, MarcaDaguaConfig, MidiaOrigem, MotivoDesativacao, PapelUsuario, Perfil, StatusImovel, TipoImovelCustom } from "@/types";
 
@@ -994,6 +995,12 @@ export async function deleteStatusImovel(id: string): Promise<ConfigActionResult
   return { success: true };
 }
 
+export async function getMarcaDaguaConfigByCorretorId(
+  corretorId: string,
+): Promise<MarcaDaguaConfig | null> {
+  return fetchMarcaDaguaConfigRow(corretorId);
+}
+
 export async function getMarcaDaguaConfig(): Promise<MarcaDaguaConfig | null> {
   const corretor = await getCorretorForUser();
 
@@ -1001,14 +1008,85 @@ export async function getMarcaDaguaConfig(): Promise<MarcaDaguaConfig | null> {
     return null;
   }
 
+  return fetchMarcaDaguaConfigRow(corretor.id);
+}
+
+async function fetchMarcaDaguaConfigRow(corretorId: string): Promise<MarcaDaguaConfig | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("marca_dagua_config")
     .select("*")
-    .eq("corretor_id", corretor.id)
+    .eq("corretor_id", corretorId)
     .maybeSingle();
 
-  return (data as MarcaDaguaConfig | null) ?? null;
+  if (!error) {
+    return (data as MarcaDaguaConfig | null) ?? null;
+  }
+
+  logPostgrestError("fetchMarcaDaguaConfigRow", error);
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("marca_dagua_config")
+      .select("*")
+      .eq("corretor_id", corretorId)
+      .maybeSingle();
+
+    if (fallbackError) {
+      logPostgrestError("fetchMarcaDaguaConfigRow:fallback", fallbackError);
+      return null;
+    }
+
+    console.warn("[fetchMarcaDaguaConfigRow] used service role fallback", { corretorId });
+    return (fallbackData as MarcaDaguaConfig | null) ?? null;
+  } catch (fallbackError) {
+    console.error("[fetchMarcaDaguaConfigRow] service role fallback unavailable", fallbackError);
+    return null;
+  }
+}
+
+async function upsertMarcaDaguaConfigRow(
+  corretorId: string,
+  payload: Record<string, string | number | null>,
+): Promise<ConfigActionResult> {
+  const existing = await fetchMarcaDaguaConfigRow(corretorId);
+
+  let admin;
+  try {
+    admin = createServiceRoleClient();
+  } catch {
+    return { error: "Operação indisponível. Verifique a configuração do servidor." };
+  }
+
+  if (existing) {
+    const { error } = await admin
+      .from("marca_dagua_config")
+      .update({
+        ...payload,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq("corretor_id", corretorId);
+
+    if (error) {
+      logPostgrestError("upsertMarcaDaguaConfigRow:update", error);
+      return { error: "Não foi possível salvar a configuração." };
+    }
+
+    return { success: true };
+  }
+
+  const { error } = await admin.from("marca_dagua_config").insert({
+    corretor_id: corretorId,
+    ...payload,
+  });
+
+  if (error) {
+    logPostgrestError("upsertMarcaDaguaConfigRow:insert", error);
+    return { error: "Não foi possível salvar a configuração." };
+  }
+
+  return { success: true };
 }
 
 export async function saveMarcaDaguaConfig(data: {
@@ -1022,30 +1100,14 @@ export async function saveMarcaDaguaConfig(data: {
     return { error: "Sessão expirada." };
   }
 
-  const supabase = await createClient();
-  const existing = await getMarcaDaguaConfig();
+  const saveResult = await upsertMarcaDaguaConfigRow(corretor.id, {
+    tamanho_percent: data.tamanho_percent,
+    opacidade_percent: data.opacidade_percent,
+    posicao: data.posicao,
+  });
 
-  if (existing) {
-    const { error } = await supabase
-      .from("marca_dagua_config")
-      .update({
-        ...data,
-        atualizado_em: new Date().toISOString(),
-      })
-      .eq("corretor_id", corretor.id);
-
-    if (error) {
-      return { error: "Não foi possível salvar a configuração." };
-    }
-  } else {
-    const { error } = await supabase.from("marca_dagua_config").insert({
-      corretor_id: corretor.id,
-      ...data,
-    });
-
-    if (error) {
-      return { error: "Não foi possível salvar a configuração." };
-    }
+  if (saveResult.error) {
+    return saveResult;
   }
 
   revalidatePath("/dashboard/configuracoes");
@@ -1096,19 +1158,12 @@ export async function uploadMarcaDaguaLogo(
     .getPublicUrl(storagePath);
 
   const logoUrl = publicUrlData.publicUrl;
-  const supabase = await createClient();
-  const existing = await getMarcaDaguaConfig();
+  const saveResult = await upsertMarcaDaguaConfigRow(corretor.id, {
+    logo_url: logoUrl,
+  });
 
-  if (existing) {
-    await supabase
-      .from("marca_dagua_config")
-      .update({ logo_url: logoUrl, atualizado_em: new Date().toISOString() })
-      .eq("corretor_id", corretor.id);
-  } else {
-    await supabase.from("marca_dagua_config").insert({
-      corretor_id: corretor.id,
-      logo_url: logoUrl,
-    });
+  if (saveResult.error) {
+    return saveResult;
   }
 
   revalidatePath("/dashboard/configuracoes");

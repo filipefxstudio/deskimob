@@ -22,6 +22,33 @@ interface AbaMarcaDaguaProps {
 const PREVIEW_IMAGE =
   "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=600&fit=crop";
 
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+function buildConfigWithLogo(
+  logoUrl: string,
+  current: MarcaDaguaConfig | null,
+  tamanho: number,
+  opacidade: number,
+  posicao: string,
+): MarcaDaguaConfig {
+  const now = new Date().toISOString();
+
+  if (current) {
+    return { ...current, logo_url: logoUrl, atualizado_em: now };
+  }
+
+  return {
+    id: "",
+    corretor_id: "",
+    logo_url: logoUrl,
+    tamanho_percent: tamanho,
+    opacidade_percent: opacidade,
+    posicao,
+    criado_em: now,
+    atualizado_em: now,
+  };
+}
+
 export function AbaMarcaDagua({ initialConfig }: AbaMarcaDaguaProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [config, setConfig] = useState<MarcaDaguaConfig | null>(initialConfig);
@@ -32,30 +59,68 @@ export function AbaMarcaDagua({ initialConfig }: AbaMarcaDaguaProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
+  function uploadLogoFile(file: File) {
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setError("Use PNG, JPEG ou WebP.");
       return;
     }
 
     setError(null);
+    setFeedback(null);
+
     const formData = new FormData();
-    formData.append("logo", file);
+    formData.set("logo", file);
 
     startTransition(async () => {
-      const result = await uploadMarcaDaguaLogo(formData);
+      try {
+        const result = await uploadMarcaDaguaLogo(formData);
 
-      if (result.error) {
-        setError(result.error);
-        return;
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+
+        if (result.logoUrl) {
+          setConfig((current) =>
+            buildConfigWithLogo(result.logoUrl!, current, tamanho, opacidade, posicao),
+          );
+        } else {
+          const updated = await getMarcaDaguaConfig();
+          if (updated) {
+            setConfig(updated);
+          }
+        }
+
+        setFeedback(result.message ?? "Logo enviada.");
+      } catch (uploadError) {
+        console.error("[AbaMarcaDagua] upload failed", uploadError);
+        setError("Não foi possível enviar a logo. Tente novamente.");
       }
-
-      const updated = await getMarcaDaguaConfig();
-      setConfig(updated);
-      setFeedback(result.message ?? "Logo enviada.");
     });
+  }
 
-    event.target.value = "";
+  function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.target;
+    const file = input.files?.[0];
+    input.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    uploadLogoFile(file);
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    uploadLogoFile(file);
   }
 
   function handleSave(event: React.FormEvent) {
@@ -103,14 +168,11 @@ export function AbaMarcaDagua({ initialConfig }: AbaMarcaDaguaProps) {
           <Label>Logo para marca d&apos;água</Label>
           <div
             className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 px-4 py-8 text-center"
-            onClick={() => inputRef.current?.click()}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                inputRef.current?.click();
-              }
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
             }}
-            role="button"
-            tabIndex={0}
+            onDrop={handleDrop}
           >
             {config?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -123,7 +185,7 @@ export function AbaMarcaDagua({ initialConfig }: AbaMarcaDaguaProps) {
               <Upload className="size-8 text-muted-foreground" />
             )}
             <p className="text-sm font-medium">
-              {isPending ? "Enviando…" : "Arraste ou clique para enviar"}
+              {isPending ? "Enviando…" : "Arraste ou selecione a logo"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               PNG com fundo transparente recomendado
@@ -131,11 +193,26 @@ export function AbaMarcaDagua({ initialConfig }: AbaMarcaDaguaProps) {
             <input
               ref={inputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept={ACCEPTED_IMAGE_TYPES.join(",")}
               className="hidden"
               onChange={handleUpload}
               disabled={isPending}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              disabled={isPending}
+              onClick={() => inputRef.current?.click()}
+            >
+              {isPending ? (
+                <Loader2 className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <Upload data-icon="inline-start" />
+              )}
+              Selecionar logo
+            </Button>
           </div>
         </div>
 

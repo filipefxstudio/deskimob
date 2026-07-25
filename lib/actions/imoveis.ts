@@ -463,6 +463,25 @@ async function processImageBuffer(
   return normalized;
 }
 
+async function fetchStatusImovelRows(
+  client: Awaited<ReturnType<typeof createClient>>,
+  corretorId: string,
+): Promise<StatusImovel[]> {
+  const { data, error } = await client
+    .from("status_imovel")
+    .select("*")
+    .eq("corretor_id", corretorId)
+    .eq("ativo", true)
+    .order("ordem");
+
+  if (error) {
+    console.error("[fetchStatusImovelRows] failed", error);
+    return [];
+  }
+
+  return (data ?? []) as StatusImovel[];
+}
+
 export async function getStatusImovelList(corretorId?: string): Promise<StatusImovel[]> {
   const corretor = corretorId
     ? { id: corretorId }
@@ -480,19 +499,27 @@ export async function getStatusImovelList(corretorId?: string): Promise<StatusIm
     console.error("[getStatusImovelList] ensure defaults failed", error);
   }
 
-  const { data, error } = await supabase
-    .from("status_imovel")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .eq("ativo", true)
-    .order("ordem");
+  const rows = await fetchStatusImovelRows(supabase, corretor.id);
 
-  if (error) {
-    console.error("[getStatusImovelList] failed", error);
-    return [];
+  if (rows.length > 0) {
+    return rows;
   }
 
-  return (data ?? []) as StatusImovel[];
+  try {
+    const admin = createServiceRoleClient();
+    const fallbackRows = await fetchStatusImovelRows(admin, corretor.id);
+
+    if (fallbackRows.length > 0) {
+      console.warn("[getStatusImovelList] authenticated query returned empty; used service role fallback", {
+        corretorId: corretor.id,
+      });
+    }
+
+    return fallbackRows;
+  } catch (error) {
+    console.error("[getStatusImovelList] service role fallback unavailable", error);
+    return rows;
+  }
 }
 
 export async function updateImovelStatus(

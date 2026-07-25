@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { ImoveisListing } from "@/components/imoveis/ImoveisListing";
-import { getImoveis, getImoveisWorkflowBadges, getStatusImovelList } from "@/lib/actions/imoveis";import { STATUS_IMOVEL } from "@/lib/constants/imoveis";
+import { getImoveis, getImoveisWorkflowBadges, getStatusImovelList } from "@/lib/actions/imoveis";
+import { STATUS_IMOVEL } from "@/lib/constants/imoveis";
 import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
 import {
   getCorretorForDashboardPage,

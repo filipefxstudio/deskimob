@@ -56,6 +56,8 @@ export function mapRowToImovel(
 
   const complemento = String(row.Complemento ?? "").trim() || null;
   const titulo = generateAutoTitulo(row);
+  const dataCadastro = parseDataBr(row.DataCadastro);
+  const dataUltimaAlteracao = parseDataBr(row.DataHoraUltimaAlteracao);
 
   const mapped: MappedImovelInsert = {
     codigo,
@@ -92,8 +94,10 @@ export function mapRowToImovel(
     local_chaves,
     chaves_codigo: chavesCodigo,
     chaves_descricao,
-    data_ativacao: parseDataBr(row.DataCadastro),
-    data_ultima_atualizacao: parseDataBr(row.DataHoraUltimaAlteracao),
+    data_ativacao: dataCadastro,
+    data_ultima_atualizacao: dataUltimaAlteracao,
+    criado_em: dataCadastro,
+    atualizado_em: dataUltimaAlteracao ?? dataCadastro,
     vagas_tipo: mapVagasTipo(row.TipoVaga),
     ano_construcao: parseIdadeToAnoConstrucao(row.Idade, exportYear),
     destinacao: mapDestinacao(row.Destinacao),

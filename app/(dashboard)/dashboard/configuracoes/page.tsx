@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { ConfiguracoesTabs } from "@/components/configuracoes/ConfiguracoesTabs";
-import { getAgenteConfig } from "@/lib/actions/agente-config";
+import { getAgenteConfig, getPlanoCorretor } from "@/lib/actions/agente-config";
 import { getConfigFichaVisita } from "@/lib/actions/ficha-visita";
 import { getAtendimentoConfig, getMotivosDescarte } from "@/lib/actions/atendimentos";
 import { getDashboardConfig } from "@/lib/actions/dashboard-config";
@@ -15,18 +15,12 @@ import {
   getTiposImovelCustom,
 } from "@/lib/actions/configuracoes";
 import { getEquipeAccessContext } from "@/lib/auth/equipe-access";
-import { createClient } from "@/lib/supabase/server";
-import type { Assinatura, PlanoAssinatura } from "@/types";
+import type { PlanoAssinatura } from "@/types";
 
 export const metadata: Metadata = {
   title: "Configurações | Deskimob",
   description: "Configure perfil, site, WhatsApp e agente de IA",
 };
-
-function obterPlanoAtivo(assinaturas: Assinatura[] | undefined): PlanoAssinatura {
-  const ativa = assinaturas?.find((item) => item.status === "ativo");
-  return ativa?.plano ?? "basico";
-}
 
 export default async function ConfiguracoesPage({
   searchParams,
@@ -44,14 +38,13 @@ export default async function ConfiguracoesPage({
   const params = await searchParams;
   const initialTab = typeof params.aba === "string" ? params.aba : "perfil";
 
-  const supabase = await createClient();
-  const { data: assinaturas } = await supabase
-    .from("assinaturas")
-    .select("*")
-    .eq("corretor_id", corretor.id);
+  const [planoResult, agenteConfigResult] = await Promise.all([
+    getPlanoCorretor(corretor.id),
+    getAgenteConfig(corretor.id),
+  ]);
 
-  const plano = obterPlanoAtivo(assinaturas ?? undefined);
-  const agenteConfigResult = await getAgenteConfig(corretor.id);
+  const plano: PlanoAssinatura =
+    "error" in planoResult ? "basico" : planoResult;
   const [tiposImovel, midiasOrigem, perfisEquipe, statusImovel, marcaDaguaConfig, dashboardConfig, atendimentoConfig, fichaVisitaConfig, motivosDescarte, motivosDesativacao] =
     await Promise.all([
       getTiposImovelCustom(),
@@ -67,8 +60,10 @@ export default async function ConfiguracoesPage({
     ]);
 
   if ("error" in agenteConfigResult || !dashboardConfig) {
-    redirect("/dashboard");
+    redirect("/login");
   }
+
+  const agenteConfig = agenteConfigResult;
 
   return (
     <div className="flex-1 space-y-6 p-4 md:p-6">
@@ -82,7 +77,7 @@ export default async function ConfiguracoesPage({
         <ConfiguracoesTabs
           corretor={corretor}
           plano={plano}
-          agenteConfig={agenteConfigResult}
+          agenteConfig={agenteConfig}
           tiposImovel={tiposImovel}
           midiasOrigem={midiasOrigem}
           perfisEquipe={perfisEquipe}

@@ -125,6 +125,8 @@ export type MappedImovelInsert = {
   chaves_descricao: string | null;
   data_ativacao: string | null;
   data_ultima_atualizacao: string | null;
+  criado_em: string | null;
+  atualizado_em: string | null;
   vagas_tipo: string | null;
   ano_construcao: number | null;
   destinacao: "residencial" | "comercial" | "rural" | null;

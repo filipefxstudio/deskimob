@@ -9,7 +9,9 @@ import {
   MODELO_PADRAO_POR_PROVEDOR,
   MODELOS_POR_PROVEDOR,
 } from "@/lib/constants/agente";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { logPostgrestError } from "@/lib/supabase/postgrest-error";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AgenteConfig,
@@ -52,6 +54,74 @@ function obterPlanoAtivo(assinaturas: Assinatura[] | undefined): PlanoAssinatura
   return ativa?.plano ?? "basico";
 }
 
+async function fetchAssinaturasForCorretor(corretorId: string): Promise<Assinatura[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("assinaturas")
+    .select("*")
+    .eq("corretor_id", corretorId);
+
+  if (!error) {
+    return (data as Assinatura[] | null) ?? [];
+  }
+
+  logPostgrestError("fetchAssinaturasForCorretor", error);
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("assinaturas")
+      .select("*")
+      .eq("corretor_id", corretorId);
+
+    if (fallbackError) {
+      logPostgrestError("fetchAssinaturasForCorretor:fallback", fallbackError);
+      return [];
+    }
+
+    console.warn("[fetchAssinaturasForCorretor] used service role fallback", { corretorId });
+    return (fallbackData as Assinatura[] | null) ?? [];
+  } catch (fallbackError) {
+    console.error("[fetchAssinaturasForCorretor] service role fallback unavailable", fallbackError);
+    return [];
+  }
+}
+
+async function fetchAgenteConfigRow(corretorId: string): Promise<AgenteConfig | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agente_config")
+    .select("*")
+    .eq("corretor_id", corretorId)
+    .maybeSingle();
+
+  if (!error) {
+    return (data as AgenteConfig | null) ?? null;
+  }
+
+  logPostgrestError("fetchAgenteConfigRow", error);
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("agente_config")
+      .select("*")
+      .eq("corretor_id", corretorId)
+      .maybeSingle();
+
+    if (fallbackError) {
+      logPostgrestError("fetchAgenteConfigRow:fallback", fallbackError);
+      return null;
+    }
+
+    console.warn("[fetchAgenteConfigRow] used service role fallback", { corretorId });
+    return (fallbackData as AgenteConfig | null) ?? null;
+  } catch (fallbackError) {
+    console.error("[fetchAgenteConfigRow] service role fallback unavailable", fallbackError);
+    return null;
+  }
+}
+
 async function verificarCorretorAutorizado(
   corretorId: string,
 ): Promise<{ corretor: Corretor; plano: PlanoAssinatura } | { error: string }> {
@@ -65,19 +135,11 @@ async function verificarCorretorAutorizado(
     return { error: "Acesso não autorizado." };
   }
 
-  const supabase = await createClient();
-  const { data: assinaturas, error } = await supabase
-    .from("assinaturas")
-    .select("*")
-    .eq("corretor_id", corretor.id);
-
-  if (error) {
-    return { error: "Não foi possível verificar seu plano." };
-  }
+  const assinaturas = await fetchAssinaturasForCorretor(corretor.id);
 
   return {
     corretor,
-    plano: obterPlanoAtivo(assinaturas ?? undefined),
+    plano: obterPlanoAtivo(assinaturas),
   };
 }
 
@@ -138,18 +200,8 @@ export async function getAgenteConfig(
     return { error: auth.error };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("agente_config")
-    .select("*")
-    .eq("corretor_id", corretorId)
-    .maybeSingle();
-
-  if (error) {
-    return { error: "Não foi possível carregar a configuração do agente." };
-  }
-
-  return sanitizarConfig(data as AgenteConfig | null, corretorId);
+  const data = await fetchAgenteConfigRow(corretorId);
+  return sanitizarConfig(data, corretorId);
 }
 
 export async function saveAgenteConfig(

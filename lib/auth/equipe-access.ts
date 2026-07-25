@@ -54,14 +54,13 @@ export async function getEquipeAccessContext(): Promise<EquipeAccessContext | nu
     return null;
   }
 
-  const [corretor, perfil] = await Promise.all([
-    getCorretorForUser(),
-    getPerfilForUser(),
-  ]);
+  const corretor = await getCorretorForUser();
 
   if (!corretor) {
     return null;
   }
+
+  const perfil = await getPerfilForUser(corretor.id);
 
   const owner = isAccountOwner(corretor, user.id);
   const admin = isAdminPerfil(perfil) || owner;

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import { ImoveisListing } from "@/components/imoveis/ImoveisListing";
-import { getImoveis, getImoveisWorkflowBadges, getStatusImovelList } from "@/lib/actions/imoveis";
-import { STATUS_IMOVEL } from "@/lib/constants/imoveis";
-import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { getImoveis, getImoveisWorkflowBadges, getStatusImovelList } from "@/lib/actions/imoveis";import { STATUS_IMOVEL } from "@/lib/constants/imoveis";
+import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
+import {
+  getCorretorForDashboardPage,
+} from "@/lib/supabase/require-corretor-page";
 import type { StatusImovelSlug } from "@/types";
 
 export const metadata: Metadata = {
@@ -17,11 +18,13 @@ export default async function ImoveisPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const corretor = await getCorretorForUser();
+  const access = await getCorretorForDashboardPage();
 
-  if (!corretor) {
-    redirect("/login");
+  if (!access.corretor) {
+    return access.showUnavailable ? <CorretorUnavailableMessage /> : null;
   }
+
+  const { corretor } = access;
 
   const params = await searchParams;
   const initialBusca = typeof params.busca === "string" ? params.busca : "";

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 import { AtendimentosPage } from "@/components/atendimentos/AtendimentosPage";
 import type { LeadsFilterState } from "@/components/leads/LeadsFilters";
@@ -14,7 +13,10 @@ import {
   getMidiasOrigem,
   getPerfisForLeads,
 } from "@/lib/actions/leads";
-import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
+import {
+  getCorretorForDashboardPage,
+} from "@/lib/supabase/require-corretor-page";
 import type { EtapaLead, SituacaoLead, TemperaturaLead } from "@/types";
 import { isEtapaLead } from "@/lib/constants/leads";
 
@@ -72,11 +74,13 @@ function parseInitialFilters(
 }
 
 export default async function AtendimentosRoutePage({ searchParams }: PageProps) {
-  const corretor = await getCorretorForUser();
+  const access = await getCorretorForDashboardPage();
 
-  if (!corretor) {
-    redirect("/login");
+  if (!access.corretor) {
+    return access.showUnavailable ? <CorretorUnavailableMessage /> : null;
   }
+
+  const { corretor } = access;
 
   const params = await searchParams;
   const initialFilters = parseInitialFilters(params);

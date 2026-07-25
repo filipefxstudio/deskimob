@@ -1,6 +1,5 @@
-import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { createClient } from "@/lib/supabase/server";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import type { Corretor, Perfil } from "@/types";
 
@@ -45,27 +44,6 @@ export function canManageEquipe(
   return isAccountOwner(corretor, userId) || isAdminPerfil(perfil);
 }
 
-async function fetchCorretorById(corretorId: string): Promise<Corretor | null> {
-  try {
-    const admin = createServiceRoleClient();
-    const { data, error } = await admin
-      .from("corretores")
-      .select("*")
-      .eq("id", corretorId)
-      .maybeSingle();
-
-    if (error) {
-      console.error("[fetchCorretorById] failed", error);
-      return null;
-    }
-
-    return (data as Corretor | null) ?? null;
-  } catch (error) {
-    console.error("[fetchCorretorById] service role unavailable", error);
-    return null;
-  }
-}
-
 export async function getEquipeAccessContext(): Promise<EquipeAccessContext | null> {
   const supabase = await createClient();
   const {
@@ -76,16 +54,10 @@ export async function getEquipeAccessContext(): Promise<EquipeAccessContext | nu
     return null;
   }
 
-  const [ownerCorretor, perfil] = await Promise.all([
+  const [corretor, perfil] = await Promise.all([
     getCorretorForUser(),
     getPerfilForUser(),
   ]);
-
-  let corretor = ownerCorretor;
-
-  if (!corretor && perfil?.corretor_id) {
-    corretor = await fetchCorretorById(perfil.corretor_id);
-  }
 
   if (!corretor) {
     return null;
@@ -137,4 +109,4 @@ export async function requireSiteAdmin(): Promise<
 
   return ctx;
 }
-
+

@@ -7,6 +7,7 @@ import { OnboardingBanner } from "@/components/dashboard/OnboardingBanner";
 import { getDashboardDataBothTabs } from "@/lib/actions/dashboard";
 import { countImoveisAguardandoAprovacao } from "@/lib/actions/imovel-desempenho";
 import { getOnboardingItems } from "@/lib/mock/dashboard";
+import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { podeAprovarImovel } from "@/lib/imoveis/aprovacao";
@@ -25,10 +26,14 @@ const INITIAL_PERIOD = {
 export default async function DashboardPage() {
   const corretor = await getCorretorForUser();
 
-  const nome = corretor?.nome ?? "Corretor";
-  const perfilCompleto = Boolean(corretor?.telefone && corretor?.creci);
+  if (!corretor) {
+    return <CorretorUnavailableMessage />;
+  }
+
+  const nome = corretor.nome;
+  const perfilCompleto = Boolean(corretor.telefone && corretor.creci);
   const onboardingItems = getOnboardingItems({ perfilCompleto });
-  const siteHref = corretor?.slug ? `/${corretor.slug}` : undefined;
+  const siteHref = corretor.slug ? `/${corretor.slug}` : undefined;
 
   const { venda, locacao } = await getDashboardDataBothTabs({
     periodPreset: INITIAL_PERIOD.preset,

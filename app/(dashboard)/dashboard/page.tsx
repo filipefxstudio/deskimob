@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     periodPreset: INITIAL_PERIOD.preset,
   });
 
-  const perfil = await getPerfilForUser();
+  const perfil = await getPerfilForUser(corretor.id);
   const imoveisAguardando =
     podeAprovarImovel(perfil) ? await countImoveisAguardandoAprovacao() : 0;
 

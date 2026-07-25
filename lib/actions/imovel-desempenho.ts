@@ -1,6 +1,8 @@
 "use server";
 
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { logPostgrestError } from "@/lib/supabase/postgrest-error";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AuditoriaImovel,
@@ -201,10 +203,28 @@ export async function countImoveisAguardandoAprovacao(): Promise<number> {
     .eq("corretor_id", corretor.id)
     .eq("status_aprovacao", "aguardando_aprovacao");
 
-  if (error) {
-    console.error("[countImoveisAguardandoAprovacao] failed", error);
-    return 0;
+  if (!error) {
+    return count ?? 0;
   }
 
-  return count ?? 0;
+  logPostgrestError("countImoveisAguardandoAprovacao", error);
+
+  try {
+    const admin = createServiceRoleClient();
+    const { count: fallbackCount, error: fallbackError } = await admin
+      .from("imoveis")
+      .select("id", { count: "exact", head: true })
+      .eq("corretor_id", corretor.id)
+      .eq("status_aprovacao", "aguardando_aprovacao");
+
+    if (fallbackError) {
+      logPostgrestError("countImoveisAguardandoAprovacao:fallback", fallbackError);
+      return 0;
+    }
+
+    return fallbackCount ?? 0;
+  } catch (fallbackError) {
+    console.error("[countImoveisAguardandoAprovacao] service role fallback unavailable", fallbackError);
+    return 0;
+  }
 }

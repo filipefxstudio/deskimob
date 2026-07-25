@@ -482,7 +482,10 @@ export function ImovelForm({
           return;
         }
 
-        const result = await enviarImovelParaAprovacao(imovelId);
+        const result = await enviarImovelParaAprovacao(imovelId, {
+          formValues: values,
+          fotosCount: fotos.length,
+        });
         if (result.error) {
           setSubmitError(result.error);
           toast({

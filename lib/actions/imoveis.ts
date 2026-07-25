@@ -642,66 +642,106 @@ export async function alterarStatusImovel(
   return updateImovelStatus(id, statusImovelId, motivo);
 }
 
-export async function enviarImovelParaAprovacao(id: string): Promise<ImovelActionResult> {
+export async function enviarImovelParaAprovacao(
+  id: string,
+  options?: {
+    formValues?: ImovelFormValues;
+    fotosCount?: number;
+  },
+): Promise<ImovelActionResult> {
   const corretor = await getCorretorForUser();
   if (!corretor) {
     return { error: "Sessão expirada. Faça login novamente." };
   }
 
-  const owns = await ensureImovelOwnership(id, corretor.id);
-  if (!owns) {
+  const scopedClient = await createImovelScopedClient(corretor.id, id);
+  if (!scopedClient) {
     return { error: "Imóvel não encontrado." };
   }
 
-  const imovelCompleto = await getImovelById(id);
-  if (!imovelCompleto) {
+  const { data: imovelRow, error: fetchError } = await scopedClient
+    .from("imoveis")
+    .select("status_aprovacao, status")
+    .eq("id", id)
+    .eq("corretor_id", corretor.id)
+    .maybeSingle();
+
+  if (fetchError || !imovelRow) {
+    if (fetchError) {
+      logPostgrestError("enviarImovelParaAprovacao:fetch", fetchError);
+    }
     return { error: "Imóvel não encontrado." };
   }
 
   const emCadastro =
-    imovelCompleto.status_aprovacao === "em_cadastro" ||
-    (!imovelCompleto.status_aprovacao &&
-      (imovelCompleto.status === "em_cadastro" || !imovelCompleto.status));
+    imovelRow.status_aprovacao === "em_cadastro" ||
+    (!imovelRow.status_aprovacao &&
+      (imovelRow.status === "em_cadastro" || !imovelRow.status));
 
   if (!emCadastro) {
     return { error: "Este imóvel não está em cadastro." };
   }
 
-  const formValues = imovelToFormValues(imovelCompleto);
-  const fotosCount = imovelCompleto.fotos?.length ?? 0;
-  const validation = validateImovelParaAprovacao(formValues, { fotosCount });
+  let validation;
+  if (options?.formValues) {
+    validation = validateImovelParaAprovacao(options.formValues, {
+      fotosCount: options.fotosCount ?? 0,
+    });
+  } else {
+    const imovelCompleto = await getImovelById(id);
+    if (!imovelCompleto) {
+      return { error: "Imóvel não encontrado." };
+    }
+
+    validation = validateImovelParaAprovacao(imovelToFormValues(imovelCompleto), {
+      fotosCount: imovelCompleto.fotos?.length ?? 0,
+    });
+  }
 
   if (!validation.success) {
     return { error: validation.message };
   }
 
-  const supabase = await createClient();
-
-  const statusAguardando = await getStatusByNome(corretor.id, "Aguardando aprovação");
+  const statusResult = await resolveStatusImovelByNome(
+    corretor.id,
+    "Aguardando aprovação",
+    scopedClient,
+  );
 
   const updatePayload: Record<string, unknown> = {
     status_aprovacao: "aguardando_aprovacao",
   };
 
-  if (statusAguardando) {
-    updatePayload.status_imovel_id = statusAguardando.id;
+  if (statusResult.ok) {
+    updatePayload.status_imovel_id = statusResult.status.id;
     updatePayload.status = "aguardando_aprovacao";
+  } else {
+    console.error("[enviarImovelParaAprovacao] status resolve failed", statusResult);
   }
 
-  const { error: updateError } = await supabase
-    .from("imoveis")
-    .update(updatePayload)
-    .eq("id", id)
-    .eq("corretor_id", corretor.id);
+  const { error: updateError } = await persistImovelRowUpdate(
+    scopedClient,
+    id,
+    corretor.id,
+    updatePayload,
+  );
 
   if (updateError) {
-    console.error("[enviarImovelParaAprovacao] update failed", updateError);
-    return {
-      error:
-        updateError.code === "42703"
-          ? "Campo de aprovação não encontrado no banco. Verifique se as migrations foram aplicadas."
-          : "Não foi possível enviar para aprovação. Tente salvar o imóvel e enviar novamente.",
-    };
+    return { error: mapImovelPersistError(updateError, "update") };
+  }
+
+  const { data: updated, error: verifyError } = await scopedClient
+    .from("imoveis")
+    .select("status_aprovacao")
+    .eq("id", id)
+    .eq("corretor_id", corretor.id)
+    .maybeSingle();
+
+  if (verifyError || updated?.status_aprovacao !== "aguardando_aprovacao") {
+    if (verifyError) {
+      logPostgrestError("enviarImovelParaAprovacao:verify", verifyError);
+    }
+    return { error: "Não foi possível enviar para aprovação. Tente novamente." };
   }
 
   await registrarAuditoriaImovel(id, "enviado_aprovacao");
@@ -715,30 +755,33 @@ export async function enviarImovelParaAprovacao(id: string): Promise<ImovelActio
 
 export async function aprovarImovel(id: string, motivo?: string): Promise<ImovelActionResult> {
   const corretor = await getCorretorForUser();
-  const perfil = await getPerfilForUser();
 
   if (!corretor) {
     return { error: "Sessão expirada. Faça login novamente." };
   }
 
+  const perfil = await getPerfilForUser(corretor.id);
+
   if (!perfil || (perfil.papel !== "gerente" && perfil.papel !== "admin")) {
     return { error: "Sem permissão para aprovar imóveis." };
   }
 
-  const owns = await ensureImovelOwnership(id, corretor.id);
-  if (!owns) {
+  const scopedClient = await createImovelScopedClient(corretor.id, id);
+  if (!scopedClient) {
     return { error: "Imóvel não encontrado." };
   }
 
-  const supabase = await createClient();
-
-  const { data: imovel, error: fetchError } = await supabase
+  const { data: imovel, error: fetchError } = await scopedClient
     .from("imoveis")
     .select("status_aprovacao")
     .eq("id", id)
+    .eq("corretor_id", corretor.id)
     .maybeSingle();
 
   if (fetchError || !imovel) {
+    if (fetchError) {
+      logPostgrestError("aprovarImovel:fetch", fetchError);
+    }
     return { error: "Imóvel não encontrado." };
   }
 
@@ -746,30 +789,30 @@ export async function aprovarImovel(id: string, motivo?: string): Promise<Imovel
     return { error: "Este imóvel não está aguardando aprovação." };
   }
 
-  const { data: statusDisponivel } = await supabase
-    .from("status_imovel")
-    .select("id")
-    .eq("corretor_id", corretor.id)
-    .eq("nome", "Disponível")
-    .maybeSingle();
+  const statusResult = await resolveStatusImovelByNome(
+    corretor.id,
+    "Disponível",
+    scopedClient,
+  );
 
   const updatePayload: Record<string, unknown> = {
     status_aprovacao: "aprovado",
   };
 
-  if (statusDisponivel) {
-    updatePayload.status_imovel_id = statusDisponivel.id;
+  if (statusResult.ok) {
+    updatePayload.status_imovel_id = statusResult.status.id;
     updatePayload.status = "disponivel";
   }
 
-  const { error } = await supabase
-    .from("imoveis")
-    .update(updatePayload)
-    .eq("id", id)
-    .eq("corretor_id", corretor.id);
+  const { error } = await persistImovelRowUpdate(
+    scopedClient,
+    id,
+    corretor.id,
+    updatePayload,
+  );
 
   if (error) {
-    return { error: "Não foi possível aprovar o imóvel." };
+    return { error: mapImovelPersistError(error, "update") };
   }
 
   await registrarAuditoriaImovel(id, "imovel_aprovado", {
@@ -785,30 +828,33 @@ export async function aprovarImovel(id: string, motivo?: string): Promise<Imovel
 
 export async function reprovarImovel(id: string, motivo?: string): Promise<ImovelActionResult> {
   const corretor = await getCorretorForUser();
-  const perfil = await getPerfilForUser();
 
   if (!corretor) {
     return { error: "Sessão expirada. Faça login novamente." };
   }
 
+  const perfil = await getPerfilForUser(corretor.id);
+
   if (!perfil || (perfil.papel !== "gerente" && perfil.papel !== "admin")) {
     return { error: "Sem permissão para reprovar imóveis." };
   }
 
-  const owns = await ensureImovelOwnership(id, corretor.id);
-  if (!owns) {
+  const scopedClient = await createImovelScopedClient(corretor.id, id);
+  if (!scopedClient) {
     return { error: "Imóvel não encontrado." };
   }
 
-  const supabase = await createClient();
-
-  const { data: imovel, error: fetchError } = await supabase
+  const { data: imovel, error: fetchError } = await scopedClient
     .from("imoveis")
     .select("status_aprovacao")
     .eq("id", id)
+    .eq("corretor_id", corretor.id)
     .maybeSingle();
 
   if (fetchError || !imovel) {
+    if (fetchError) {
+      logPostgrestError("reprovarImovel:fetch", fetchError);
+    }
     return { error: "Imóvel não encontrado." };
   }
 
@@ -816,25 +862,30 @@ export async function reprovarImovel(id: string, motivo?: string): Promise<Imove
     return { error: "Este imóvel não está aguardando aprovação." };
   }
 
-  const statusEmCadastro = await getStatusByNome(corretor.id, "Em cadastro");
+  const statusResult = await resolveStatusImovelByNome(
+    corretor.id,
+    "Em cadastro",
+    scopedClient,
+  );
 
   const updatePayload: Record<string, unknown> = {
     status_aprovacao: "em_cadastro",
   };
 
-  if (statusEmCadastro) {
-    updatePayload.status_imovel_id = statusEmCadastro.id;
+  if (statusResult.ok) {
+    updatePayload.status_imovel_id = statusResult.status.id;
     updatePayload.status = "em_cadastro";
   }
 
-  const { error } = await supabase
-    .from("imoveis")
-    .update(updatePayload)
-    .eq("id", id)
-    .eq("corretor_id", corretor.id);
+  const { error } = await persistImovelRowUpdate(
+    scopedClient,
+    id,
+    corretor.id,
+    updatePayload,
+  );
 
   if (error) {
-    return { error: "Não foi possível reprovar o imóvel." };
+    return { error: mapImovelPersistError(error, "update") };
   }
 
   await registrarAuditoriaImovel(id, "imovel_reprovado", {

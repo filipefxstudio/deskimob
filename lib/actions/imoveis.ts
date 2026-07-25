@@ -23,8 +23,6 @@ import {
 } from "@/lib/supabase/storage-url";
 import {
   bufferToUploadBody,
-  isValidImageBuffer,
-  looksLikeUtf8CorruptedBinary,
 } from "@/lib/supabase/storage-upload";
 import { getImovelFotoDashboardUrl } from "@/lib/imoveis/foto-url";
 import { createClienteFromImovel } from "@/lib/actions/clientes";
@@ -37,6 +35,7 @@ import {
 import { mensagemImovelDuplicado } from "@/lib/pessoas/messages";
 import { registrarAuditoriaImovel } from "@/lib/imoveis/auditoria";
 import { applyWatermark } from "@/lib/imoveis/watermark";
+import { compressImageBufferForStorage } from "@/lib/imoveis/foto-compress";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { buildUserFacingError } from "@/lib/auth/errors";
 import { logSupabaseError } from "@/lib/negocios/row";
@@ -47,7 +46,6 @@ import {
 } from "@/lib/supabase/postgrest-error";
 import { generateImovelSlug } from "@/lib/utils";
 import type { PostgrestError } from "@supabase/supabase-js";
-import sharp from "sharp";
 import {
   imovelCadastroSchema,
   validateImovelParaAprovacao,
@@ -403,72 +401,38 @@ async function fetchLogoBuffer(logoUrl: string): Promise<Buffer | null> {
   }
 }
 
-async function normalizeImageForStorage(
-  buffer: Buffer,
-): Promise<{ buffer: Buffer; contentType: string } | { error: string }> {
-  if (looksLikeUtf8CorruptedBinary(buffer)) {
-    return {
-      error: "Arquivo de imagem inválido. Remova a foto e envie o arquivo novamente.",
-    };
-  }
-
-  if (!isValidImageBuffer(buffer)) {
-    return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
-  }
-
-  try {
-    const normalized = await sharp(buffer, { failOn: "error" })
-      .rotate()
-      .jpeg({ quality: 88 })
-      .toBuffer();
-
-    if (!isValidImageBuffer(normalized)) {
-      return { error: "Não foi possível processar a imagem." };
-    }
-
-    return { buffer: normalized, contentType: "image/jpeg" };
-  } catch (error) {
-    console.error("[normalizeImageForStorage] failed", error);
-    return { error: "Não foi possível processar a imagem. Tente outro arquivo." };
-  }
-}
-
 async function processImageBuffer(
   corretorId: string,
   buffer: Buffer,
 ): Promise<{ buffer: Buffer; contentType: string } | { error: string }> {
-  if (looksLikeUtf8CorruptedBinary(buffer)) {
-    return {
-      error: "Arquivo de imagem inválido. Remova a foto e envie o arquivo novamente.",
-    };
-  }
+  let processed = await compressImageBufferForStorage(buffer);
 
-  if (!isValidImageBuffer(buffer)) {
-    return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
+  if ("error" in processed) {
+    return processed;
   }
 
   const config = await getMarcaDaguaConfigForCorretor(corretorId);
-  let workingBuffer = buffer;
 
   if (config?.logo_url) {
     const logoBuffer = await fetchLogoBuffer(config.logo_url);
 
     if (logoBuffer) {
       try {
-        workingBuffer = await applyWatermark(buffer, config, logoBuffer);
+        const watermarked = await applyWatermark(processed.buffer, config, logoBuffer);
+        const recompressed = await compressImageBufferForStorage(watermarked);
+
+        if ("error" in recompressed) {
+          return recompressed;
+        }
+
+        processed = recompressed;
       } catch (error) {
         console.error("[processImageBuffer] watermark failed", error);
       }
     }
   }
 
-  const normalized = await normalizeImageForStorage(workingBuffer);
-
-  if ("error" in normalized) {
-    return normalized;
-  }
-
-  return normalized;
+  return processed;
 }
 
 async function fetchStatusImovelRows(

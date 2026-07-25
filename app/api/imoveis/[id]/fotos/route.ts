@@ -1,4 +1,5 @@
 import { uploadImovelFotos } from "@/lib/actions/imoveis";
+import { FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE } from "@/lib/imoveis/foto-compress";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -22,7 +23,13 @@ export async function POST(
 
   try {
     formData = await request.formData();
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+
+    if (message.includes("exceeded") || message.includes("too large")) {
+      return Response.json({ error: FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE }, { status: 413 });
+    }
+
     return Response.json({ error: "Não foi possível ler o envio das fotos." }, { status: 400 });
   }
 

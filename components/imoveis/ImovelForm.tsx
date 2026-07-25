@@ -43,6 +43,12 @@ import {
   updateImovel,
 } from "@/lib/actions/imoveis";
 import {
+  FOTO_MAX_BYTES,
+  FOTO_UPLOAD_BATCH_SIZE,
+  FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
+  parseFotoUploadHttpError,
+} from "@/lib/imoveis/foto-compress";
+import {
   podeAprovarImovel,
   podeMostrarEnviarAprovacaoNoFormulario,
 } from "@/lib/imoveis/aprovacao";
@@ -330,7 +336,7 @@ export function ImovelForm({
         message.includes("Unexpected end of form") ||
         message.toLowerCase().includes("body exceeded")
       ) {
-        return "O envio excedeu o limite de tamanho (muitas fotos de uma vez). Salve o imóvel com menos fotos por vez e tente novamente.";
+        return FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE;
       }
       return message || fallback;
     }
@@ -346,10 +352,16 @@ export function ImovelForm({
       return {};
     }
 
-    const BATCH_SIZE = 8;
+    for (let offset = 0; offset < newFotos.length; offset += FOTO_UPLOAD_BATCH_SIZE) {
+      const batch = newFotos.slice(offset, offset + FOTO_UPLOAD_BATCH_SIZE);
+      const batchBytes = batch.reduce((total, foto) => total + foto.file.size, 0);
 
-    for (let offset = 0; offset < newFotos.length; offset += BATCH_SIZE) {
-      const batch = newFotos.slice(offset, offset + BATCH_SIZE);
+      if (batchBytes > FOTO_MAX_BYTES * FOTO_UPLOAD_BATCH_SIZE * 1.25) {
+        return {
+          error: FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
+        };
+      }
+
       const formData = new FormData();
       formData.set(
         "metadata",
@@ -371,16 +383,26 @@ export function ImovelForm({
         body: formData,
       });
 
+      const bodyText = await response.text();
       let result: { error?: string; success?: boolean; imovelId?: string };
 
       try {
-        result = (await response.json()) as typeof result;
+        result = JSON.parse(bodyText) as typeof result;
       } catch {
-        return { error: "Resposta inválida ao enviar fotos." };
+        return {
+          error:
+            parseFotoUploadHttpError(response.status, bodyText) ??
+            FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
+        };
       }
 
       if (!response.ok || result.error) {
-        return { error: result.error ?? "Não foi possível enviar as fotos." };
+        return {
+          error:
+            result.error ??
+            parseFotoUploadHttpError(response.status, bodyText) ??
+            "Não foi possível enviar as fotos.",
+        };
       }
     }
 

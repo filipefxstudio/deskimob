@@ -23,6 +23,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  FOTO_COMPRESS_CLIENT_OPTIONS,
+  FOTO_MAX_BYTES,
+  FOTO_MAX_BYTES_LABEL,
+  FOTO_MAX_HEIGHT,
+  FOTO_MAX_WIDTH,
+} from "@/lib/imoveis/foto-compress";
 import { cn } from "@/lib/utils";
 
 export interface FotoItem {
@@ -45,20 +52,38 @@ const COMPRESSIBLE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const GRID_ITEM_WIDTH = 132;
 
-const COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.8,
-  maxWidthOrHeight: 1920,
-  useWebWorker: true,
-  initialQuality: 0.85,
-} as const;
+const COMPRESSION_ATTEMPTS = [
+  FOTO_COMPRESS_CLIENT_OPTIONS,
+  {
+    ...FOTO_COMPRESS_CLIENT_OPTIONS,
+    maxSizeMB: 0.15,
+    initialQuality: 0.75,
+    maxWidthOrHeight: FOTO_MAX_WIDTH,
+  },
+  {
+    ...FOTO_COMPRESS_CLIENT_OPTIONS,
+    maxSizeMB: 0.12,
+    initialQuality: 0.65,
+    maxWidthOrHeight: 1024,
+  },
+] as const;
 
 async function compressImageFile(file: File): Promise<File> {
-  const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+  let best: File = file;
 
-  return new File([compressed], file.name, {
-    type: compressed.type || file.type,
-    lastModified: Date.now(),
-  });
+  for (const options of COMPRESSION_ATTEMPTS) {
+    const compressed = await imageCompression(file, options);
+    best = new File([compressed], file.name, {
+      type: compressed.type || file.type,
+      lastModified: Date.now(),
+    });
+
+    if (compressed.size <= FOTO_MAX_BYTES) {
+      return best;
+    }
+  }
+
+  return best;
 }
 
 function reorderFotos(fotos: FotoItem[]): FotoItem[] {
@@ -241,6 +266,11 @@ export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
           if (COMPRESSIBLE_TYPES.includes(file.type)) {
             try {
               processedFile = await compressImageFile(file);
+              if (processedFile.size > FOTO_MAX_BYTES) {
+                warnings.push(
+                  `${file.name}: ainda acima de ${FOTO_MAX_BYTES_LABEL} após compressão.`,
+                );
+              }
             } catch {
               warnings.push(
                 `${file.name}: não foi possível comprimir. Usando arquivo original.`,
@@ -363,7 +393,8 @@ export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
         <Label>Fotos do imóvel</Label>
         <p className="mt-1 text-sm text-muted-foreground">
           Envie JPG, PNG ou WebP (até 10 MB cada). As fotos são comprimidas
-          automaticamente antes do envio. Arraste para reordenar.
+          automaticamente para até {FOTO_MAX_BYTES_LABEL} (máx. {FOTO_MAX_WIDTH}×
+          {FOTO_MAX_HEIGHT}) antes do envio. Arraste para reordenar.
         </p>
       </div>
 

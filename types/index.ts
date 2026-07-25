@@ -25,7 +25,8 @@ export type StatusImovelSlug =
   | "reservado"
   | "vendido"
   | "locado"
-  | "desativado";
+  | "desativado"
+  | "desativado_temporariamente";
 
 export type StatusAprovacaoImovel = "em_cadastro" | "aguardando_aprovacao" | "aprovado";
 

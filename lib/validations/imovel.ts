@@ -134,6 +134,7 @@ const imovelFieldsSchema = z.object({
         "vendido",
         "locado",
         "desativado",
+        "desativado_temporariamente",
       ],
       {
         error: "Selecione o status.",

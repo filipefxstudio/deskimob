@@ -2,6 +2,7 @@
 
 import { Loader2, MoreVertical, UserPlus } from "lucide-react";
 
+import { PasswordInput } from "@/components/auth/password-input";
 import { ActionMenuIcon } from "@/components/ui/action-menu-item";
 import { ACTION_MENU_DESTRUCTIVE_CLASS } from "@/lib/ui/action-menu-icons";
 import { cn } from "@/lib/utils";
@@ -43,11 +44,12 @@ import type { PapelUsuario, Perfil } from "@/types";
 interface AbaEquipeProps {
   perfis: Perfil[];
   corretor: CorretorRef;
+  isAdmin?: boolean;
 }
 
 const papelLabels = PAPEL_LABELS;
 
-export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
+export function AbaEquipe({ perfis: initialPerfis, corretor, isAdmin = false }: AbaEquipeProps) {
   const [perfis, setPerfis] = useState(initialPerfis);
   const [showForm, setShowForm] = useState(false);
   const [nome, setNome] = useState("");
@@ -64,6 +66,8 @@ export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
   const [editNome, setEditNome] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPapel, setEditPapel] = useState<PapelUsuario>("corretor");
+  const [editSenhaInicial, setEditSenhaInicial] = useState("");
+  const [editConfirmarSenha, setEditConfirmarSenha] = useState("");
 
   function isPrincipal(perfil: Perfil) {
     return isPrincipalPerfil(perfil, corretor);
@@ -113,6 +117,8 @@ export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
     setEditNome(perfil.nome);
     setEditEmail(perfil.email);
     setEditPapel(isPrincipal(perfil) ? "admin" : perfil.papel);
+    setEditSenhaInicial("");
+    setEditConfirmarSenha("");
     setEditOpen(true);
   }
 
@@ -128,6 +134,8 @@ export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
         nome: editNome,
         email: editEmail,
         papel: editPapel,
+        senhaInicial: editSenhaInicial || undefined,
+        confirmarSenhaInicial: editConfirmarSenha || undefined,
       });
       if (result.error) {
         setError(result.error);
@@ -141,6 +149,8 @@ export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
         ),
       );
       setEditOpen(false);
+      setEditSenhaInicial("");
+      setEditConfirmarSenha("");
       setFeedback(result.message ?? "Perfil atualizado.");
     });
   }
@@ -165,7 +175,7 @@ export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
         <CardTitle>Equipe</CardTitle>
         <CardDescription>
           Até {EQUIPE_LIMITE_USUARIOS} usuários com acesso ao painel. Apenas administradores
-          podem convidar membros, alterar papéis e o e-mail de login.
+          podem convidar membros, alterar papéis, o e-mail de login e definir senha inicial.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -330,6 +340,37 @@ export function AbaEquipe({ perfis: initialPerfis, corretor }: AbaEquipeProps) {
                 </p>
               ) : null}
             </div>
+            {isAdmin ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_senha_inicial">Senha inicial</Label>
+                  <PasswordInput
+                    id="edit_senha_inicial"
+                    value={editSenhaInicial}
+                    onChange={(event) => setEditSenhaInicial(event.target.value)}
+                    autoComplete="new-password"
+                    placeholder="Opcional — mínimo 6 caracteres"
+                    minLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {selected && isConvitePendente(selected)
+                      ? "Define a senha para o primeiro acesso. Deixe em branco para manter a senha atual."
+                      : "Define ou redefine a senha de login deste usuário. Deixe em branco para não alterar."}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_confirmar_senha">Confirmar senha inicial</Label>
+                  <PasswordInput
+                    id="edit_confirmar_senha"
+                    value={editConfirmarSenha}
+                    onChange={(event) => setEditConfirmarSenha(event.target.value)}
+                    autoComplete="new-password"
+                    placeholder="Repita a senha"
+                    minLength={6}
+                  />
+                </div>
+              </>
+            ) : null}
             <Button className="w-full" disabled={isPending} onClick={handleEdit}>
               Salvar
             </Button>

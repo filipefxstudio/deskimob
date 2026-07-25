@@ -4,9 +4,11 @@ export function getMainDomain(): string {
 
 export const RESERVED_APP_PATHS = new Set([
   "api",
+  "auth",
   "dashboard",
   "login",
   "cadastro",
+  "redefinir-senha",
   "site-custom",
   "preview",
   "_next",

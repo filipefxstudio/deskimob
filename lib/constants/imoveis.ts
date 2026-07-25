@@ -22,6 +22,7 @@ export const STATUS_IMOVEL: { value: StatusImovelSlug; label: string }[] = [
   { value: "vendido", label: "Vendido" },
   { value: "locado", label: "Locado" },
   { value: "desativado", label: "Desativado" },
+  { value: "desativado_temporariamente", label: "Desativado temporariamente" },
 ];
 
 export const DIFERENCIAIS_OPCOES = [

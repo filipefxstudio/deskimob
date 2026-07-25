@@ -19,6 +19,7 @@ import {
   perfilTemAuthVinculado,
   requireEquipeManager,
 } from "@/lib/auth/equipe-access";
+import { mapAuthErrorFromSupabase } from "@/lib/auth/errors";
 import { enviarConviteEquipe } from "@/lib/email/invite";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -609,21 +610,100 @@ export async function togglePerfilAtivo(
   return { success: true };
 }
 
+function getAuthUserIdForPerfil(
+  perfil: Perfil,
+  corretor: Pick<Corretor, "user_id" | "email">,
+): string | null {
+  if (isPrincipalPerfil(perfil, corretor)) {
+    return corretor.user_id;
+  }
+
+  if (isPerfilConvitePendente(perfil, corretor)) {
+    if (perfil.user_id && perfil.user_id !== corretor.user_id) {
+      return perfil.user_id;
+    }
+
+    return null;
+  }
+
+  return perfil.user_id || null;
+}
+
+async function definirSenhaLoginPerfil(
+  perfil: Perfil,
+  corretor: Pick<Corretor, "user_id" | "email">,
+  senha: string,
+): Promise<ConfigActionResult> {
+  const authUserId = getAuthUserIdForPerfil(perfil, corretor);
+
+  if (!authUserId) {
+    return {
+      error: "Este membro ainda não possui conta de login vinculada para receber senha.",
+    };
+  }
+
+  let admin;
+
+  try {
+    admin = createServiceRoleClient();
+  } catch {
+    return { error: "Operação indisponível. Verifique a configuração do servidor." };
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(authUserId, {
+    password: senha,
+  });
+
+  if (error) {
+    console.error("[definirSenhaLoginPerfil] auth update failed", error);
+    return { error: mapAuthErrorFromSupabase(error) };
+  }
+
+  return { success: true };
+}
+
 export async function editarPerfil(
   id: string,
-  data: { nome: string; email: string; papel: PapelUsuario },
+  data: {
+    nome: string;
+    email: string;
+    papel: PapelUsuario;
+    senhaInicial?: string;
+    confirmarSenhaInicial?: string;
+  },
 ): Promise<ConfigActionResult> {
   const access = await requireEquipeManager();
   if ("error" in access) {
     return { error: access.error };
   }
 
-  const { corretor } = access;
+  const { corretor, isAdmin } = access;
   const nome = data.nome.trim();
   const email = data.email.trim().toLowerCase();
+  const senhaInicial = data.senhaInicial?.trim() ?? "";
+  const confirmarSenhaInicial = data.confirmarSenhaInicial?.trim() ?? "";
+  const querDefinirSenha = senhaInicial.length > 0 || confirmarSenhaInicial.length > 0;
 
   if (!nome || !email) return { error: "Informe nome e e-mail." };
   if (!isValidEmail(email)) return { error: "Informe um e-mail válido." };
+
+  if (querDefinirSenha) {
+    if (!isAdmin) {
+      return { error: "Somente administradores podem definir senha inicial." };
+    }
+
+    if (!senhaInicial || !confirmarSenhaInicial) {
+      return { error: "Preencha a senha inicial e a confirmação." };
+    }
+
+    if (senhaInicial.length < 6) {
+      return { error: "A senha deve ter pelo menos 6 caracteres." };
+    }
+
+    if (senhaInicial !== confirmarSenhaInicial) {
+      return { error: "As senhas não coincidem." };
+    }
+  }
 
   let admin;
 
@@ -686,6 +766,14 @@ export async function editarPerfil(
     emailMessage = emailResult.message;
   }
 
+  if (querDefinirSenha) {
+    const senhaResult = await definirSenhaLoginPerfil(perfilAtual, corretor, senhaInicial);
+
+    if (senhaResult.error) {
+      return { error: senhaResult.error };
+    }
+  }
+
   const { error } = await admin
     .from("perfis")
     .update({ nome, email, papel: data.papel })
@@ -696,20 +784,27 @@ export async function editarPerfil(
 
   revalidatePath("/dashboard/configuracoes");
 
+  const senhaMessage = querDefinirSenha ? " Senha de login atualizada." : "";
+
   if (emailAlterado && isPerfilConvitePendente(perfilAtual, corretor)) {
     return {
       success: true,
       message:
-        emailMessage ??
-        "Perfil atualizado. O e-mail de login será usado quando o convidado ativar a conta.",
+        (emailMessage ??
+          "Perfil atualizado. O e-mail de login será usado quando o convidado ativar a conta.") +
+        senhaMessage,
     };
   }
 
   if (emailAlterado) {
     return {
       success: true,
-      message: emailMessage ?? "Perfil e e-mail de login atualizados.",
+      message: (emailMessage ?? "Perfil e e-mail de login atualizados.") + senhaMessage,
     };
+  }
+
+  if (querDefinirSenha) {
+    return { success: true, message: "Perfil atualizado. Senha de login definida." };
   }
 
   return { success: true, message: "Perfil atualizado." };

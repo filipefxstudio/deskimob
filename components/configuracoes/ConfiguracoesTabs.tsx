@@ -114,7 +114,7 @@ export function ConfiguracoesTabs({
 
       {canManageEquipe ? (
         <TabsContent value="equipe">
-          <AbaEquipe perfis={perfisEquipe} corretor={corretor} />
+          <AbaEquipe perfis={perfisEquipe} corretor={corretor} isAdmin={isAdmin} />
         </TabsContent>
       ) : null}
 

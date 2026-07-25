@@ -5,8 +5,11 @@ import {
   mapAuthErrorFromSupabase,
   mapCadastroErrorFromPostgres,
 } from "@/lib/auth/errors";
+import { getAppOrigin } from "@/lib/auth/app-url";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import {
   seedStatusImovelForCorretor,
   verifyDefaultStatusImovelSeeded,
@@ -128,12 +131,37 @@ export async function loginAction(
 ): Promise<AuthActionState> {
   const email = getFormValue(formData, "email");
   const password = getFormValue(formData, "password");
+  const remember = formData.get("remember") === "on";
 
   if (!email || !password) {
     return { error: "Preencha e-mail e senha." };
   }
 
-  const supabase = await createClient();
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, {
+                ...options,
+                maxAge: remember ? options.maxAge : undefined,
+              });
+            });
+          } catch {
+            // Server Component context — middleware refreshes session.
+          }
+        },
+      },
+    },
+  );
+
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
@@ -141,6 +169,73 @@ export async function loginAction(
   }
 
   redirect("/dashboard");
+}
+
+export async function requestPasswordResetAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const email = getFormValue(formData, "email");
+
+  if (!email) {
+    return { error: "Informe seu e-mail." };
+  }
+
+  const supabase = await createClient();
+  const redirectTo = `${getAppOrigin()}/auth/callback?next=/redefinir-senha`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+  if (error) {
+    return { error: mapAuthErrorFromSupabase(error) };
+  }
+
+  return {
+    success:
+      "Se existir uma conta com este e-mail, enviamos um link para redefinir sua senha.",
+  };
+}
+
+export async function updatePasswordFromRecoveryAction(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const password = getFormValue(formData, "password");
+  const confirmPassword = getFormValue(formData, "confirmPassword");
+
+  if (!password || !confirmPassword) {
+    return { error: "Preencha a nova senha e a confirmação." };
+  }
+
+  if (password.length < 6) {
+    return { error: "A senha deve ter pelo menos 6 caracteres." };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "As senhas não coincidem." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      error: "Link inválido ou expirado. Solicite uma nova redefinição de senha.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: mapAuthErrorFromSupabase(error) };
+  }
+
+  await supabase.auth.signOut();
+
+  return {
+    success: "Senha alterada com sucesso. Faça login com a nova senha.",
+  };
 }
 
 export async function cadastroAction(

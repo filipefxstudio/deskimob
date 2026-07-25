@@ -1076,12 +1076,33 @@ async function fetchImovelByIdRow(
   return null;
 }
 
+type ImovelDbClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Cliente de dados do imóvel após validar tenant (contorna RLS para membros da equipe). */
+async function createImovelScopedClient(
+  corretorId: string,
+  imovelId: string,
+): Promise<ImovelDbClient | null> {
+  const owns = await ensureImovelOwnership(imovelId, corretorId);
+
+  if (!owns) {
+    return null;
+  }
+
+  try {
+    return createServiceRoleClient();
+  } catch (error) {
+    console.error("[createImovelScopedClient] service role unavailable", error);
+    return createClient();
+  }
+}
+
 async function ensureUniqueImovelSlugForUpdate(
   corretorId: string,
   baseSlug: string,
   currentImovelId: string,
+  supabase: ImovelDbClient,
 ): Promise<string> {
-  const supabase = await createClient();
   const normalizedBase = baseSlug || "imovel";
   let slug = normalizedBase;
   let counter = 1;
@@ -1452,20 +1473,8 @@ async function resolveProprietarioIds(data: ImovelFormValues): Promise<string[]>
 async function saveImovelCaptadores(
   imovelId: string,
   captadores: ImovelFormValues["captadores"],
+  supabase: ImovelDbClient,
 ): Promise<void> {
-  const supabase = await createClient();
-
-  const { data: imovelRef, error: imovelError } = await supabase
-    .from("imoveis")
-    .select("id")
-    .eq("id", imovelId)
-    .maybeSingle();
-
-  if (imovelError || !imovelRef) {
-    logSupabaseError("saveImovelCaptadores:verify_imovel", imovelError);
-    throw new Error("Imóvel não encontrado para vincular captadores.");
-  }
-
   const { error: deleteError } = await supabase
     .from("imovel_captadores")
     .delete()
@@ -1523,9 +1532,8 @@ async function saveImovelCaptadores(
 async function saveImovelProprietarios(
   imovelId: string,
   proprietarioIds: string[],
+  supabase: ImovelDbClient,
 ): Promise<void> {
-  const supabase = await createClient();
-
   await supabase.from("imovel_proprietarios").delete().eq("imovel_id", imovelId);
 
   const adicionais = proprietarioIds.slice(1);
@@ -2269,8 +2277,8 @@ export async function createImovel(
   });
 
   try {
-    await saveImovelCaptadores(imovel.id, data.captadores);
-    await saveImovelProprietarios(imovel.id, proprietarioIds);
+    await saveImovelCaptadores(imovel.id, data.captadores, supabase);
+    await saveImovelProprietarios(imovel.id, proprietarioIds, supabase);
   } catch (error) {
     console.error("[createImovel] relacionamentos failed", error);
     await supabase.from("imoveis").delete().eq("id", imovel.id);
@@ -2298,9 +2306,9 @@ export async function updateImovel(
     return { error: "Sessão expirada. Faça login novamente." };
   }
 
-  const owns = await ensureImovelOwnership(id, corretor.id);
+  const scopedClient = await createImovelScopedClient(corretor.id, id);
 
-  if (!owns) {
+  if (!scopedClient) {
     return { error: "Imóvel não encontrado." };
   }
 
@@ -2357,7 +2365,7 @@ export async function updateImovel(
   }
 
   const baseSlug = generateImovelSlug(data.titulo ?? "", data.cidade);
-  const slug = await ensureUniqueImovelSlugForUpdate(corretor.id, baseSlug, id);
+  const slug = await ensureUniqueImovelSlugForUpdate(corretor.id, baseSlug, id, scopedClient);
 
   let clienteId: string | null = null;
   let proprietarioIds: string[] = [];
@@ -2374,9 +2382,7 @@ export async function updateImovel(
     };
   }
 
-  const supabase = await createClient();
-
-  const { data: imovelAtual, error: fetchError } = await supabase
+  const { data: imovelAtual, error: fetchError } = await scopedClient
     .from("imoveis")
     .select("status_aprovacao")
     .eq("id", id)
@@ -2394,7 +2400,7 @@ export async function updateImovel(
     const statusResult = await resolveStatusImovelByNome(
       corretor.id,
       "Em cadastro",
-      supabase,
+      scopedClient,
     );
 
     if (!statusResult.ok) {
@@ -2407,7 +2413,7 @@ export async function updateImovel(
     const statusResult = await resolveStatusImovelByNome(
       corretor.id,
       "Aguardando aprovação",
-      supabase,
+      scopedClient,
     );
 
     if (!statusResult.ok) {
@@ -2427,7 +2433,7 @@ export async function updateImovel(
   }
 
   const { error: updateError } = await persistImovelRowUpdate(
-    supabase,
+    scopedClient,
     id,
     corretor.id,
     buildImovelUpdate(data, slug, clienteId, statusSlug, statusImovelId),
@@ -2440,8 +2446,8 @@ export async function updateImovel(
   await registrarAuditoriaImovel(id, "imovel_editado");
 
   try {
-    await saveImovelCaptadores(id, data.captadores);
-    await saveImovelProprietarios(id, proprietarioIds);
+    await saveImovelCaptadores(id, data.captadores, scopedClient);
+    await saveImovelProprietarios(id, proprietarioIds, scopedClient);
   } catch (error) {
     console.error("[updateImovel] relacionamentos failed", error);
     return {
@@ -2452,7 +2458,7 @@ export async function updateImovel(
     };
   }
 
-  const { data: existingFotos, error: fotosError } = await supabase
+  const { data: existingFotos, error: fotosError } = await scopedClient
     .from("imovel_fotos")
     .select("id, url")
     .eq("imovel_id", id);
@@ -2482,7 +2488,7 @@ export async function updateImovel(
       }
     }
 
-    await supabase
+    await scopedClient
       .from("imovel_fotos")
       .delete()
       .in(
@@ -2493,7 +2499,7 @@ export async function updateImovel(
 
   for (const foto of fotos) {
     if (foto.existingId) {
-      await supabase
+      await scopedClient
         .from("imovel_fotos")
         .update({
           ordem: foto.ordem,

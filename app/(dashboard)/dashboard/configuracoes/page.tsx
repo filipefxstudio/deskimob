@@ -44,7 +44,7 @@ export default async function ConfiguracoesPage({
   ]);
 
   const plano: PlanoAssinatura =
-    "error" in planoResult ? "basico" : planoResult;
+    typeof planoResult === "string" ? planoResult : "basico";
   const [tiposImovel, midiasOrigem, perfisEquipe, statusImovel, marcaDaguaConfig, dashboardConfig, atendimentoConfig, fichaVisitaConfig, motivosDescarte, motivosDesativacao] =
     await Promise.all([
       getTiposImovelCustom(),

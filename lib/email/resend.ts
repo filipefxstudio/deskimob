@@ -30,9 +30,15 @@ export async function sendEmail(
   to: string,
   subject: string,
   html: string,
+  options?: {
+    apiKey?: string;
+    from?: string;
+  },
 ): Promise<SendEmailResult> {
-  const apiKeySet = Boolean(process.env.RESEND_API_KEY);
-  const from = process.env.RESEND_FROM_EMAIL ?? DEFAULT_FROM;
+  const apiKey = options?.apiKey?.trim() || process.env.RESEND_API_KEY;
+  const from = options?.from?.trim() || process.env.RESEND_FROM_EMAIL || DEFAULT_FROM;
+
+  const apiKeySet = Boolean(apiKey);
 
   console.info("[email]", {
     phase: "before",
@@ -61,7 +67,7 @@ export async function sendEmail(
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ from, to, subject, html }),

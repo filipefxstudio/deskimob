@@ -5,7 +5,12 @@ import {
   notificarCorretorContatoSite,
   notificarCorretorInteresseImovel,
 } from "@/lib/site/email";
-import { getSiteEmail } from "@/lib/site/social";
+import {
+  canSendSiteLeadEmail,
+  getSiteLeadsNotificationEmail,
+  isSiteLeadsEmailAtivo,
+  resolveSiteEmailCredentials,
+} from "@/lib/site/notificacoes-email";
 import { getCorretorByDominio, getCorretorBySlug } from "@/lib/site/queries";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 
@@ -43,6 +48,24 @@ async function resolveCorretor(body: SiteLeadBody, tenantHeader: string | null) 
   }
 
   return null;
+}
+
+async function fetchCorretorEmailSettings(corretorId: string) {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("corretores")
+    .select(
+      "id, nome, email, site_email, contato_email, site_leads_email, site_leads_email_ativo, resend_from_email, resend_api_key",
+    )
+    .eq("id", corretorId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[site/leads] fetchCorretorEmailSettings failed", error);
+    return null;
+  }
+
+  return data;
 }
 
 export async function POST(request: Request) {
@@ -104,34 +127,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não foi possível registrar seu contato." }, { status: 500 });
   }
 
-  const emailDestino = getSiteEmail(corretor);
+  const emailSettings = await fetchCorretorEmailSettings(corretor.id);
+  const corretorEmail = emailSettings ?? corretor;
 
-  if (body.imovel_id) {
-    const { data: imovel } = await supabase
-      .from("imoveis")
-      .select("titulo, codigo, codigo_personalizado")
-      .eq("id", body.imovel_id)
-      .maybeSingle();
+  if (isSiteLeadsEmailAtivo(corretorEmail) && canSendSiteLeadEmail(corretorEmail)) {
+    const emailDestino = getSiteLeadsNotificationEmail(corretorEmail);
+    const credentials = resolveSiteEmailCredentials(corretorEmail);
 
-    await notificarCorretorInteresseImovel({
-      email: emailDestino,
-      corretorNome: corretor.nome,
-      leadNome: nome,
-      leadTelefone: telefone,
-      leadEmail: body.email?.trim() || null,
-      imovelTitulo: imovel?.titulo ?? "Imóvel",
-      imovelCodigo: imovel?.codigo_personalizado ?? imovel?.codigo ?? null,
-      observacoes: body.observacoes?.trim() || null,
-      preferenciaContato: body.preferencia_contato?.trim() || null,
-    });
-  } else {
-    await notificarCorretorContatoSite({
-      email: emailDestino,
-      corretorNome: corretor.nome,
-      leadNome: nome,
-      leadTelefone: telefone,
-      leadEmail: body.email?.trim() || null,
-      observacoes: body.observacoes?.trim() || null,
+    if (body.imovel_id) {
+      const { data: imovel } = await supabase
+        .from("imoveis")
+        .select("titulo, codigo, codigo_personalizado")
+        .eq("id", body.imovel_id)
+        .maybeSingle();
+
+      const emailResult = await notificarCorretorInteresseImovel(
+        {
+          email: emailDestino,
+          corretorNome: corretor.nome,
+          leadNome: nome,
+          leadTelefone: telefone,
+          leadEmail: body.email?.trim() || null,
+          imovelTitulo: imovel?.titulo ?? "Imóvel",
+          imovelCodigo: imovel?.codigo_personalizado ?? imovel?.codigo ?? null,
+          observacoes: body.observacoes?.trim() || null,
+          preferenciaContato: body.preferencia_contato?.trim() || null,
+        },
+        credentials,
+      );
+
+      if (!emailResult.success) {
+        console.error("[site/leads] email imovel failed", emailResult.error);
+      }
+    } else {
+      const emailResult = await notificarCorretorContatoSite(
+        {
+          email: emailDestino,
+          corretorNome: corretor.nome,
+          leadNome: nome,
+          leadTelefone: telefone,
+          leadEmail: body.email?.trim() || null,
+          observacoes: body.observacoes?.trim() || null,
+        },
+        credentials,
+      );
+
+      if (!emailResult.success) {
+        console.error("[site/leads] email contato failed", emailResult.error);
+      }
+    }
+  } else if (isSiteLeadsEmailAtivo(corretorEmail)) {
+    console.warn("[site/leads] notificacao por e-mail ativa, mas envio nao configurado", {
+      corretorId: corretor.id,
     });
   }
 

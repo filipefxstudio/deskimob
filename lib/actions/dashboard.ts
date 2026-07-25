@@ -13,6 +13,12 @@ import {
 import { formatOrigemDisplay, getUltimaAtividadeEm, isLeadAtivo } from "@/lib/leads/format";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import {
+  createTenantDataClient,
+  leadVisivelParaUsuario,
+  resolveTenantAccess,
+  type TenantDbClient,
+} from "@/lib/supabase/tenant-access";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardConfig, EtapaLead, FinalidadeImovel, Imovel, Lead, Negocio } from "@/types";
 
@@ -724,6 +730,112 @@ function buildAlertas(
   return alertas;
 }
 
+type DashboardRawData = {
+  leads: LeadRow[];
+  imoveis: ImovelRow[];
+  interacoes: InteracaoRow[];
+  negociosAll: NegocioRow[];
+  fotos: { imovel_id: string }[];
+};
+
+async function fetchDashboardRawData(
+  supabase: TenantDbClient,
+  corretorId: string,
+): Promise<DashboardRawData> {
+  const [leadsResult, imoveisResult, interacoesResult, negociosResult] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("*, imovel:imoveis!leads_imovel_id_fkey(titulo)")
+      .eq("corretor_id", corretorId),
+    supabase
+      .from("imoveis")
+      .select(
+        "id, status, finalidade, bairro, data_ativacao, data_desativacao, data_ultima_atualizacao, criado_em, local_chaves",
+      )
+      .eq("corretor_id", corretorId),
+    supabase
+      .from("lead_interacoes")
+      .select("lead_id, criado_em")
+      .eq("corretor_id", corretorId)
+      .order("criado_em", { ascending: true }),
+    supabase
+      .from("negocios")
+      .select(
+        "valor_comissao, data_prevista_comissao, data_recebimento_comissao, status, lead_id, lead:leads(finalidade_busca)",
+      )
+      .eq("corretor_id", corretorId)
+      .eq("status", "fechado"),
+  ]);
+
+  if (leadsResult.error) {
+    console.error("[fetchDashboardRawData] leads failed", leadsResult.error);
+  }
+  if (imoveisResult.error) {
+    console.error("[fetchDashboardRawData] imoveis failed", imoveisResult.error);
+  }
+  if (interacoesResult.error) {
+    console.error("[fetchDashboardRawData] interacoes failed", interacoesResult.error);
+  }
+  if (negociosResult.error) {
+    console.error("[fetchDashboardRawData] negocios failed", negociosResult.error);
+  }
+
+  const imoveis = (imoveisResult.data ?? []) as ImovelRow[];
+  const imovelIds = imoveis.map((imovel) => imovel.id);
+  let fotos: { imovel_id: string }[] = [];
+
+  if (imovelIds.length > 0) {
+    const fotosResult = await supabase
+      .from("imovel_fotos")
+      .select("imovel_id")
+      .in("imovel_id", imovelIds);
+
+    if (fotosResult.error) {
+      console.error("[fetchDashboardRawData] fotos failed", fotosResult.error);
+    } else {
+      fotos = fotosResult.data ?? [];
+    }
+  }
+
+  return {
+    leads: (leadsResult.data ?? []) as LeadRow[],
+    imoveis,
+    interacoes: (interacoesResult.data ?? []) as InteracaoRow[],
+    negociosAll: (negociosResult.data ?? []) as NegocioRow[],
+    fotos,
+  };
+}
+
+function filterDashboardRawData(
+  raw: DashboardRawData,
+  access: Awaited<ReturnType<typeof resolveTenantAccess>>,
+): DashboardRawData {
+  if (access.verTodos) {
+    return raw;
+  }
+
+  const leads = raw.leads.filter((lead) =>
+    leadVisivelParaUsuario(
+      {
+        perfil_id: lead.perfil_id,
+        observacoes: lead.observacoes,
+      },
+      access,
+    ),
+  );
+  const visibleLeadIds = new Set(leads.map((lead) => lead.id));
+
+  return {
+    leads,
+    imoveis: raw.imoveis,
+    interacoes: raw.interacoes.filter((interacao) => visibleLeadIds.has(interacao.lead_id)),
+    negociosAll: raw.negociosAll.filter(
+      (negocio) => negocio.lead_id && visibleLeadIds.has(negocio.lead_id),
+    ),
+    fotos: raw.fotos,
+  };
+}
+
 export async function getDashboardData(
   params: GetDashboardDataParams,
 ): Promise<DashboardData | null> {
@@ -740,42 +852,32 @@ export async function getDashboardData(
   const finalidadeLead = finalidadeLeadFromTab(tab);
   const finalidadeImovel = finalidadeImovelFromTab(tab);
 
+  const access = await resolveTenantAccess(corretor);
   const supabase = await createClient();
+  let raw = await fetchDashboardRawData(supabase, corretor.id);
+
+  if (raw.leads.length === 0 && raw.imoveis.length === 0) {
+    const admin = await createTenantDataClient();
+    if (admin) {
+      const fallback = await fetchDashboardRawData(admin, corretor.id);
+      if (fallback.leads.length > 0 || fallback.imoveis.length > 0) {
+        console.warn(
+          "[getDashboardData] authenticated query returned empty; used service role fallback",
+          { corretorId: corretor.id },
+        );
+        raw = fallback;
+      }
+    }
+  }
+
+  const filteredRaw = filterDashboardRawData(raw, access);
 
   const [
     config,
-    leadsResult,
-    imoveisResult,
-    interacoesResult,
-    negociosResult,
-    fotosResult,
     agendaHoje,
     visitas24h,
   ] = await Promise.all([
     getDashboardConfig(),
-    supabase
-      .from("leads")
-      .select("*, imovel:imoveis!leads_imovel_id_fkey(titulo)")
-      .eq("corretor_id", corretor.id),
-    supabase
-      .from("imoveis")
-      .select(
-        "id, status, finalidade, bairro, data_ativacao, data_desativacao, data_ultima_atualizacao, criado_em, local_chaves",
-      )
-      .eq("corretor_id", corretor.id),
-    supabase
-      .from("lead_interacoes")
-      .select("lead_id, criado_em")
-      .eq("corretor_id", corretor.id)
-      .order("criado_em", { ascending: true }),
-    supabase
-      .from("negocios")
-      .select(
-        "valor_comissao, data_prevista_comissao, data_recebimento_comissao, status, lead_id, lead:leads(finalidade_busca)",
-      )
-      .eq("corretor_id", corretor.id)
-      .eq("status", "fechado"),
-    supabase.from("imovel_fotos").select("imovel_id"),
     getAgendaHoje(),
     getVisitasProximas24h(),
   ]);
@@ -790,14 +892,14 @@ export async function getDashboardData(
       atualizado_em: new Date().toISOString(),
     } satisfies DashboardConfig);
 
-  const leads = (leadsResult.data ?? []) as LeadRow[];
-  const imoveis = (imoveisResult.data ?? []) as ImovelRow[];
-  const interacoes = (interacoesResult.data ?? []) as InteracaoRow[];
-  const negociosAll = (negociosResult.data ?? []) as NegocioRow[];
+  const leads = filteredRaw.leads;
+  const imoveis = filteredRaw.imoveis;
+  const interacoes = filteredRaw.interacoes;
+  const negociosAll = filteredRaw.negociosAll;
   const negocios = negociosAll.filter(
     (n) => n.lead?.finalidade_busca === finalidadeLead,
   );
-  const fotos = fotosResult.data ?? [];
+  const fotos = filteredRaw.fotos;
   const imovelIdsComFoto = new Set(fotos.map((f) => f.imovel_id));
 
   const interacoesPorLead = new Map<string, { first: string; last: string }>();

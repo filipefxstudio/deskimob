@@ -10,6 +10,12 @@ import {
 import { getTipoCompromisso } from "@/lib/constants/agenda";
 import { formatDateTimeBrasilia, parseLocalDateTimeInput } from "@/lib/dates/format";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import {
+  fetchWithTenantFallback,
+  registroVisivelPorPerfil,
+  resolveTenantAccess,
+  type TenantDbClient,
+} from "@/lib/supabase/tenant-access";
 import { createClient } from "@/lib/supabase/server";
 import type { Agenda, StatusAgenda, TipoAgenda, TipoInteracao } from "@/types";
 
@@ -26,15 +32,15 @@ export interface AgendaFilterParams {
   status?: StatusAgenda;
 }
 
-export async function getAgendaItems(filters?: AgendaFilterParams): Promise<Agenda[]> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) return [];
-
-  const supabase = await createClient();
+async function fetchAgendaItemsRows(
+  supabase: TenantDbClient,
+  corretorId: string,
+  filters?: AgendaFilterParams,
+): Promise<Agenda[]> {
   let query = supabase
     .from("agenda")
     .select("*, lead:leads(id, nome), imovel:imoveis(id, titulo, codigo)")
-    .eq("corretor_id", corretor.id)
+    .eq("corretor_id", corretorId)
     .order("data_atividade", { ascending: true });
 
   if (filters?.inicio) {
@@ -49,11 +55,33 @@ export async function getAgendaItems(filters?: AgendaFilterParams): Promise<Agen
 
   const { data, error } = await query;
   if (error) {
-    console.error("[getAgendaItems]", error);
+    console.error("[fetchAgendaItemsRows]", error);
     return [];
   }
 
   return (data ?? []) as Agenda[];
+}
+
+function filterAgendaItems(items: Agenda[], access: Awaited<ReturnType<typeof resolveTenantAccess>>): Agenda[] {
+  if (access.verTodos) {
+    return items;
+  }
+
+  return items.filter((item) => registroVisivelPorPerfil(item.perfil_id, access));
+}
+
+export async function getAgendaItems(filters?: AgendaFilterParams): Promise<Agenda[]> {
+  const corretor = await getCorretorForUser();
+  if (!corretor) return [];
+
+  const access = await resolveTenantAccess(corretor);
+  const items = await fetchWithTenantFallback(
+    corretor.id,
+    (client) => fetchAgendaItemsRows(client, corretor.id, filters),
+    (rows) => rows.length === 0,
+  );
+
+  return filterAgendaItems(items, access);
 }
 
 export async function getAgendaHoje(): Promise<Agenda[]> {
@@ -69,6 +97,29 @@ export async function getAgendaHoje(): Promise<Agenda[]> {
   });
 }
 
+async function fetchVisitasProximas24hRows(
+  supabase: TenantDbClient,
+  corretorId: string,
+  agora: Date,
+  limite: Date,
+) {
+  const { data, error } = await supabase
+    .from("visitas")
+    .select("*, lead:leads(id, nome), imovel:imoveis(id, titulo, codigo)")
+    .eq("corretor_id", corretorId)
+    .eq("status", "agendada")
+    .gte("data_visita", agora.toISOString())
+    .lte("data_visita", limite.toISOString())
+    .order("data_visita", { ascending: true });
+
+  if (error) {
+    console.error("[fetchVisitasProximas24hRows]", error);
+    return [];
+  }
+
+  return data ?? [];
+}
+
 export async function getVisitasProximas24h() {
   const corretor = await getCorretorForUser();
   if (!corretor) return [];
@@ -76,18 +127,11 @@ export async function getVisitasProximas24h() {
   const agora = new Date();
   const limite = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("visitas")
-    .select("*, lead:leads(id, nome), imovel:imoveis(id, titulo, codigo)")
-    .eq("corretor_id", corretor.id)
-    .eq("status", "agendada")
-    .gte("data_visita", agora.toISOString())
-    .lte("data_visita", limite.toISOString())
-    .order("data_visita", { ascending: true });
-
-  if (error) return [];
-  return data ?? [];
+  return fetchWithTenantFallback(
+    corretor.id,
+    (client) => fetchVisitasProximas24hRows(client, corretor.id, agora, limite),
+    (rows) => rows.length === 0,
+  );
 }
 
 export interface CreateAgendaInput {

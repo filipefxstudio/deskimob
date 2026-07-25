@@ -1794,35 +1794,59 @@ export async function getImoveisWorkflowBadges(): Promise<
   const corretor = await getCorretorForUser();
   if (!corretor) return {};
 
+  const fetchBadges = async (supabase: Awaited<ReturnType<typeof createClient>>) => {
+    const [propostasRes, negociosRes] = await Promise.all([
+      supabase
+        .from("propostas")
+        .select("imovel_id")
+        .eq("corretor_id", corretor.id)
+        .not("status", "in", '("cancelada","recusada")'),
+      supabase
+        .from("negocios")
+        .select("imovel_id")
+        .eq("corretor_id", corretor.id)
+        .eq("status", "fechado"),
+    ]);
+
+    const badges: Record<string, ImovelListingBadge> = {};
+
+    for (const row of propostasRes.data ?? []) {
+      if (row.imovel_id) {
+        badges[row.imovel_id as string] = "proposta";
+      }
+    }
+
+    for (const row of negociosRes.data ?? []) {
+      if (row.imovel_id) {
+        badges[row.imovel_id as string] = "negocio_fechado";
+      }
+    }
+
+    return badges;
+  };
+
   const supabase = await createClient();
-  const [propostasRes, negociosRes] = await Promise.all([
-    supabase
-      .from("propostas")
-      .select("imovel_id")
-      .eq("corretor_id", corretor.id)
-      .not("status", "in", '("cancelada","recusada")'),
-    supabase
-      .from("negocios")
-      .select("imovel_id")
-      .eq("corretor_id", corretor.id)
-      .eq("status", "fechado"),
-  ]);
+  const badges = await fetchBadges(supabase);
 
-  const badges: Record<string, ImovelListingBadge> = {};
-
-  for (const row of propostasRes.data ?? []) {
-    if (row.imovel_id) {
-      badges[row.imovel_id as string] = "proposta";
-    }
+  if (Object.keys(badges).length > 0) {
+    return badges;
   }
 
-  for (const row of negociosRes.data ?? []) {
-    if (row.imovel_id) {
-      badges[row.imovel_id as string] = "negocio_fechado";
-    }
-  }
+  try {
+    const admin = createServiceRoleClient();
+    const fallbackBadges = await fetchBadges(admin);
 
-  return badges;
+    if (Object.keys(fallbackBadges).length > 0) {
+      console.warn("[getImoveisWorkflowBadges] authenticated query returned empty; used service role fallback", {
+        corretorId: corretor.id,
+      });
+    }
+
+    return fallbackBadges;
+  } catch (error) {
+    console.error("[getImoveisWorkflowBadges] service role fallback unavailable", error);
+    return badges;
+  }
 }
 
 export async function getImovelById(id: string): Promise<Imovel | null> {

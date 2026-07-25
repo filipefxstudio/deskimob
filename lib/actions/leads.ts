@@ -26,6 +26,13 @@ import {
 import { erroDuplicidadePessoa } from "@/lib/pessoas/messages";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import {
+  createTenantDataClient,
+  fetchWithTenantFallback,
+  leadVisivelParaUsuario,
+  resolveTenantAccess,
+  type TenantDbClient,
+} from "@/lib/supabase/tenant-access";
+import {
   isSchemaMismatchError,
   logPostgrestError,
 } from "@/lib/supabase/postgrest-error";
@@ -324,9 +331,18 @@ export async function getLeads(filters?: LeadsFilterParams): Promise<Lead[]> {
     return [];
   }
 
-  const supabase = await createClient();
-  const leads = await fetchLeadsRows(supabase, corretor.id, filters);
-  return applyClientSideFilters(leads, filters);
+  const access = await resolveTenantAccess(corretor);
+  const leads = await fetchWithTenantFallback(
+    corretor.id,
+    (client) => fetchLeadsRows(client, corretor.id, filters),
+    (rows) => rows.length === 0,
+  );
+
+  const leadsVisiveis = access.verTodos
+    ? leads
+    : leads.filter((lead) => leadVisivelParaUsuario(lead, access));
+
+  return applyClientSideFilters(leadsVisiveis, filters);
 }
 
 const LEAD_DETAIL_SELECT_TIERS = [
@@ -335,25 +351,21 @@ const LEAD_DETAIL_SELECT_TIERS = [
   "*",
 ] as const;
 
-export async function getLeadById(id: string): Promise<Lead | null> {
-  const corretor = await getCorretorForUser();
-
-  if (!corretor) {
-    return null;
-  }
-
-  const supabase = await createClient();
-
+async function fetchLeadByIdRow(
+  supabase: TenantDbClient,
+  corretorId: string,
+  id: string,
+): Promise<Lead | null> {
   for (let tier = 0; tier < LEAD_DETAIL_SELECT_TIERS.length; tier += 1) {
     const { data, error } = await supabase
       .from("leads")
       .select(LEAD_DETAIL_SELECT_TIERS[tier] as "*")
       .eq("id", id)
-      .eq("corretor_id", corretor.id)
+      .eq("corretor_id", corretorId)
       .maybeSingle();
 
     if (!error && data) {
-      const [lead] = await enrichLeadsWithPerfis(supabase, corretor.id, [data as Lead]);
+      const [lead] = await enrichLeadsWithPerfis(supabase, corretorId, [data as Lead]);
       const result = lead ?? (data as Lead);
 
       if (result.interacoes) {
@@ -367,18 +379,53 @@ export async function getLeadById(id: string): Promise<Lead | null> {
 
     const hasFallback = tier < LEAD_DETAIL_SELECT_TIERS.length - 1;
     if (hasFallback && error && isSchemaMismatchError(error)) {
-      logPostgrestError(`getLeadById.tier${tier}`, error);
+      logPostgrestError(`fetchLeadByIdRow.tier${tier}`, error);
       continue;
     }
 
     if (error) {
-      logPostgrestError("getLeadById", error);
+      logPostgrestError("fetchLeadByIdRow", error);
     }
 
-    return null;
+    break;
   }
 
   return null;
+}
+
+export async function getLeadById(id: string): Promise<Lead | null> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return null;
+  }
+
+  const access = await resolveTenantAccess(corretor);
+  const supabase = await createClient();
+  let lead = await fetchLeadByIdRow(supabase, corretor.id, id);
+
+  if (!lead) {
+    const admin = await createTenantDataClient();
+    if (admin) {
+      lead = await fetchLeadByIdRow(admin, corretor.id, id);
+      if (lead) {
+        console.warn("[getLeadById] authenticated query returned empty; used service role fallback", {
+          corretorId: corretor.id,
+          leadId: id,
+        });
+      }
+    }
+  }
+
+  if (!lead) {
+    return null;
+  }
+
+  if (!access.verTodos && !leadVisivelParaUsuario(lead, access)) {
+    return null;
+  }
+
+  return lead;
 }
 
 export async function createLead(input: CreateLeadInput): Promise<LeadActionResult> {

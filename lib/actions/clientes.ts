@@ -28,8 +28,12 @@ import type {
   VerificacaoPessoaExistente,
 } from "@/lib/pessoas/types";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
-import { getPerfilForUser } from "@/lib/supabase/get-perfil";
-import { createServiceRoleClient } from "@/lib/supabase/admin";
+import {
+  createTenantDataClient,
+  registroVisivelPorPerfil,
+  resolveTenantAccess,
+  type TenantDbClient,
+} from "@/lib/supabase/tenant-access";
 import { createClient } from "@/lib/supabase/server";
 import {
   clampListLimit,
@@ -41,7 +45,7 @@ import {
   clienteFormSchema,
   type ClienteFormValues,
 } from "@/lib/validations/cliente";
-import type { Cliente, Corretor, Imovel, Lead, TipoCliente } from "@/types";
+import type { Cliente, Imovel, Lead, TipoCliente } from "@/types";
 
 export type ClienteActionResult = {
   success?: boolean;
@@ -119,12 +123,9 @@ function pertenceAoPerfil(
   return perfilId === perfilAtualId;
 }
 
-type PessoasAccess = {
-  verTodos: boolean;
-  perfilAtualId: string | null;
-};
+type PessoasAccess = Awaited<ReturnType<typeof resolveTenantAccess>>;
 
-type ClienteDbClient = Awaited<ReturnType<typeof createClient>>;
+type ClienteDbClient = TenantDbClient;
 
 type LeadPessoaRow = {
   id: string;
@@ -142,33 +143,15 @@ type LeadPessoaRow = {
     | null;
 };
 
-async function resolvePessoasAccess(corretor: Corretor): Promise<PessoasAccess> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isContaDono = Boolean(user && user.id === corretor.user_id);
-  const perfil = await getPerfilForUser(corretor.id);
-
-  return {
-    verTodos: isContaDono || perfil?.papel === "admin" || perfil?.papel === "gerente",
-    perfilAtualId: perfil?.id ?? null,
-  };
+async function resolvePessoasAccess(corretor: Parameters<typeof resolveTenantAccess>[0]) {
+  return resolveTenantAccess(corretor);
 }
 
 function pessoaVisivelParaUsuario(
   perfilId: string | null | undefined,
   access: PessoasAccess,
 ): boolean {
-  if (access.verTodos) {
-    return true;
-  }
-
-  if (!access.perfilAtualId) {
-    return false;
-  }
-
-  return pertenceAoPerfil(perfilId, access.perfilAtualId, false);
+  return registroVisivelPorPerfil(perfilId, access);
 }
 
 async function fetchClientesAndLeads(
@@ -708,8 +691,8 @@ export async function getClientes(options?: ListQueryOptions): Promise<Cliente[]
   let { clientes, leads } = await fetchClientesAndLeads(supabase, corretor.id, limit, offset);
 
   if (clientes.length === 0 && leads.length === 0) {
-    try {
-      const admin = createServiceRoleClient();
+    const admin = await createTenantDataClient();
+    if (admin) {
       const fallback = await fetchClientesAndLeads(admin, corretor.id, limit, offset);
 
       if (fallback.clientes.length > 0 || fallback.leads.length > 0) {
@@ -719,8 +702,6 @@ export async function getClientes(options?: ListQueryOptions): Promise<Cliente[]
         clientes = fallback.clientes;
         leads = fallback.leads;
       }
-    } catch (error) {
-      console.error("[getClientes] service role fallback unavailable", error);
     }
   }
 
@@ -765,22 +746,21 @@ export async function getClienteById(id: string): Promise<Cliente | null> {
     return row;
   }
 
-  try {
-    const admin = createServiceRoleClient();
-    const fallbackRow = await fetchClienteByIdRow(admin, corretor.id, id);
-
-    if (fallbackRow) {
-      console.warn("[getClienteById] authenticated query returned empty; used service role fallback", {
-        corretorId: corretor.id,
-        clienteId: id,
-      });
-    }
-
-    return fallbackRow;
-  } catch (error) {
-    console.error("[getClienteById] service role fallback unavailable", error);
+  const admin = await createTenantDataClient();
+  if (!admin) {
     return null;
   }
+
+  const fallbackRow = await fetchClienteByIdRow(admin, corretor.id, id);
+
+  if (fallbackRow) {
+    console.warn("[getClienteById] authenticated query returned empty; used service role fallback", {
+      corretorId: corretor.id,
+      clienteId: id,
+    });
+  }
+
+  return fallbackRow;
 }
 
 export async function getImoveisByClienteId(clienteId: string): Promise<Imovel[]> {
@@ -790,20 +770,35 @@ export async function getImoveisByClienteId(clienteId: string): Promise<Imovel[]
     return [];
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("imoveis")
-    .select("*, fotos:imovel_fotos(*)")
-    .eq("corretor_id", corretor.id)
-    .eq("cliente_id", clienteId)
-    .order("criado_em", { ascending: false });
+  const fetchRows = async (supabase: ClienteDbClient) => {
+    const { data, error } = await supabase
+      .from("imoveis")
+      .select("*, fotos:imovel_fotos(*)")
+      .eq("corretor_id", corretor.id)
+      .eq("cliente_id", clienteId)
+      .order("criado_em", { ascending: false });
 
-  if (error) {
-    console.error("[getImoveisByClienteId] failed", error);
-    return [];
+    if (error) {
+      console.error("[getImoveisByClienteId] failed", error);
+      return [] as Imovel[];
+    }
+
+    return (data ?? []) as Imovel[];
+  };
+
+  const supabase = await createClient();
+  const rows = await fetchRows(supabase);
+
+  if (rows.length > 0) {
+    return rows;
   }
 
-  return (data ?? []) as Imovel[];
+  const admin = await createTenantDataClient();
+  if (!admin) {
+    return rows;
+  }
+
+  return fetchRows(admin);
 }
 
 export async function getLeadsByClienteTelefone(telefone: string): Promise<Lead[]> {
@@ -818,22 +813,37 @@ export async function getLeadsByClienteTelefone(telefone: string): Promise<Lead[
     return [];
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("leads")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .order("criado_em", { ascending: false });
+  const fetchRows = async (supabase: ClienteDbClient) => {
+    const { data, error } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("corretor_id", corretor.id)
+      .order("criado_em", { ascending: false });
 
-  if (error) {
-    console.error("[getLeadsByClienteTelefone] failed", error);
-    return [];
+    if (error) {
+      console.error("[getLeadsByClienteTelefone] failed", error);
+      return [] as Lead[];
+    }
+
+    return ((data ?? []) as Lead[]).filter((lead) => {
+      const leadDigits = sanitizeTelefone(lead.telefone ?? "");
+      return leadDigits === digits || leadDigits.endsWith(digits) || digits.endsWith(leadDigits);
+    });
+  };
+
+  const supabase = await createClient();
+  const rows = await fetchRows(supabase);
+
+  if (rows.length > 0) {
+    return rows;
   }
 
-  return ((data ?? []) as Lead[]).filter((lead) => {
-    const leadDigits = sanitizeTelefone(lead.telefone ?? "");
-    return leadDigits === digits || leadDigits.endsWith(digits) || digits.endsWith(leadDigits);
-  });
+  const admin = await createTenantDataClient();
+  if (!admin) {
+    return rows;
+  }
+
+  return fetchRows(admin);
 }
 
 export async function searchClientes(query: string): Promise<ClienteSearchResult[]> {

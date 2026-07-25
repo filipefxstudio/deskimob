@@ -29,6 +29,7 @@ import type {
 } from "@/lib/pessoas/types";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   clampListLimit,
@@ -40,7 +41,7 @@ import {
   clienteFormSchema,
   type ClienteFormValues,
 } from "@/lib/validations/cliente";
-import type { Cliente, Imovel, Lead, TipoCliente } from "@/types";
+import type { Cliente, Corretor, Imovel, Lead, TipoCliente } from "@/types";
 
 export type ClienteActionResult = {
   success?: boolean;
@@ -116,6 +117,146 @@ function pertenceAoPerfil(
   }
 
   return perfilId === perfilAtualId;
+}
+
+type PessoasAccess = {
+  verTodos: boolean;
+  perfilAtualId: string | null;
+};
+
+type ClienteDbClient = Awaited<ReturnType<typeof createClient>>;
+
+type LeadPessoaRow = {
+  id: string;
+  corretor_id: string;
+  perfil_id: string | null;
+  nome: string | null;
+  telefone: string | null;
+  email: string | null;
+  observacoes: string | null;
+  criado_em: string;
+  atualizado_em: string;
+  perfil:
+    | { id: string; nome: string; email: string | null; papel: string }
+    | { id: string; nome: string; email: string | null; papel: string }[]
+    | null;
+};
+
+async function resolvePessoasAccess(corretor: Corretor): Promise<PessoasAccess> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isContaDono = Boolean(user && user.id === corretor.user_id);
+  const perfil = await getPerfilForUser(corretor.id);
+
+  return {
+    verTodos: isContaDono || perfil?.papel === "admin" || perfil?.papel === "gerente",
+    perfilAtualId: perfil?.id ?? null,
+  };
+}
+
+function pessoaVisivelParaUsuario(
+  perfilId: string | null | undefined,
+  access: PessoasAccess,
+): boolean {
+  if (access.verTodos) {
+    return true;
+  }
+
+  if (!access.perfilAtualId) {
+    return false;
+  }
+
+  return pertenceAoPerfil(perfilId, access.perfilAtualId, false);
+}
+
+async function fetchClientesAndLeads(
+  supabase: ClienteDbClient,
+  corretorId: string,
+  limit: number,
+  offset: number,
+): Promise<{ clientes: Cliente[]; leads: LeadPessoaRow[] }> {
+  const [clientesRes, leadsRes] = await Promise.all([
+    supabase
+      .from("clientes")
+      .select("*, perfil:perfis(id, nome, email, papel)")
+      .eq("corretor_id", corretorId)
+      .order("criado_em", { ascending: false })
+      .range(offset, offset + limit - 1),
+    supabase
+      .from("leads")
+      .select(
+        "id, corretor_id, perfil_id, nome, telefone, email, observacoes, criado_em, atualizado_em, perfil:perfis(id, nome, email, papel)",
+      )
+      .eq("corretor_id", corretorId)
+      .order("criado_em", { ascending: false })
+      .range(offset, offset + limit - 1),
+  ]);
+
+  if (clientesRes.error) {
+    console.error("[fetchClientesAndLeads] clientes failed", clientesRes.error);
+  }
+
+  if (leadsRes.error) {
+    console.error("[fetchClientesAndLeads] leads failed", leadsRes.error);
+  }
+
+  return {
+    clientes: (clientesRes.data ?? []) as Cliente[],
+    leads: (leadsRes.data ?? []) as LeadPessoaRow[],
+  };
+}
+
+function mergeClientesComLeads(
+  clientes: Cliente[],
+  leads: LeadPessoaRow[],
+  access: PessoasAccess,
+): Cliente[] {
+  const pessoas: Cliente[] = [...clientes];
+
+  for (const lead of leads) {
+    const leadPerfilId = resolveLeadPerfilId(lead);
+
+    if (!pessoaVisivelParaUsuario(leadPerfilId, access)) {
+      continue;
+    }
+
+    const telefone = lead.telefone?.trim() ?? "";
+    if (!telefone) {
+      continue;
+    }
+
+    const clienteExistente = findClienteByTelefone(pessoas, telefone);
+
+    if (clienteExistente) {
+      if (clienteExistente.tipo === "proprietario") {
+        clienteExistente.tipo = "ambos";
+      }
+      continue;
+    }
+
+    pessoas.push({
+      id: lead.id,
+      lead_id: lead.id,
+      corretor_id: lead.corretor_id,
+      perfil_id: leadPerfilId,
+      nome: lead.nome?.trim() || "Sem nome",
+      telefone,
+      email: lead.email,
+      tipo: "lead",
+      eh_construtor_investidor: false,
+      criado_em: lead.criado_em,
+      atualizado_em: lead.atualizado_em,
+      perfil: Array.isArray(lead.perfil)
+        ? (lead.perfil[0] as Cliente["perfil"])
+        : ((lead.perfil as Cliente["perfil"]) ?? null),
+    });
+  }
+
+  return pessoas.sort(
+    (a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime(),
+  );
 }
 
 function findClienteByTelefone(clientes: Cliente[], telefone: string): Cliente | undefined {
@@ -561,84 +702,53 @@ export async function getClientes(options?: ListQueryOptions): Promise<Cliente[]
 
   const limit = clampListLimit(options?.limit);
   const offset = clampListOffset(options?.offset);
-
-  const perfil = await getPerfilForUser();
-  const verTodos = perfil?.papel === "admin" || perfil?.papel === "gerente";
-  const perfilAtualId = perfil?.id;
+  const access = await resolvePessoasAccess(corretor);
 
   const supabase = await createClient();
+  let { clientes, leads } = await fetchClientesAndLeads(supabase, corretor.id, limit, offset);
 
-  const [clientesRes, leadsRes] = await Promise.all([
-    supabase
-      .from("clientes")
-      .select("*, perfil:perfis(id, nome, email, papel)")
-      .eq("corretor_id", corretor.id)
-      .order("criado_em", { ascending: false })
-      .range(offset, offset + limit - 1),
-    supabase
-      .from("leads")
-      .select("id, corretor_id, perfil_id, nome, telefone, email, observacoes, criado_em, atualizado_em, perfil:perfis(id, nome, email, papel)")
-      .eq("corretor_id", corretor.id)
-      .order("criado_em", { ascending: false })
-      .range(offset, offset + limit - 1),
-  ]);
+  if (clientes.length === 0 && leads.length === 0) {
+    try {
+      const admin = createServiceRoleClient();
+      const fallback = await fetchClientesAndLeads(admin, corretor.id, limit, offset);
 
-  if (clientesRes.error) {
-    console.error("[getClientes] clientes failed", clientesRes.error);
-  }
-
-  if (leadsRes.error) {
-    console.error("[getClientes] leads failed", leadsRes.error);
-  }
-
-  const clientes = ((clientesRes.data ?? []) as Cliente[]).filter((cliente) =>
-    verTodos || (perfilAtualId ? pertenceAoPerfil(cliente.perfil_id, perfilAtualId, false) : false),
-  );
-
-  const pessoas: Cliente[] = [...clientes];
-
-  for (const lead of leadsRes.data ?? []) {
-    const leadPerfilId = resolveLeadPerfilId(lead);
-
-    if (!verTodos && perfilAtualId && !pertenceAoPerfil(leadPerfilId, perfilAtualId, false)) {
-      continue;
-    }
-
-    const telefone = lead.telefone?.trim() ?? "";
-    if (!telefone) {
-      continue;
-    }
-
-    const clienteExistente = findClienteByTelefone(pessoas, telefone);
-
-    if (clienteExistente) {
-      if (clienteExistente.tipo === "proprietario") {
-        clienteExistente.tipo = "ambos";
+      if (fallback.clientes.length > 0 || fallback.leads.length > 0) {
+        console.warn("[getClientes] authenticated query returned empty; used service role fallback", {
+          corretorId: corretor.id,
+        });
+        clientes = fallback.clientes;
+        leads = fallback.leads;
       }
-      continue;
+    } catch (error) {
+      console.error("[getClientes] service role fallback unavailable", error);
     }
-
-    pessoas.push({
-      id: lead.id,
-      lead_id: lead.id,
-      corretor_id: lead.corretor_id,
-      perfil_id: leadPerfilId,
-      nome: lead.nome?.trim() || "Sem nome",
-      telefone,
-      email: lead.email,
-      tipo: "lead",
-      eh_construtor_investidor: false,
-      criado_em: lead.criado_em,
-      atualizado_em: lead.atualizado_em,
-      perfil: Array.isArray(lead.perfil)
-        ? (lead.perfil[0] as Cliente["perfil"])
-        : (lead.perfil as Cliente["perfil"]) ?? null,
-    });
   }
 
-  return pessoas.sort(
-    (a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime(),
+  const clientesFiltrados = clientes.filter((cliente) =>
+    pessoaVisivelParaUsuario(cliente.perfil_id, access),
   );
+
+  return mergeClientesComLeads(clientesFiltrados, leads, access);
+}
+
+async function fetchClienteByIdRow(
+  supabase: ClienteDbClient,
+  corretorId: string,
+  id: string,
+): Promise<Cliente | null> {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("*, perfil:perfis(id, nome, email, papel)")
+    .eq("id", id)
+    .eq("corretor_id", corretorId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[fetchClienteByIdRow] failed", error);
+    return null;
+  }
+
+  return (data as Cliente | null) ?? null;
 }
 
 export async function getClienteById(id: string): Promise<Cliente | null> {
@@ -649,19 +759,28 @@ export async function getClienteById(id: string): Promise<Cliente | null> {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("clientes")
-    .select("*, perfil:perfis(id, nome, email, papel)")
-    .eq("id", id)
-    .eq("corretor_id", corretor.id)
-    .maybeSingle();
+  const row = await fetchClienteByIdRow(supabase, corretor.id, id);
 
-  if (error) {
-    console.error("[getClienteById] failed", error);
-    return null;
+  if (row) {
+    return row;
   }
 
-  return (data as Cliente | null) ?? null;
+  try {
+    const admin = createServiceRoleClient();
+    const fallbackRow = await fetchClienteByIdRow(admin, corretor.id, id);
+
+    if (fallbackRow) {
+      console.warn("[getClienteById] authenticated query returned empty; used service role fallback", {
+        corretorId: corretor.id,
+        clienteId: id,
+      });
+    }
+
+    return fallbackRow;
+  } catch (error) {
+    console.error("[getClienteById] service role fallback unavailable", error);
+    return null;
+  }
 }
 
 export async function getImoveisByClienteId(clienteId: string): Promise<Imovel[]> {

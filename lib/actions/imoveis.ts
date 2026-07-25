@@ -987,8 +987,16 @@ async function ensureUniqueImovelSlugForUpdate(
 }
 
 async function generateNextCodigo(corretorId: string): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  let admin;
+
+  try {
+    admin = createServiceRoleClient();
+  } catch (error) {
+    console.error("[generateNextCodigo] service role unavailable", error);
+    throw new Error("Não foi possível gerar o código do imóvel.");
+  }
+
+  const { data, error } = await admin
     .from("imoveis")
     .select("codigo")
     .eq("corretor_id", corretorId)
@@ -1008,6 +1016,15 @@ async function generateNextCodigo(corretorId: string): Promise<string> {
   }
 
   return String(max + 1).padStart(4, "0");
+}
+
+function isImovelCodigoConflict(error: PostgrestError): boolean {
+  if (error.code !== "23505") {
+    return false;
+  }
+
+  const details = `${error.message} ${error.details ?? ""}`.toLowerCase();
+  return details.includes("codigo") || details.includes("imoveis_corretor_codigo");
 }
 
 export async function getProximoCodigoPreview(): Promise<string | null> {
@@ -1043,6 +1060,21 @@ function mapImovelPersistError(
   if (isSchemaMismatchError(error)) {
     return buildUserFacingError(
       "Banco de dados desatualizado. Aplique as migrations pendentes no Supabase.",
+      error.message,
+    );
+  }
+
+  if (isImovelCodigoConflict(error)) {
+    return buildUserFacingError(
+      "Não foi possível reservar o próximo código do imóvel. Tente salvar novamente.",
+      error.message,
+    );
+  }
+
+  const duplicateDetails = `${error.message} ${error.details ?? ""}`.toLowerCase();
+  if (error.code === "23505" && duplicateDetails.includes("imoveis_endereco_unique")) {
+    return buildUserFacingError(
+      "Já existe um imóvel cadastrado neste endereço na sua conta.",
       error.message,
     );
   }
@@ -2030,19 +2062,53 @@ export async function createImovel(
 
   const perfil = await getPerfilForUser();
 
-  const { data: imovel, error: insertError } = await persistImovelRowInsert(
-    supabase,
-    buildImovelInsert(
-      corretor.id,
-      data,
-      slug,
-      codigo,
-      clienteId,
-      "em_cadastro",
-      statusEmCadastro.id,
-      perfil?.id ?? null,
-    ),
+  const insertPayloadBase = buildImovelInsert(
+    corretor.id,
+    data,
+    slug,
+    "0000",
+    clienteId,
+    "em_cadastro",
+    statusEmCadastro.id,
+    perfil?.id ?? null,
   );
+
+  let imovel: { id: string } | null = null;
+  let insertError: PostgrestError | null = null;
+  let codigoUsado = codigo;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt > 0) {
+      try {
+        codigoUsado = await generateNextCodigo(corretor.id);
+      } catch (error) {
+        console.error("[createImovel] codigo regeneration failed", error);
+        return { error: "Não foi possível gerar o código do imóvel." };
+      }
+    }
+
+    const result = await persistImovelRowInsert(supabase, {
+      ...insertPayloadBase,
+      codigo: codigoUsado,
+    });
+
+    imovel = result.data;
+    insertError = result.error;
+
+    if (!insertError) {
+      break;
+    }
+
+    if (!isImovelCodigoConflict(insertError)) {
+      break;
+    }
+
+    console.warn("[createImovel] codigo conflict, retrying", {
+      corretorId: corretor.id,
+      codigo: codigoUsado,
+      attempt,
+    });
+  }
 
   if (insertError || !imovel) {
     return {
@@ -2053,7 +2119,7 @@ export async function createImovel(
   }
 
   await registrarAuditoriaImovel(imovel.id, "imovel_cadastrado", {
-    detalhes: { codigo },
+    detalhes: { codigo: codigoUsado },
   });
 
   try {

@@ -40,6 +40,7 @@ ALTER TABLE public.imoview_import_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.imoview_import_logs ENABLE ROW LEVEL SECURITY;
 
 -- Apenas service role escreve; leitura via API autenticada com requireImoviewImportAccess
+DROP POLICY IF EXISTS "imoview_import_jobs_service_role_all" ON public.imoview_import_jobs;
 CREATE POLICY "imoview_import_jobs_service_role_all"
   ON public.imoview_import_jobs
   FOR ALL
@@ -47,6 +48,7 @@ CREATE POLICY "imoview_import_jobs_service_role_all"
   USING (true)
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "imoview_import_logs_service_role_all" ON public.imoview_import_logs;
 CREATE POLICY "imoview_import_logs_service_role_all"
   ON public.imoview_import_logs
   FOR ALL

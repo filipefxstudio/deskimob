@@ -20,6 +20,8 @@ interface CheckboxFilterDropdownProps {
   selected: string[];
   onChange: (selected: string[]) => void;
   placeholder?: string;
+  showAllOption?: boolean;
+  allOptionLabel?: string;
 }
 
 interface MenuPosition {
@@ -34,6 +36,8 @@ export function CheckboxFilterDropdown({
   selected,
   onChange,
   placeholder = "Todos",
+  showAllOption = false,
+  allOptionLabel = "Todos",
 }: CheckboxFilterDropdownProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -99,12 +103,19 @@ export function CheckboxFilterDropdown({
     onChange(selected.filter((item) => item !== value));
   }
 
-  const summary =
-    selected.length === 0
-      ? placeholder
-      : selected.length === 1
-        ? (options.find((o) => o.value === selected[0])?.label ?? "1 selecionado")
-        : `${selected.length} selecionados`;
+  function selectAll() {
+    onChange([]);
+  }
+
+  const isAllSelected = selected.length === 0;
+
+  const summary = isAllSelected
+    ? showAllOption
+      ? allOptionLabel
+      : placeholder
+    : selected.length === 1
+      ? (options.find((o) => o.value === selected[0])?.label ?? "1 selecionado")
+      : `${selected.length} selecionados`;
 
   const menu = open ? (
     <div
@@ -116,6 +127,19 @@ export function CheckboxFilterDropdown({
           : { top: -9999, left: -9999, visibility: "hidden" as const }
       }
     >
+      {showAllOption ? (
+        <label className="flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium hover:bg-muted">
+          <Checkbox
+            checked={isAllSelected}
+            onCheckedChange={(checked) => {
+              if (checked === true) {
+                selectAll();
+              }
+            }}
+          />
+          {allOptionLabel}
+        </label>
+      ) : null}
       {options.map((option) => (
         <label
           key={option.value}
@@ -142,7 +166,7 @@ export function CheckboxFilterDropdown({
         onClick={() => setOpen((prev) => !prev)}
         aria-expanded={open}
       >
-        <span className={cn("truncate", selected.length === 0 && "text-muted-foreground")}>
+        <span className={cn("truncate", isAllSelected && !showAllOption && "text-muted-foreground")}>
           {summary}
         </span>
         <ChevronDown className={cn("size-4 shrink-0 opacity-60", open && "rotate-180")} />

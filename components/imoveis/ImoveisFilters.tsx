@@ -201,6 +201,7 @@ export function ImoveisFilters({
           options={TIPOS_IMOVEL.map((item) => ({ value: item.value, label: item.label }))}
           selected={filters.tipos}
           onChange={(tipos) => update("tipos", tipos as TipoImovel[])}
+          showAllOption
         />
 
         <CheckboxFilterDropdown
@@ -208,6 +209,7 @@ export function ImoveisFilters({
           options={statusList.map((status) => ({ value: status.id, label: status.nome }))}
           selected={filters.statusIds}
           onChange={(statusIds) => update("statusIds", statusIds)}
+          showAllOption
         />
 
         <div className="space-y-2">

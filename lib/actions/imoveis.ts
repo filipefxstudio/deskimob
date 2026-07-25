@@ -314,6 +314,14 @@ function imovelListSelectForTier(
 const IMOVEL_SELECT =
   "*, fotos:imovel_fotos(*), status_imovel:status_imovel(*), cliente:clientes(*), captador:perfis!captador_id(*), captadores:imovel_captadores(*, perfil:perfis(*)), proprietarios:imovel_proprietarios(*, cliente:clientes(*)), cadastrado_por:perfis!cadastrado_por_perfil_id(*)";
 
+const IMOVEL_DETAIL_SELECT_TIERS = [
+  IMOVEL_SELECT,
+  `*, ${IMOVEL_LIST_FOTOS}, ${IMOVEL_LIST_STATUS}, ${IMOVEL_LIST_CAPTADOR}`,
+  `*, ${IMOVEL_LIST_FOTOS}, ${IMOVEL_LIST_STATUS}`,
+  `*, ${IMOVEL_LIST_FOTOS}`,
+  "*",
+] as const;
+
 async function getStatusById(
   corretorId: string,
   statusId: string,
@@ -979,11 +987,93 @@ async function ensureImovelOwnership(imovelId: string, corretorId: string) {
     .eq("corretor_id", corretorId)
     .maybeSingle();
 
-  if (error || !data) {
-    return false;
+  if (!error && data) {
+    return true;
   }
 
-  return true;
+  if (error) {
+    console.error("[ensureImovelOwnership] failed", error);
+  }
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("imoveis")
+      .select("id")
+      .eq("id", imovelId)
+      .eq("corretor_id", corretorId)
+      .maybeSingle();
+
+    if (fallbackError) {
+      console.error("[ensureImovelOwnership] service role fallback failed", fallbackError);
+      return false;
+    }
+
+    return Boolean(fallbackData);
+  } catch (fallbackError) {
+    console.error("[ensureImovelOwnership] service role fallback unavailable", fallbackError);
+    return false;
+  }
+}
+
+async function fetchImovelByIdRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  corretorId: string,
+  id: string,
+): Promise<Imovel | null> {
+  const excludedOptional = new Set<string>();
+
+  for (let tier = 0; tier < IMOVEL_DETAIL_SELECT_TIERS.length; tier += 1) {
+    let select = IMOVEL_DETAIL_SELECT_TIERS[tier];
+
+    if (excludedOptional.size > 0) {
+      const explicit = IMOVEL_DB_COLUMNS.filter(
+        (column) => !excludedOptional.has(column),
+      ).join(", ");
+      select = select.replace(/^\*, /, `${explicit}, `) as (typeof IMOVEL_DETAIL_SELECT_TIERS)[number];
+    }
+
+    const { data, error } = await supabase
+      .from("imoveis")
+      .select(select as "*")
+      .eq("id", id)
+      .eq("corretor_id", corretorId)
+      .maybeSingle();
+
+    if (!error && data) {
+      return normalizeImovelRow(data as Imovel);
+    }
+
+    if (!error) {
+      break;
+    }
+
+    const missingColumn = extractMissingColumn(error);
+    if (
+      missingColumn &&
+      (OPTIONAL_IMOVEL_DB_COLUMNS as readonly string[]).includes(missingColumn) &&
+      !excludedOptional.has(missingColumn)
+    ) {
+      excludedOptional.add(missingColumn);
+      logPostgrestError(`fetchImovelByIdRow:retry_without_${missingColumn}`, error);
+      tier -= 1;
+      continue;
+    }
+
+    const hasFallback = tier < IMOVEL_DETAIL_SELECT_TIERS.length - 1;
+    if (hasFallback && error && isSchemaMismatchError(error)) {
+      logPostgrestError(`fetchImovelByIdRow.tier${tier}`, error);
+      continue;
+    }
+
+    if (error) {
+      logPostgrestError("fetchImovelByIdRow", error);
+    }
+
+    break;
+  }
+
+  return null;
 }
 
 async function ensureUniqueImovelSlugForUpdate(
@@ -1735,19 +1825,28 @@ export async function getImovelById(id: string): Promise<Imovel | null> {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("imoveis")
-    .select(IMOVEL_SELECT)
-    .eq("id", id)
-    .eq("corretor_id", corretor.id)
-    .maybeSingle();
+  const row = await fetchImovelByIdRow(supabase, corretor.id, id);
 
-  if (error) {
-    console.error("[getImovelById] failed", error);
-    return null;
+  if (row) {
+    return row;
   }
 
-  return (normalizeImovelRow(data as Imovel) ?? null);
+  try {
+    const admin = createServiceRoleClient();
+    const fallbackRow = await fetchImovelByIdRow(admin, corretor.id, id);
+
+    if (fallbackRow) {
+      console.warn("[getImovelById] authenticated query returned empty; used service role fallback", {
+        corretorId: corretor.id,
+        imovelId: id,
+      });
+    }
+
+    return fallbackRow;
+  } catch (error) {
+    console.error("[getImovelById] service role fallback unavailable", error);
+    return null;
+  }
 }
 
 export async function updatePublicadoSite(

@@ -73,14 +73,37 @@ type FotoUploadMetadata = {
 
 async function getPlanoAtivo(corretorId: string): Promise<PlanoAssinatura> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("assinaturas")
     .select("plano, status")
-    .eq("corretor_id", corretorId)
-    .eq("status", "ativo")
-    .maybeSingle();
+    .eq("corretor_id", corretorId);
 
-  return (data?.plano as PlanoAssinatura | undefined) ?? "basico";
+  if (!error) {
+    const ativa = (data ?? []).find((item) => item.status === "ativo");
+    return (ativa?.plano as PlanoAssinatura | undefined) ?? "basico";
+  }
+
+  logPostgrestError("getPlanoAtivo", error);
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("assinaturas")
+      .select("plano, status")
+      .eq("corretor_id", corretorId);
+
+    if (fallbackError) {
+      logPostgrestError("getPlanoAtivo:fallback", fallbackError);
+      return "basico";
+    }
+
+    console.warn("[getPlanoAtivo] used service role fallback", { corretorId });
+    const ativa = (fallbackData ?? []).find((item) => item.status === "ativo");
+    return (ativa?.plano as PlanoAssinatura | undefined) ?? "basico";
+  } catch (fallbackError) {
+    console.error("[getPlanoAtivo] service role fallback unavailable", fallbackError);
+    return "basico";
+  }
 }
 
 async function countImoveis(corretorId: string): Promise<number> {
@@ -90,11 +113,32 @@ async function countImoveis(corretorId: string): Promise<number> {
     .select("id", { count: "exact", head: true })
     .eq("corretor_id", corretorId);
 
-  if (error) {
-    throw new Error("Não foi possível verificar a quantidade de imóveis.");
+  if (!error) {
+    return count ?? 0;
   }
 
-  return count ?? 0;
+  logPostgrestError("countImoveis", error);
+
+  try {
+    const admin = createServiceRoleClient();
+    const { count: fallbackCount, error: fallbackError } = await admin
+      .from("imoveis")
+      .select("id", { count: "exact", head: true })
+      .eq("corretor_id", corretorId);
+
+    if (fallbackError) {
+      logPostgrestError("countImoveis:fallback", fallbackError);
+      throw new Error("Não foi possível verificar a quantidade de imóveis.");
+    }
+
+    console.warn("[countImoveis] used service role fallback", { corretorId });
+    return fallbackCount ?? 0;
+  } catch (fallbackError) {
+    console.error("[countImoveis] service role fallback unavailable", fallbackError);
+    throw fallbackError instanceof Error
+      ? fallbackError
+      : new Error("Não foi possível verificar a quantidade de imóveis.");
+  }
 }
 
 async function ensureUniqueImovelSlug(

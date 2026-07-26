@@ -28,6 +28,9 @@ import type {
   VerificacaoPessoaExistente,
 } from "@/lib/pessoas/types";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { getPerfilForUser } from "@/lib/supabase/get-perfil";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { logPostgrestError } from "@/lib/supabase/postgrest-error";
 import {
   createTenantDataClient,
   registroVisivelPorPerfil,
@@ -46,6 +49,7 @@ import {
   type ClienteFormValues,
 } from "@/lib/validations/cliente";
 import type { Cliente, Imovel, Lead, TipoCliente } from "@/types";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export type ClienteActionResult = {
   success?: boolean;
@@ -97,6 +101,67 @@ function buildClienteUpdate(data: ClienteFormValues) {
     tipo: data.tipo,
     eh_construtor_investidor: data.eh_construtor_investidor,
     atualizado_em: new Date().toISOString(),
+  };
+}
+
+function mapClienteInsertError(error: PostgrestError): string {
+  if (error.code === "23505") {
+    const details = `${error.message} ${error.details ?? ""}`.toLowerCase();
+
+    if (details.includes("clientes_corretor_telefone")) {
+      return "Já existe um cliente cadastrado com este telefone.";
+    }
+
+    if (details.includes("clientes_corretor_email")) {
+      return "Já existe um cliente cadastrado com este e-mail.";
+    }
+  }
+
+  return "Não foi possível cadastrar o cliente.";
+}
+
+async function insertClienteRow(
+  corretorId: string,
+  payload: ReturnType<typeof buildClienteInsert>,
+): Promise<{ id: string } | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clientes")
+    .insert(payload)
+    .select("id")
+    .single();
+
+  if (!error && data) {
+    return { id: data.id };
+  }
+
+  if (error) {
+    logPostgrestError("insertClienteRow", error);
+  }
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: fallbackData, error: fallbackError } = await admin
+      .from("clientes")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    if (!fallbackError && fallbackData) {
+      console.warn("[insertClienteRow] used service role fallback", { corretorId });
+      return { id: fallbackData.id };
+    }
+
+    if (fallbackError) {
+      logPostgrestError("insertClienteRow:fallback", fallbackError);
+      return { error: mapClienteInsertError(fallbackError) };
+    }
+  } catch (fallbackError) {
+    console.error("[insertClienteRow] service role fallback unavailable", fallbackError);
+  }
+
+  return {
+    error: error ? mapClienteInsertError(error) : "Não foi possível cadastrar o cliente.",
   };
 }
 
@@ -951,21 +1016,26 @@ export async function createCliente(
     };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("clientes")
-    .insert(buildClienteInsert(corretor.id, parsed.data))
-    .select("id")
-    .single();
+  let perfilId = parsed.data.perfil_id ?? null;
 
-  if (error || !data) {
-    console.error("[createCliente] failed", error);
-    return { error: "Não foi possível cadastrar o cliente." };
+  if (!perfilId) {
+    const perfil = await getPerfilForUser(corretor.id);
+    perfilId = perfil?.id ?? null;
+  }
+
+  const insertResult = await insertClienteRow(
+    corretor.id,
+    buildClienteInsert(corretor.id, { ...parsed.data, perfil_id: perfilId }),
+  );
+
+  if ("error" in insertResult) {
+    console.error("[createCliente] failed", insertResult.error);
+    return { error: insertResult.error };
   }
 
   revalidatePath("/dashboard/clientes");
 
-  return { success: true, clienteId: data.id };
+  return { success: true, clienteId: insertResult.id };
 }
 
 export async function createClienteFromImovel(

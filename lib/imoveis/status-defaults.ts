@@ -165,12 +165,10 @@ export async function resolveStatusImovelByNome(
   }
 
   if (error) {
-    return {
-      ok: false,
-      reason: "fetch_error",
-      message: error.message,
-      details: `${error.code ?? "unknown"}: ${error.message}`,
-    };
+    console.warn("[resolveStatusImovelByNome] user fetch failed after seed, trying admin", {
+      nome,
+      error,
+    });
   }
 
   let admin: SupabaseClient;

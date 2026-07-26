@@ -145,7 +145,15 @@ async function ensureUniqueImovelSlug(
   corretorId: string,
   baseSlug: string,
 ): Promise<string> {
-  const supabase = await createClient();
+  let supabase: ImovelDbClient;
+
+  try {
+    supabase = createServiceRoleClient();
+  } catch (error) {
+    console.error("[ensureUniqueImovelSlug] service role unavailable", error);
+    supabase = await createClient();
+  }
+
   const normalizedBase = baseSlug || "imovel";
   let slug = normalizedBase;
   let counter = 1;
@@ -1075,6 +1083,16 @@ async function fetchImovelByIdRow(
 }
 
 type ImovelDbClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Cliente de escrita após validar sessão/corretor (contorna RLS no cadastro). */
+function createImovelWriteClient(): ImovelDbClient {
+  try {
+    return createServiceRoleClient();
+  } catch (error) {
+    console.error("[createImovelWriteClient] service role unavailable", error);
+    throw new Error("Não foi possível salvar o imóvel. Verifique a configuração do servidor.");
+  }
+}
 
 /** Cliente de dados do imóvel após validar tenant (contorna RLS para membros da equipe). */
 async function createImovelScopedClient(
@@ -2202,6 +2220,20 @@ export async function createImovel(
 
   const supabase = await createClient();
 
+  let writeClient: ImovelDbClient;
+
+  try {
+    writeClient = createImovelWriteClient();
+  } catch (error) {
+    console.error("[createImovel] write client failed", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar o imóvel. Verifique a configuração do servidor.",
+    };
+  }
+
   let clienteId: string | null = null;
   let proprietarioIds: string[] = [];
   try {
@@ -2256,7 +2288,7 @@ export async function createImovel(
       }
     }
 
-    const result = await persistImovelRowInsert(supabase, {
+    const result = await persistImovelRowInsert(writeClient, {
       ...insertPayloadBase,
       codigo: codigoUsado,
     });
@@ -2292,11 +2324,11 @@ export async function createImovel(
   });
 
   try {
-    await saveImovelCaptadores(imovel.id, data.captadores, supabase);
-    await saveImovelProprietarios(imovel.id, proprietarioIds, supabase);
+    await saveImovelCaptadores(imovel.id, data.captadores, writeClient);
+    await saveImovelProprietarios(imovel.id, proprietarioIds, writeClient);
   } catch (error) {
     console.error("[createImovel] relacionamentos failed", error);
-    await supabase.from("imoveis").delete().eq("id", imovel.id);
+    await writeClient.from("imoveis").delete().eq("id", imovel.id);
     return {
       error:
         error instanceof Error

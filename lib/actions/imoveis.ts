@@ -585,21 +585,20 @@ export async function desativarImovel(
     return { error: "Informe os detalhes da desativação." };
   }
 
-  const owns = await ensureImovelOwnership(id, corretor.id);
-  if (!owns) {
+  const scopedClient = await createImovelScopedClient(corretor.id, id);
+
+  if (!scopedClient) {
     return { error: "Imóvel não encontrado." };
   }
 
-  const supabase = await createClient();
-  const { data: statusDesativado } = await supabase
-    .from("status_imovel")
-    .select("id")
-    .eq("corretor_id", corretor.id)
-    .eq("nome", "Desativado")
-    .maybeSingle();
+  const statusResult = await resolveStatusImovelByNome(
+    corretor.id,
+    "Desativado",
+    scopedClient,
+  );
 
-  if (!statusDesativado) {
-    return { error: "Status Desativado não configurado." };
+  if (!statusResult.ok) {
+    return { error: formatStatusImovelResolveError("Desativado", statusResult) };
   }
 
   const motivoCompleto =
@@ -607,19 +606,15 @@ export async function desativarImovel(
       ? `${motivo}: ${infoAdicional.trim()}`
       : motivo.trim();
 
-  const { error } = await supabase
-    .from("imoveis")
-    .update({
-      status_imovel_id: statusDesativado.id,
-      status: "desativado",
-      motivo_desativacao: motivoCompleto,
-      data_desativacao: new Date().toISOString(),
-      publicado_site: false,
-      destaque_site: false,
-      publicado_portais: false,
-    })
-    .eq("id", id)
-    .eq("corretor_id", corretor.id);
+  const { error } = await persistImovelRowUpdate(scopedClient, id, corretor.id, {
+    status_imovel_id: statusResult.status.id,
+    status: "desativado",
+    motivo_desativacao: motivoCompleto,
+    data_desativacao: new Date().toISOString(),
+    publicado_site: false,
+    destaque_site: false,
+    publicado_portais: false,
+  });
 
   if (error) {
     console.error("[desativarImovel] failed", error);

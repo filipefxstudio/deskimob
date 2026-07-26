@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Loader2, Trash2 } from "lucide-react";
 
-import { SiteNotificacoesLeadsTab } from "@/components/configuracoes/SiteNotificacoesLeadsTab";
 import {
   removeHero,
   saveContatoPage,
@@ -454,15 +453,11 @@ export function AbaSite({ corretor }: AbaSiteProps) {
             <TabsTrigger value="inicial">Página Inicial</TabsTrigger>
             <TabsTrigger value="sobre">Página Sobre</TabsTrigger>
             <TabsTrigger value="contato">Página Contato</TabsTrigger>
-            <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
           </TabsList>
           <TabsContent value="identidade" className="mt-4"><IdentidadeVisualTab corretor={corretor} /></TabsContent>
           <TabsContent value="inicial" className="mt-4"><PaginaInicialTab corretor={corretor} /></TabsContent>
           <TabsContent value="sobre" className="mt-4"><SobreTab corretor={corretor} /></TabsContent>
           <TabsContent value="contato" className="mt-4"><ContatoTab corretor={corretor} /></TabsContent>
-          <TabsContent value="notificacoes" className="mt-4">
-            <SiteNotificacoesLeadsTab corretor={corretor} />
-          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>

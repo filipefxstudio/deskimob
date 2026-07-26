@@ -4,8 +4,16 @@ import {
   resolveStoragePublicUrl,
 } from "@/lib/supabase/storage-url";
 
-/** URL pública do Supabase Storage (site público). */
+export function isCloudinaryImovelFotoUrl(url: string): boolean {
+  return url.includes("res.cloudinary.com/");
+}
+
+/** URL pública da foto (Cloudinary ou Supabase Storage legado). */
 export function getImovelFotoPublicUrl(storedUrl: string): string {
+  if (!storedUrl || storedUrl.startsWith("blob:") || isCloudinaryImovelFotoUrl(storedUrl)) {
+    return storedUrl;
+  }
+
   return resolveStoragePublicUrl(storedUrl, STORAGE_BUCKET_IMOVEIS);
 }
 

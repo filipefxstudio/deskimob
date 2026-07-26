@@ -1,5 +1,4 @@
 import { sendEmail } from "@/lib/email/resend";
-import type { SiteEmailCredentials } from "@/lib/site/notificacoes-email";
 
 function escapeHtml(value: string): string {
   return value
@@ -9,17 +8,14 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export async function notificarCorretorContatoSite(
-  input: {
-    email: string;
-    corretorNome: string;
-    leadNome: string;
-    leadTelefone: string;
-    leadEmail?: string | null;
-    observacoes?: string | null;
-  },
-  credentials?: SiteEmailCredentials | null,
-): Promise<Awaited<ReturnType<typeof sendEmail>>> {
+export async function notificarCorretorContatoSite(input: {
+  email: string;
+  corretorNome: string;
+  leadNome: string;
+  leadTelefone: string;
+  leadEmail?: string | null;
+  observacoes?: string | null;
+}): Promise<Awaited<ReturnType<typeof sendEmail>>> {
   const subject = `[Site] Novo contato — ${input.leadNome}`;
   const html = `
     <h2>Novo contato pelo site</h2>
@@ -34,26 +30,20 @@ export async function notificarCorretorContatoSite(
     <p><em>Origem: site — página Contato</em></p>
   `;
 
-  return sendEmail("notificarCorretorContatoSite", input.email, subject, html, {
-    apiKey: credentials?.apiKey,
-    from: credentials?.from,
-  });
+  return sendEmail("notificarCorretorContatoSite", input.email, subject, html);
 }
 
-export async function notificarCorretorInteresseImovel(
-  input: {
-    email: string;
-    corretorNome: string;
-    leadNome: string;
-    leadTelefone: string;
-    leadEmail?: string | null;
-    imovelTitulo: string;
-    imovelCodigo?: string | null;
-    observacoes?: string | null;
-    preferenciaContato?: string | null;
-  },
-  credentials?: SiteEmailCredentials | null,
-): Promise<Awaited<ReturnType<typeof sendEmail>>> {
+export async function notificarCorretorInteresseImovel(input: {
+  email: string;
+  corretorNome: string;
+  leadNome: string;
+  leadTelefone: string;
+  leadEmail?: string | null;
+  imovelTitulo: string;
+  imovelCodigo?: string | null;
+  observacoes?: string | null;
+  preferenciaContato?: string | null;
+}): Promise<Awaited<ReturnType<typeof sendEmail>>> {
   const subject = `[Site] Interesse em imóvel — ${input.imovelTitulo}`;
   const html = `
     <h2>Interesse em imóvel</h2>
@@ -71,10 +61,7 @@ export async function notificarCorretorInteresseImovel(
     <p><em>Origem: site — página do imóvel</em></p>
   `;
 
-  return sendEmail("notificarCorretorInteresseImovel", input.email, subject, html, {
-    apiKey: credentials?.apiKey,
-    from: credentials?.from,
-  });
+  return sendEmail("notificarCorretorInteresseImovel", input.email, subject, html);
 }
 
 /** @deprecated Use notificarCorretorContatoSite ou notificarCorretorInteresseImovel */

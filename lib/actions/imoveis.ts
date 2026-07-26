@@ -6,7 +6,6 @@ import {
   IMOVEL_LIMITS,
   STATUS_IMOVEL_SISTEMA,
   STATUS_NOME_TO_SLUG,
-  STORAGE_BUCKET_IMOVEIS,
   STORAGE_BUCKET_MARCA_DAGUA,
 } from "@/lib/constants/imoveis";
 import {
@@ -17,14 +16,8 @@ import {
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createClient } from "@/lib/supabase/server";
-import {
-  buildStoragePublicUrl,
-  extractStoragePathFromPublicUrl,
-} from "@/lib/supabase/storage-url";
-import {
-  bufferToUploadBody,
-} from "@/lib/supabase/storage-upload";
 import { getImovelFotoDashboardUrl } from "@/lib/imoveis/foto-url";
+import { removeImovelFotosFromStorage, uploadFotoImovel } from "@/lib/imoveis/foto-cloudinary";
 import { createClienteFromImovel } from "@/lib/actions/clientes";
 import { getMarcaDaguaConfigByCorretorId } from "@/lib/actions/configuracoes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
@@ -134,10 +127,6 @@ function sanitizeCep(cep: string): string {
   return cep.replace(/\D/g, "");
 }
 
-function extractStoragePathFromUrl(url: string): string | null {
-  return extractStoragePathFromPublicUrl(url, STORAGE_BUCKET_IMOVEIS);
-}
-
 function normalizeImovelFotoRows<T extends { url: string }>(
   fotos: T[] | null | undefined,
 ): T[] {
@@ -162,44 +151,6 @@ function normalizeImovelRow<T extends { fotos?: { url: string }[] | null }>(
     ...row,
     fotos: normalizeImovelFotoRows(row.fotos),
   };
-}
-
-async function ensureImoveisFotosBucket(
-  admin: ReturnType<typeof createServiceRoleClient>,
-): Promise<{ error?: string }> {
-  const { data: bucket, error: getError } = await admin.storage.getBucket(STORAGE_BUCKET_IMOVEIS);
-
-  if (!bucket) {
-    const { error: createError } = await admin.storage.createBucket(STORAGE_BUCKET_IMOVEIS, {
-      public: true,
-      fileSizeLimit: 10 * 1024 * 1024,
-    });
-
-    if (createError) {
-      console.error("[ensureImoveisFotosBucket] create failed", createError, getError);
-      return { error: "Bucket de fotos indisponível. Verifique o Supabase Storage." };
-    }
-
-    return {};
-  }
-
-  if (getError) {
-    console.error("[ensureImoveisFotosBucket] get failed", getError);
-    return { error: "Bucket de fotos indisponível. Verifique o Supabase Storage." };
-  }
-
-  if (!bucket.public) {
-    const { error: updateError } = await admin.storage.updateBucket(STORAGE_BUCKET_IMOVEIS, {
-      public: true,
-    });
-
-    if (updateError) {
-      console.error("[ensureImoveisFotosBucket] update public failed", updateError);
-      return { error: "Bucket de fotos não está público. Ajuste no painel Supabase." };
-    }
-  }
-
-  return {};
 }
 
 const IMOVEL_LIST_FOTOS = "fotos:imovel_fotos(id, url, ordem)";
@@ -1928,7 +1879,7 @@ export async function deleteImovel(id: string): Promise<ImovelActionResult> {
   const supabase = await createClient();
   const { data: imovel, error: fetchError } = await supabase
     .from("imoveis")
-    .select("id, fotos:imovel_fotos(id, url)")
+    .select("id, fotos:imovel_fotos(id, url, cloudinary_public_id)")
     .eq("id", id)
     .eq("corretor_id", corretor.id)
     .maybeSingle();
@@ -1937,15 +1888,15 @@ export async function deleteImovel(id: string): Promise<ImovelActionResult> {
     return { error: "Imóvel não encontrado." };
   }
 
-  const fotos = (imovel.fotos ?? []) as { id: string; url: string }[];
-  const storagePaths = fotos
-    .map((foto) => extractStoragePathFromUrl(foto.url))
-    .filter((path): path is string => Boolean(path));
+  const fotos = (imovel.fotos ?? []) as {
+    id: string;
+    url: string;
+    cloudinary_public_id?: string | null;
+  }[];
 
-  if (storagePaths.length > 0) {
+  if (fotos.length > 0) {
     try {
-      const admin = createServiceRoleClient();
-      await admin.storage.from(STORAGE_BUCKET_IMOVEIS).remove(storagePaths);
+      await removeImovelFotosFromStorage(fotos);
     } catch (error) {
       console.error("[deleteImovel] storage cleanup failed", error);
     }
@@ -1983,20 +1934,13 @@ async function uploadFotosForImovel(
   } catch (error) {
     console.error("[uploadFotosForImovel] service role client failed", error);
     return {
-      error: "Upload de fotos indisponível. Verifique a configuração do Supabase Storage.",
+      error: "Upload de fotos indisponível. Verifique a configuração do banco de dados.",
     };
-  }
-
-  const bucketResult = await ensureImoveisFotosBucket(admin);
-  if (bucketResult.error) {
-    return { error: bucketResult.error };
   }
 
   const sortedFotos = [...fotos].sort((a, b) => a.ordem - b.ordem);
 
   for (const foto of sortedFotos) {
-    const filename = `${crypto.randomUUID()}.jpg`;
-    const storagePath = `${corretorId}/${imovelId}/${filename}`;
     const rawBuffer = Buffer.from(await foto.file.arrayBuffer());
     const processed = await processImageBuffer(corretorId, rawBuffer);
 
@@ -2004,37 +1948,37 @@ async function uploadFotosForImovel(
       return { error: processed.error };
     }
 
-    const { error: uploadError } = await admin.storage
-      .from(STORAGE_BUCKET_IMOVEIS)
-      .upload(storagePath, bufferToUploadBody(processed.buffer), {
-        contentType: processed.contentType,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error("[uploadFotosForImovel] upload failed", uploadError);
-      return { error: "Não foi possível enviar as fotos. Tente novamente." };
-    }
-
-    let publicUrl: string;
+    let uploadResult: { url: string; publicId: string };
 
     try {
-      publicUrl = buildStoragePublicUrl(STORAGE_BUCKET_IMOVEIS, storagePath);
+      uploadResult = await uploadFotoImovel(
+        processed.buffer,
+        corretorId,
+        imovelId,
+        processed.contentType,
+      );
     } catch (error) {
-      console.error("[uploadFotosForImovel] public url failed", error);
-      return { error: "Não foi possível gerar o link público da foto." };
+      console.error("[uploadFotosForImovel] cloudinary upload failed", error);
+      return { error: "Não foi possível enviar as fotos. Tente novamente." };
     }
 
     const { error: fotoInsertError } = await admin.from("imovel_fotos").insert({
       imovel_id: imovelId,
-      url: publicUrl,
+      url: uploadResult.url,
+      cloudinary_public_id: uploadResult.publicId,
       ordem: foto.ordem,
       legenda: foto.legenda?.trim() || null,
     });
 
     if (fotoInsertError) {
       console.error("[uploadFotosForImovel] foto insert failed", fotoInsertError);
-      await admin.storage.from(STORAGE_BUCKET_IMOVEIS).remove([storagePath]);
+      try {
+        await removeImovelFotosFromStorage([
+          { url: uploadResult.url, cloudinary_public_id: uploadResult.publicId },
+        ]);
+      } catch (cleanupError) {
+        console.error("[uploadFotosForImovel] cloudinary rollback failed", cleanupError);
+      }
       return { error: "Não foi possível salvar as fotos do imóvel." };
     }
   }
@@ -2487,7 +2431,7 @@ export async function updateImovel(
 
   const { data: existingFotos, error: fotosError } = await scopedClient
     .from("imovel_fotos")
-    .select("id, url")
+    .select("id, url, cloudinary_public_id")
     .eq("imovel_id", id);
 
   if (fotosError) {
@@ -2502,17 +2446,10 @@ export async function updateImovel(
   const removedFotos = (existingFotos ?? []).filter((foto) => !keptExistingIds.has(foto.id));
 
   if (removedFotos.length > 0) {
-    const storagePaths = removedFotos
-      .map((foto) => extractStoragePathFromUrl(foto.url))
-      .filter((path): path is string => Boolean(path));
-
-    if (storagePaths.length > 0) {
-      try {
-        const admin = createServiceRoleClient();
-        await admin.storage.from(STORAGE_BUCKET_IMOVEIS).remove(storagePaths);
-      } catch (error) {
-        console.error("[updateImovel] storage cleanup failed", error);
-      }
+    try {
+      await removeImovelFotosFromStorage(removedFotos);
+    } catch (error) {
+      console.error("[updateImovel] storage cleanup failed", error);
     }
 
     await scopedClient

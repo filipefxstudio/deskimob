@@ -15,7 +15,7 @@ export async function GET() {
 
   const { data: corretor, error: corretorError } = await supabase
     .from("corretores")
-    .select("id, nome, email, contato_email")
+    .select("id, nome, email, site_email, contato_email")
     .eq("user_id", user.id)
     .single();
 
@@ -26,7 +26,11 @@ export async function GET() {
     );
   }
 
-  const to = corretor.contato_email?.trim() || corretor.email?.trim();
+  const to =
+    corretor.site_email?.trim() ||
+    corretor.contato_email?.trim() ||
+    corretor.email?.trim() ||
+    "";
 
   if (!to) {
     return NextResponse.json(

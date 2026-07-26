@@ -425,10 +425,28 @@ export async function buscarPessoasAutocomplete(
   }
 
   const supabase = await createClient();
-  const matches = await findClientesAutocomplete(supabase, corretor.id, {
+  let matches = await findClientesAutocomplete(supabase, corretor.id, {
     telefone,
     email,
   });
+
+  if (matches.length === 0) {
+    const admin = await createTenantDataClient();
+
+    if (admin) {
+      const fallbackMatches = await findClientesAutocomplete(admin, corretor.id, {
+        telefone,
+        email,
+      });
+
+      if (fallbackMatches.length > 0) {
+        console.warn("[buscarPessoasAutocomplete] used service role fallback", {
+          corretorId: corretor.id,
+        });
+        matches = fallbackMatches;
+      }
+    }
+  }
 
   if (!matches.length) {
     console.warn("[buscarPessoasAutocomplete] nenhum resultado", {
@@ -590,6 +608,26 @@ export async function verificarContatoNovoAtendimento(
   return { pessoa, avaliacao };
 }
 
+async function fetchClienteForProprietarioSelection(
+  supabase: ClienteDbClient,
+  clienteId: string,
+): Promise<ClienteSearchRow | null> {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select(
+      "id, nome, telefone, email, tipo, eh_construtor_investidor, corretor_id, perfil_id",
+    )
+    .eq("id", clienteId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[fetchClienteForProprietarioSelection] failed", error);
+    return null;
+  }
+
+  return (data as ClienteSearchRow | null) ?? null;
+}
+
 export async function avaliarSelecaoPessoaProprietario(
   clienteId: string,
 ): Promise<SelecaoPessoaProprietarioResult> {
@@ -599,11 +637,22 @@ export async function avaliarSelecaoPessoaProprietario(
   }
 
   const supabase = await createClient();
-  const { data: cliente } = await supabase
-    .from("clientes")
-    .select("id, nome, telefone, email, eh_construtor_investidor, corretor_id")
-    .eq("id", clienteId)
-    .maybeSingle();
+  let cliente = await fetchClienteForProprietarioSelection(supabase, clienteId);
+
+  if (!cliente) {
+    const admin = await createTenantDataClient();
+
+    if (admin) {
+      cliente = await fetchClienteForProprietarioSelection(admin, clienteId);
+
+      if (cliente) {
+        console.warn("[avaliarSelecaoPessoaProprietario] used service role fallback", {
+          corretorId: corretor.id,
+          clienteId,
+        });
+      }
+    }
+  }
 
   if (!cliente) {
     return { tipo: "bloqueado", mensagem: "Pessoa não encontrada." };
@@ -911,6 +960,57 @@ export async function getLeadsByClienteTelefone(telefone: string): Promise<Lead[
   return fetchRows(admin);
 }
 
+function escapeIlikePattern(value: string): string {
+  return value.replace(/[%_\\,()]/g, "\\$&");
+}
+
+type ClienteSearchRow = {
+  id: string;
+  nome: string;
+  telefone: string;
+  email: string | null;
+  tipo: string;
+  eh_construtor_investidor: boolean;
+  corretor_id: string;
+  perfil_id: string | null;
+};
+
+async function fetchClientesSearchRows(
+  supabase: ClienteDbClient,
+  corretorId: string,
+  trimmed: string,
+  digits: string,
+): Promise<ClienteSearchRow[]> {
+  let dbQuery = supabase
+    .from("clientes")
+    .select(
+      "id, nome, telefone, email, tipo, eh_construtor_investidor, corretor_id, perfil_id",
+    )
+    .eq("corretor_id", corretorId)
+    .order("nome", { ascending: true })
+    .limit(50);
+
+  const nomePattern = escapeIlikePattern(trimmed);
+
+  if (digits.length >= 4) {
+    const telefonePattern = escapeIlikePattern(digits);
+    dbQuery = dbQuery.or(
+      `telefone.ilike.%${telefonePattern}%,nome.ilike.%${nomePattern}%`,
+    );
+  } else {
+    dbQuery = dbQuery.ilike("nome", `%${nomePattern}%`);
+  }
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error("[fetchClientesSearchRows] failed", error);
+    return [];
+  }
+
+  return (data ?? []) as ClienteSearchRow[];
+}
+
 export async function searchClientes(query: string): Promise<ClienteSearchResult[]> {
   const corretor = await getCorretorForUser();
 
@@ -923,26 +1023,30 @@ export async function searchClientes(query: string): Promise<ClienteSearchResult
     return [];
   }
 
-  const supabase = await createClient();
+  const access = await resolvePessoasAccess(corretor);
   const digits = sanitizeTelefone(trimmed);
 
-  let dbQuery = supabase
-    .from("clientes")
-    .select("id, nome, telefone, email, tipo, eh_construtor_investidor, corretor_id")
-    .limit(100);
+  const supabase = await createClient();
+  let rows = await fetchClientesSearchRows(supabase, corretor.id, trimmed, digits);
 
-  if (digits.length >= 4) {
-    dbQuery = dbQuery.or(`telefone.ilike.%${digits}%`);
+  if (rows.length === 0) {
+    const admin = await createTenantDataClient();
+
+    if (admin) {
+      const fallbackRows = await fetchClientesSearchRows(admin, corretor.id, trimmed, digits);
+
+      if (fallbackRows.length > 0) {
+        console.warn("[searchClientes] used service role fallback", { corretorId: corretor.id });
+        rows = fallbackRows;
+      }
+    }
   }
 
-  const { data, error } = await dbQuery;
+  const filtered = rows.filter((cliente) => {
+    if (!pessoaVisivelParaUsuario(cliente.perfil_id, access)) {
+      return false;
+    }
 
-  if (error) {
-    console.error("[searchClientes] failed", error);
-    return [];
-  }
-
-  const filtered = (data ?? []).filter((cliente) => {
     if (contemNormalizado(cliente.nome, trimmed)) {
       return true;
     }

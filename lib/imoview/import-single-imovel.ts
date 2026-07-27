@@ -2,11 +2,12 @@ import {
   IMOVIEW_CAPTADOR_PRINCIPAL_ID,
   IMOVIEW_IMPORT_CORRETOR_ID,
 } from "@/lib/imoview/constants";
+import { enrichImovelWithPhotos } from "@/lib/imoview/enrich-from-imobee";
 import { findOrCreateCliente } from "@/lib/imoview/dedupe-clientes";
 import { mapRowToImovel } from "@/lib/imoview/map-row-to-imovel";
-import { normalizeCodigo } from "@/lib/imoview/parse-xls";
+import { isPhotoEligible, normalizeCodigo } from "@/lib/imoview/parse-xls";
 import { ensureUniqueImovelSlug, imovelExistsByCodigo } from "@/lib/imoview/slug-unique";
-import type { ImportRowResult, XlsRow } from "@/lib/imoview/types";
+import type { ImportRowResult, ImportSingleOptions, XlsRow } from "@/lib/imoview/types";
 import { generateImovelSlug } from "@/lib/utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -14,6 +15,7 @@ export async function importSingleImovel(
   admin: SupabaseClient,
   row: XlsRow,
   exportYear: number,
+  options: ImportSingleOptions = {},
 ): Promise<ImportRowResult> {
   const codigo = normalizeCodigo(row.Codigo);
 
@@ -74,6 +76,25 @@ export async function importSingleImovel(
       messages.push("Proprietário sem telefone — cliente_id null.");
     }
 
+    let photosDownloaded = 0;
+    let photosFailed = 0;
+
+    if (!options.skipPhotos && isPhotoEligible(row)) {
+      const enrichment = await enrichImovelWithPhotos(
+        admin,
+        imovel.id,
+        codigo,
+        mapped.cidade,
+      );
+
+      photosDownloaded = enrichment.photosDownloaded;
+      photosFailed = enrichment.photosFailed;
+
+      if (enrichment.warning) messages.push(enrichment.warning);
+      if (enrichment.photosSkipped) messages.push("Fotos já existiam — download ignorado.");
+      if (enrichment.tituloAtualizado) messages.push("Título/slug atualizados via Imobee.");
+    }
+
     return {
       codigo,
       status: "ok",
@@ -82,6 +103,8 @@ export async function importSingleImovel(
       clienteCreated: clienteResult.created,
       clienteReused: clienteResult.reused,
       semTelefone: clienteResult.semTelefone,
+      photosDownloaded,
+      photosFailed,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro desconhecido.";
@@ -94,13 +117,17 @@ export async function importSpreadsheetRows(
   rows: XlsRow[],
   exportYear: number,
   limit?: number,
+  options: ImportSingleOptions = {},
 ): Promise<{
   imported: number;
   skipped: number;
   errors: number;
+  excludedDesativado: number;
   clientesCreated: number;
   clientesReused: number;
   semTelefone: string[];
+  photosDownloaded: number;
+  photosFailed: number;
   results: ImportRowResult[];
 }> {
   const toProcess = limit && limit > 0 ? rows.slice(0, limit) : rows;
@@ -110,10 +137,12 @@ export async function importSpreadsheetRows(
   let errors = 0;
   let clientesCreated = 0;
   let clientesReused = 0;
+  let photosDownloaded = 0;
+  let photosFailed = 0;
   const semTelefone: string[] = [];
 
   for (const row of toProcess) {
-    const result = await importSingleImovel(admin, row, exportYear);
+    const result = await importSingleImovel(admin, row, exportYear, options);
     results.push(result);
 
     if (result.status === "ok") {
@@ -121,6 +150,8 @@ export async function importSpreadsheetRows(
       if (result.clienteCreated) clientesCreated += 1;
       if (result.clienteReused) clientesReused += 1;
       if (result.semTelefone) semTelefone.push(result.codigo);
+      photosDownloaded += result.photosDownloaded ?? 0;
+      photosFailed += result.photosFailed ?? 0;
     } else if (result.status === "skipped") {
       skipped += 1;
     } else {
@@ -132,9 +163,12 @@ export async function importSpreadsheetRows(
     imported,
     skipped,
     errors,
+    excludedDesativado: 0,
     clientesCreated,
     clientesReused,
     semTelefone,
+    photosDownloaded,
+    photosFailed,
     results,
   };
 }

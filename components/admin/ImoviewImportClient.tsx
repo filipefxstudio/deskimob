@@ -9,20 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AnalyzeResponse, ImportSummary } from "@/lib/imoview/types";
 
-function StorageBadge({ status }: { status: "green" | "yellow" | "red" }) {
-  const colors = {
-    green: "bg-emerald-100 text-emerald-800 border-emerald-300",
-    yellow: "bg-amber-100 text-amber-800 border-amber-300",
-    red: "bg-red-100 text-red-800 border-red-300",
-  };
-  const labels = { green: "Verde", yellow: "Amarelo", red: "Vermelho" };
-  return (
-    <span className={`inline-flex rounded-full border px-3 py-1 text-sm font-medium ${colors[status]}`}>
-      {labels[status]}
-    </span>
-  );
-}
-
 function StatGrid({ items }: { items: { label: string; value: string | number }[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -39,9 +25,8 @@ function StatGrid({ items }: { items: { label: string; value: string | number }[
 export function ImoviewImportClient() {
   const [file, setFile] = useState<File | null>(null);
   const [exportYear, setExportYear] = useState(String(new Date().getFullYear()));
-  const [supabasePlan, setSupabasePlan] = useState<"free" | "pro">("free");
   const [limit, setLimit] = useState("10");
-  const [storageConfirmed, setStorageConfirmed] = useState(false);
+  const [importPhotos, setImportPhotos] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
@@ -61,9 +46,8 @@ export function ImoviewImportClient() {
     const fd = new FormData();
     fd.append("file", file);
     fd.append("exportYear", exportYear);
-    fd.append("supabasePlan", supabasePlan);
     return fd;
-  }, [file, exportYear, supabasePlan]);
+  }, [file, exportYear]);
 
   const handleAnalyze = useCallback(async () => {
     setError(null);
@@ -91,22 +75,13 @@ export function ImoviewImportClient() {
   const handleImport = useCallback(async () => {
     if (!file) return;
 
-    if (analysis?.storage.status === "yellow" && !storageConfirmed) {
-      setError("Confirme o risco de Storage antes de importar.");
-      return;
-    }
-
-    if (analysis?.storage.status === "red") {
-      setError("Storage em vermelho — importação de planilha ainda permitida (sem fotos).");
-    }
-
     setError(null);
     setImporting(true);
 
     try {
       const fd = buildFormData();
       fd.append("limit", limit);
-      fd.append("skipPhotos", "true");
+      fd.append("skipPhotos", importPhotos ? "false" : "true");
 
       const response = await fetch("/api/admin/imoview/import", {
         method: "POST",
@@ -122,7 +97,9 @@ export function ImoviewImportClient() {
     } finally {
       setImporting(false);
     }
-  }, [analysis, buildFormData, file, limit, storageConfirmed]);
+  }, [buildFormData, file, importPhotos, limit]);
+
+  const migratableMax = analysis?.spreadsheet.migratableRows ?? 676;
 
   return (
     <div className="space-y-6">
@@ -159,27 +136,27 @@ export function ImoviewImportClient() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="supabase-plan">Plano Supabase</Label>
-              <select
-                id="supabase-plan"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={supabasePlan}
-                onChange={(e) => setSupabasePlan(e.target.value as "free" | "pro")}
-              >
-                <option value="free">Free (1 GB)</option>
-                <option value="pro">Pro (100 GB)</option>
-              </select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="import-limit">Limitar importação (teste)</Label>
               <Input
                 id="import-limit"
                 type="number"
                 min={1}
-                max={2190}
+                max={migratableMax}
                 value={limit}
                 onChange={(e) => setLimit(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Máx. {migratableMax} (exclui Desativado)
+              </p>
+            </div>
+            <div className="flex items-end pb-2">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={importPhotos}
+                  onCheckedChange={(v) => setImportPhotos(v === true)}
+                />
+                Importar fotos (Cloudinary)
+              </label>
             </div>
           </div>
 
@@ -193,7 +170,11 @@ export function ImoviewImportClient() {
               onClick={handleImport}
               disabled={!file || importing}
             >
-              {importing ? "Importando…" : "Iniciar importação (sem fotos)"}
+              {importing
+                ? "Importando…"
+                : importPhotos
+                  ? "Iniciar importação (com fotos)"
+                  : "Iniciar importação (sem fotos)"}
             </Button>
           </div>
 
@@ -210,13 +191,18 @@ export function ImoviewImportClient() {
             <CardContent className="space-y-4">
               <StatGrid
                 items={[
-                  { label: "Total de imóveis", value: analysis.spreadsheet.totalRows },
-                  { label: "Ano exportação", value: analysis.spreadsheet.exportYear },
+                  { label: "Total na planilha", value: analysis.spreadsheet.totalRows },
+                  { label: "A migrar", value: analysis.spreadsheet.migratableRows },
+                  {
+                    label: "Excluídos (Desativado)",
+                    value: analysis.spreadsheet.excludedDesativado,
+                  },
+                  { label: "Elegíveis para fotos", value: analysis.photos.eligibleCount },
                   {
                     label: "Sem telefone proprietário",
                     value: analysis.spreadsheet.proprietariosSemTelefone,
                   },
-                  { label: "Elegíveis para fotos", value: analysis.photos.eligibleCount },
+                  { label: "Ano exportação", value: analysis.spreadsheet.exportYear },
                 ]}
               />
 
@@ -233,7 +219,7 @@ export function ImoviewImportClient() {
                   </ul>
                 </div>
                 <div>
-                  <p className="mb-2 text-sm font-medium">Por tipo</p>
+                  <p className="mb-2 text-sm font-medium">Por tipo (a migrar)</p>
                   <ul className="max-h-48 space-y-1 overflow-y-auto text-sm">
                     {Object.entries(analysis.spreadsheet.byTipo).map(([k, v]) => (
                       <li key={k} className="flex justify-between">
@@ -248,43 +234,26 @@ export function ImoviewImportClient() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
-              <CardTitle className="text-base">3. Estimativa de Storage</CardTitle>
-              <StorageBadge status={analysis.storage.status} />
+            <CardHeader>
+              <CardTitle className="text-base">3. Fotos (Cloudinary)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <StatGrid
                 items={[
+                  { label: "Imóveis com foto", value: analysis.photos.eligibleCount },
                   { label: "Fotos estimadas", value: analysis.photos.totalPhotoCount },
-                  { label: "Tamanho estimado", value: analysis.photos.estimatedLabel },
+                  { label: "Tamanho origem (est.)", value: analysis.photos.estimatedLabel },
                   {
-                    label: "P90 por foto",
-                    value: `${Math.round(analysis.photos.p90BytesPerPhoto / 1024)} KB`,
-                  },
-                  {
-                    label: "Uso projetado",
-                    value: `${analysis.storage.percentUsed}%`,
+                    label: "Destino",
+                    value: "Cloudinary",
                   },
                 ]}
               />
               <p className="text-sm text-muted-foreground">{analysis.storage.recommendation}</p>
-
-              {analysis.storage.status === "yellow" && (
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={storageConfirmed}
-                    onCheckedChange={(v) => setStorageConfirmed(v === true)}
-                  />
-                  Entendo o risco de Storage e desejo continuar
-                </label>
-              )}
-
-              {analysis.storage.status === "red" && (
-                <p className="text-sm text-destructive">
-                  Semáforo vermelho: fotos bloqueadas na Fase 3. Importação da planilha (sem fotos)
-                  permanece disponível.
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Preset <code className="text-xs">deskimob_fotos_imovel</code> aplica redimensionamento
+                e compressão automaticamente.
+              </p>
             </CardContent>
           </Card>
         </>
@@ -301,8 +270,11 @@ export function ImoviewImportClient() {
                 { label: "Importados", value: importResult.imported },
                 { label: "Pulados (existentes)", value: importResult.skipped },
                 { label: "Erros", value: importResult.errors },
+                { label: "Excluídos (Desativado)", value: importResult.excludedDesativado },
                 { label: "Clientes criados", value: importResult.clientesCreated },
                 { label: "Clientes reutilizados", value: importResult.clientesReused },
+                { label: "Fotos baixadas", value: importResult.photosDownloaded },
+                { label: "Fotos com falha", value: importResult.photosFailed },
                 { label: "Sem telefone", value: importResult.semTelefone.length },
               ]}
             />

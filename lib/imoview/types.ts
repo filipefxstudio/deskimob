@@ -58,6 +58,8 @@ export type ImportOptions = {
 export type AnalyzeResponse = {
   spreadsheet: {
     totalRows: number;
+    migratableRows: number;
+    excludedDesativado: number;
     bySituacao: Record<string, number>;
     proprietariosSemTelefone: number;
     byTipo: Record<string, number>;
@@ -71,14 +73,11 @@ export type AnalyzeResponse = {
     p90BytesPerPhoto: number;
     estimatedBytes: number;
     estimatedLabel: string;
+    destination: "cloudinary";
   };
   storage: {
-    plan: "free" | "pro";
-    limitBytes: number;
-    usedBytes: number;
-    projectedBytes: number;
-    percentUsed: number;
-    status: "green" | "yellow" | "red";
+    provider: "cloudinary";
+    status: "green";
     recommendation: string;
   };
   database: {
@@ -154,15 +153,24 @@ export type ImportRowResult = {
   clienteCreated?: boolean;
   clienteReused?: boolean;
   semTelefone?: boolean;
+  photosDownloaded?: number;
+  photosFailed?: number;
+};
+
+export type ImportSingleOptions = {
+  skipPhotos?: boolean;
 };
 
 export type ImportSummary = {
   imported: number;
   skipped: number;
   errors: number;
+  excludedDesativado: number;
   clientesCreated: number;
   clientesReused: number;
   semTelefone: string[];
+  photosDownloaded: number;
+  photosFailed: number;
   results: ImportRowResult[];
 };
 

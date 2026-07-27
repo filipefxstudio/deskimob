@@ -30,10 +30,6 @@ export async function POST(request: Request) {
       ? Number.parseInt(exportYearRaw, 10)
       : undefined;
 
-  const supabasePlanRaw = formData.get("supabasePlan");
-  const supabasePlan =
-    supabasePlanRaw === "pro" || supabasePlanRaw === "free" ? supabasePlanRaw : undefined;
-
   const skipApi = formData.get("skipImobeeApi") === "true";
 
   try {
@@ -42,7 +38,6 @@ export async function POST(request: Request) {
       buffer,
       filename: file.name,
       exportYear: Number.isFinite(exportYear) ? exportYear : undefined,
-      supabasePlan,
       skipImobeeApi: skipApi,
     });
 

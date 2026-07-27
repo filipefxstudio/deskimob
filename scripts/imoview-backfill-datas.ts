@@ -33,12 +33,15 @@ async function main() {
     exportYear: 2026,
   });
 
+  const { filterMigratableRows } = await import("../lib/imoview/parse-xls");
+  const migratable = filterMigratableRows(rows);
+
   const admin = createServiceRoleClient();
   let updated = 0;
   let skipped = 0;
   let notFound = 0;
 
-  for (const row of rows) {
+  for (const row of migratable) {
     const codigo = normalizeCodigo(row.Codigo);
     if (!codigo) continue;
 

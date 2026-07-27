@@ -4,8 +4,9 @@ import {
   isImoviewImportAccessError,
   requireImoviewImportAccess,
 } from "@/lib/auth/imoview-import-access";
+import { summarizeRowsForImport } from "@/lib/imoview/analyze-spreadsheet";
 import { importSpreadsheetRows } from "@/lib/imoview/import-single-imovel";
-import { parseXlsBuffer } from "@/lib/imoview/parse-xls";
+import { filterMigratableRows, parseXlsBuffer } from "@/lib/imoview/parse-xls";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 
 export const maxDuration = 300;
@@ -28,13 +29,15 @@ export async function POST(request: Request) {
 
   const limitRaw = formData.get("limit");
   const limit =
-    typeof limitRaw === "string" && limitRaw ? Number.parseInt(limitRaw, 10) : 10;
+    typeof limitRaw === "string" && limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
 
   const exportYearRaw = formData.get("exportYear");
   const exportYear =
     typeof exportYearRaw === "string" && exportYearRaw
       ? Number.parseInt(exportYearRaw, 10)
       : undefined;
+
+  const skipPhotos = formData.get("skipPhotos") !== "false";
 
   try {
     const admin = createServiceRoleClient();
@@ -44,24 +47,34 @@ export async function POST(request: Request) {
       exportYear: Number.isFinite(exportYear) ? exportYear : undefined,
     });
 
+    const excludedDesativado = parsed.rows.length - filterMigratableRows(parsed.rows).length;
+    const rowsToImport = summarizeRowsForImport(
+      parsed.rows,
+      Number.isFinite(limit) && limit! > 0 ? limit : undefined,
+    );
+
     const summary = await importSpreadsheetRows(
       admin,
-      parsed.rows,
+      rowsToImport,
       parsed.exportYear,
-      Number.isFinite(limit) ? limit : 10,
+      undefined,
+      { skipPhotos },
     );
+
+    summary.excludedDesativado = excludedDesativado;
 
     const { data: job, error: jobError } = await admin
       .from("imoview_import_jobs")
       .insert({
         corretor_id: access.corretor.id,
         status: "completed",
-        total_rows: parsed.rows.length,
+        total_rows: rowsToImport.length,
         processed_rows: summary.results.length,
         imported_count: summary.imported,
         skipped_count: summary.skipped,
         error_count: summary.errors,
-        options: { limit, skipPhotos: true },
+        photos_downloaded: summary.photosDownloaded,
+        options: { limit, skipPhotos, excludedDesativado },
         summary,
       })
       .select("id")
@@ -77,7 +90,11 @@ export async function POST(request: Request) {
         codigo: r.codigo,
         status: r.status,
         message: r.message ?? null,
-        details: r.imovelId ? { imovelId: r.imovelId } : null,
+        details: {
+          imovelId: r.imovelId ?? null,
+          photosDownloaded: r.photosDownloaded ?? 0,
+          photosFailed: r.photosFailed ?? 0,
+        },
       }));
 
       if (logs.length > 0) {

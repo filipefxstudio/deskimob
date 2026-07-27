@@ -1,4 +1,5 @@
 import {
+  IMOVIEW_CAPTADOR_PRINCIPAL_ID,
   IMOVIEW_IMPORT_CORRETOR_ID,
   STORAGE_ESTIMATE_CONFIG,
 } from "@/lib/imoview/constants";
@@ -9,12 +10,12 @@ import {
 import {
   computePhotoStats,
   formatBytesLabel,
-  getStorageUsageBytes,
   stratifiedSample,
 } from "@/lib/imoview/get-storage-usage";
 import { countProprietariosSemTelefone } from "@/lib/imoview/parse-proprietario";
 import {
   countByField,
+  filterMigratableRows,
   filterPhotoEligible,
   normalizeCodigo,
   parseXlsBuffer,
@@ -25,42 +26,8 @@ type AnalyzeOptions = {
   buffer: ArrayBuffer | Buffer;
   filename?: string;
   exportYear?: number;
-  supabasePlan?: "free" | "pro";
   skipImobeeApi?: boolean;
 };
-
-function resolveSupabasePlan(): "free" | "pro" {
-  const env = process.env.SUPABASE_PLAN?.toLowerCase();
-  return env === "pro" ? "pro" : "free";
-}
-
-function computeStorageStatus(
-  projectedBytes: number,
-  limitBytes: number,
-): { status: "green" | "yellow" | "red"; recommendation: string } {
-  const ratio = projectedBytes / limitBytes;
-
-  if (ratio >= STORAGE_ESTIMATE_CONFIG.blockThreshold) {
-    return {
-      status: "red",
-      recommendation:
-        "Projeção acima de 90% do limite. Importe apenas a planilha (sem fotos) ou faça upgrade do plano Supabase.",
-    };
-  }
-
-  if (ratio >= STORAGE_ESTIMATE_CONFIG.warningThreshold) {
-    return {
-      status: "yellow",
-      recommendation:
-        "Projeção entre 70% e 90% do limite. Confirme antes de importar fotos.",
-    };
-  }
-
-  return {
-    status: "green",
-    recommendation: "Espaço suficiente para importação de fotos.",
-  };
-}
 
 export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<AnalyzeResponse> {
   const parsed = parseXlsBuffer(options.buffer, {
@@ -69,13 +36,9 @@ export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<Analy
   });
 
   const { rows, exportYear } = parsed;
-  const semTelefone = countProprietariosSemTelefone(rows);
-  const eligible = filterPhotoEligible(rows);
-  const plan = options.supabasePlan ?? resolveSupabasePlan();
-  const limitBytes =
-    plan === "pro"
-      ? STORAGE_ESTIMATE_CONFIG.proLimitBytes
-      : STORAGE_ESTIMATE_CONFIG.freeLimitBytes;
+  const migratable = filterMigratableRows(rows);
+  const semTelefone = countProprietariosSemTelefone(migratable);
+  const eligible = filterPhotoEligible(migratable);
 
   let totalPhotoCount = 0;
   let sampleSize = 0;
@@ -85,8 +48,7 @@ export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<Analy
   if (!options.skipImobeeApi && eligible.length > 0) {
     const codigos = eligible
       .map((r) => normalizeCodigo(r.Codigo))
-      .filter(Boolean)
-      .slice(0, 300);
+      .filter(Boolean);
 
     const metadataMap = await fetchImobeeMetadataBatch(codigos);
 
@@ -126,16 +88,18 @@ export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<Analy
     totalPhotoCount * p90BytesPerPhoto * STORAGE_ESTIMATE_CONFIG.safetyMargin,
   );
 
-  const usedBytes = await getStorageUsageBytes();
-  const projectedBytes = usedBytes + estimatedBytes + STORAGE_ESTIMATE_CONFIG.dbEstimateBytes;
-  const { status, recommendation } = computeStorageStatus(projectedBytes, limitBytes);
+  const dbEstimateBytes = Math.round(
+    STORAGE_ESTIMATE_CONFIG.dbEstimateBytes * (migratable.length / 2190),
+  );
 
   return {
     spreadsheet: {
       totalRows: rows.length,
+      migratableRows: migratable.length,
+      excludedDesativado: rows.length - migratable.length,
       bySituacao: countByField(rows, "Situacao"),
       proprietariosSemTelefone: semTelefone.count,
-      byTipo: countByField(rows, "Tipo"),
+      byTipo: countByField(migratable, "Tipo"),
       exportYear,
     },
     photos: {
@@ -146,18 +110,16 @@ export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<Analy
       p90BytesPerPhoto,
       estimatedBytes,
       estimatedLabel: formatBytesLabel(estimatedBytes),
+      destination: "cloudinary",
     },
     storage: {
-      plan,
-      limitBytes,
-      usedBytes,
-      projectedBytes,
-      percentUsed: Math.round((projectedBytes / limitBytes) * 1000) / 10,
-      status,
-      recommendation,
+      provider: "cloudinary",
+      status: "green",
+      recommendation:
+        "Fotos serão enviadas ao Cloudinary (preset deskimob_fotos_imovel). Não consome Supabase Storage.",
     },
     database: {
-      estimatedNewBytes: STORAGE_ESTIMATE_CONFIG.dbEstimateBytes,
+      estimatedNewBytes: dbEstimateBytes,
       limitBytes: 512 * 1024 * 1024,
       status: "green",
     },
@@ -165,6 +127,7 @@ export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<Analy
 }
 
 export function summarizeRowsForImport(rows: XlsRow[], limit?: number): XlsRow[] {
-  if (limit && limit > 0) return rows.slice(0, limit);
-  return rows;
+  const migratable = filterMigratableRows(rows);
+  if (limit && limit > 0) return migratable.slice(0, limit);
+  return migratable;
 }

@@ -63,3 +63,8 @@ export const SITUACAO_STATUS_MAP: Record<
 export const IMOBIEE_API_URL = "https://www.imobee.net/imoveis/codigos/";
 
 export const IMOBEE_RATE_LIMIT_MS = 200;
+
+/** Situações excluídas da migração (Documento N) */
+export const IMOVIEW_EXCLUDED_SITUACOES = ["Desativado"] as const;
+
+export const IMOBEE_SITE_BASE = "https://www.imobee.net";

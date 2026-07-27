@@ -69,8 +69,25 @@ export function countByField(rows: XlsRow[], field: keyof XlsRow): Record<string
   return counts;
 }
 
-export function filterPhotoEligible(rows: XlsRow[]): XlsRow[] {
-  return rows.filter(
-    (row) => isSim(row.ExibirMeuSite) && String(row.Situacao ?? "").trim() === "Vago/Disponível",
+export function getRowSituacao(row: XlsRow): string {
+  return String(row.Situacao ?? "").trim();
+}
+
+export function isExcludedSituacao(row: XlsRow): boolean {
+  return getRowSituacao(row) === "Desativado";
+}
+
+/** Linhas a migrar — exclui Desativado (Documento N: 676 de 2.190) */
+export function filterMigratableRows(rows: XlsRow[]): XlsRow[] {
+  return rows.filter((row) => !isExcludedSituacao(row));
+}
+
+export function isPhotoEligible(row: XlsRow): boolean {
+  return (
+    isSim(row.ExibirMeuSite) && getRowSituacao(row) === "Vago/Disponível"
   );
+}
+
+export function filterPhotoEligible(rows: XlsRow[]): XlsRow[] {
+  return rows.filter(isPhotoEligible);
 }

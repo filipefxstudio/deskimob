@@ -36,7 +36,7 @@ import { normalizar } from "@/lib/utils/normalizar";
 import { isValidUuid } from "@/lib/utils/uuid";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
-import { logPostgrestError } from "@/lib/supabase/postgrest-error";
+import { logPostgrestError, extractMissingColumn, isSchemaMismatchError } from "@/lib/supabase/postgrest-error";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AtendimentoConfig,
@@ -66,6 +66,63 @@ export type AtendimentoActionResult = {
 };
 
 type OrigemInteracao = "usuario" | "sistema";
+
+const OPTIONAL_LEAD_CREATE_COLUMNS = [
+  "bairros_interesse",
+  "finalidade_busca",
+  "tipo_imovel_busca",
+  "quartos_minimo",
+  "suites_minimas",
+  "banheiros_minimos",
+  "vagas_minimas",
+  "valor_minimo",
+  "valor_maximo",
+  "data_entrada",
+  "codigo_atendimento",
+  "situacao",
+  "perfil_id",
+  "cliente_id",
+  "imovel_id",
+] as const;
+
+async function persistLeadInsert(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  payload: Record<string, unknown>,
+): Promise<{ leadId: string | null; error: unknown }> {
+  const leadId = typeof payload.id === "string" ? payload.id : randomUUID();
+  let currentPayload: Record<string, unknown> = { ...payload, id: leadId };
+
+  for (let attempt = 0; attempt <= OPTIONAL_LEAD_CREATE_COLUMNS.length; attempt += 1) {
+    const { error } = await supabase.from("leads").insert(currentPayload);
+
+    if (!error) {
+      return { leadId, error: null };
+    }
+
+    if (!isSchemaMismatchError(error)) {
+      logPostgrestError("createAtendimento", error);
+      return { leadId: null, error };
+    }
+
+    const missingColumn = extractMissingColumn(error);
+    const columnToStrip =
+      missingColumn && missingColumn in currentPayload
+        ? missingColumn
+        : OPTIONAL_LEAD_CREATE_COLUMNS.find((column) => column in currentPayload);
+
+    if (!columnToStrip) {
+      logPostgrestError("createAtendimento", error);
+      return { leadId: null, error };
+    }
+
+    logPostgrestError(`createAtendimento:retry_without_${columnToStrip}`, error);
+    const rest = { ...currentPayload };
+    delete rest[columnToStrip];
+    currentPayload = rest;
+  }
+
+  return { leadId: null, error: null };
+}
 
 function revalidateAtendimentoPaths(leadId: string) {
   revalidatePath("/dashboard/atendimentos");
@@ -404,54 +461,51 @@ export async function createAtendimento(
 
   const codigo = await gerarCodigoAtendimento(supabase, corretor.id);
   const agora = new Date().toISOString();
+  const leadId = randomUUID();
 
-  const { data, error } = await supabase
-    .from("leads")
-    .insert({
-      corretor_id: corretor.id,
-      cliente_id: clienteId,
-      nome,
-      telefone,
-      email: input.email?.trim() || null,
-      imovel_id: input.imovel_id ?? null,
-      perfil_id: perfilId,
-      codigo_atendimento: codigo,
-      situacao: "em_atendimento",
-      finalidade_busca: input.finalidade_busca || null,
-      tipo_imovel_busca: input.tipo_imovel_busca?.trim() || null,
-      bairros_interesse: input.bairros_interesse?.length ? input.bairros_interesse : null,
-      quartos_minimo: input.quartos_minimo ?? null,
-      suites_minimas: input.suites_minimas ?? null,
-      banheiros_minimos: input.banheiros_minimos ?? null,
-      vagas_minimas: input.vagas_minimas ?? null,
-      valor_minimo: input.valor_minimo ?? null,
-      valor_maximo: input.valor_maximo ?? null,
-      origem: mapMidiaToOrigem(input.midia_nome),
-      etapa: "novo",
-      temperatura: "indefinido",
-      atendido_por: "corretor",
-      data_entrada: agora,
-      observacoes: input.observacoes?.trim() || null,
-    })
-    .select("id")
-    .single();
+  const { leadId: insertedLeadId, error } = await persistLeadInsert(supabase, {
+    id: leadId,
+    corretor_id: corretor.id,
+    cliente_id: clienteId,
+    nome,
+    telefone,
+    email: input.email?.trim() || null,
+    imovel_id: input.imovel_id ?? null,
+    perfil_id: perfilId,
+    codigo_atendimento: codigo,
+    situacao: "em_atendimento",
+    finalidade_busca: input.finalidade_busca || null,
+    tipo_imovel_busca: input.tipo_imovel_busca?.trim() || null,
+    bairros_interesse: input.bairros_interesse?.length ? input.bairros_interesse : null,
+    quartos_minimo: input.quartos_minimo ?? null,
+    suites_minimas: input.suites_minimas ?? null,
+    banheiros_minimos: input.banheiros_minimos ?? null,
+    vagas_minimas: input.vagas_minimas ?? null,
+    valor_minimo: input.valor_minimo ?? null,
+    valor_maximo: input.valor_maximo ?? null,
+    origem: mapMidiaToOrigem(input.midia_nome),
+    etapa: "novo",
+    temperatura: "indefinido",
+    atendido_por: "corretor",
+    data_entrada: agora,
+    observacoes: input.observacoes?.trim() || null,
+  });
 
-  if (error || !data) {
-    console.error("[createAtendimento]", error);
+  if (error || !insertedLeadId) {
     return { error: "Não foi possível criar o atendimento." };
   }
 
   await registrarInteracao(
-    data.id,
+    insertedLeadId,
     "anotacao",
     `Atendimento ${codigo} criado.`,
     { origem: "sistema" },
   );
-  await registrarAuditoria(data.id, "atendimento_criado", { codigo });
+  await registrarAuditoria(insertedLeadId, "atendimento_criado", { codigo });
 
   if (input.imovel_id) {
     await garantirImovelInteresseSelecionado(
-      data.id,
+      insertedLeadId,
       input.imovel_id,
       corretor.id,
       supabase,
@@ -459,8 +513,8 @@ export async function createAtendimento(
     );
   }
 
-  revalidateAtendimentoPaths(data.id);
-  return { success: true, id: data.id, message: `Atendimento ${codigo} criado.` };
+  revalidateAtendimentoPaths(insertedLeadId);
+  return { success: true, id: insertedLeadId, message: `Atendimento ${codigo} criado.` };
 }
 
 export async function getAtendimentoCompleto(leadId: string) {

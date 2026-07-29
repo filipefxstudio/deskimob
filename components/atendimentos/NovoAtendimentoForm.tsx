@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
+import { BairrosInteresseInput } from "@/components/atendimentos/BairrosInteresseInput";
 import {
   ImovelInteresseAutocomplete,
   type ImovelSearchResult,
@@ -69,7 +70,6 @@ export function NovoAtendimentoForm({
   const [finalidade, setFinalidade] = useState("");
   const [tipoImovel, setTipoImovel] = useState("");
   const [bairros, setBairros] = useState<string[]>([]);
-  const [bairroInput, setBairroInput] = useState("");
   const [quartos, setQuartos] = useState("");
   const [suites, setSuites] = useState("");
   const [banheiros, setBanheiros] = useState("");
@@ -113,14 +113,6 @@ export function NovoAtendimentoForm({
       }
     });
   }, [imovelSelecionado]);
-
-  function addBairro() {
-    const b = bairroInput.trim();
-    if (b && !bairros.includes(b)) {
-      setBairros((prev) => [...prev, b]);
-    }
-    setBairroInput("");
-  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -285,31 +277,11 @@ export function NovoAtendimentoForm({
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Bairros</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={bairroInput}
-                    onChange={(e) => setBairroInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addBairro())}
-                  />
-                  <Button type="button" variant="outline" onClick={addBairro}>
-                    Adicionar
-                  </Button>
-                </div>
-                {bairros.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {bairros.map((b) => (
-                      <span
-                        key={b}
-                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-                      >
-                        {b}
-                        <button type="button" onClick={() => setBairros((prev) => prev.filter((x) => x !== b))}>
-                          <X className="size-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                <BairrosInteresseInput
+                  value={bairros}
+                  onChange={setBairros}
+                  disabled={isPending}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Quartos mín.</Label>

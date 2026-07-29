@@ -5,7 +5,7 @@ import { Loader2, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { getBairrosImoveisCadastrados } from "@/lib/actions/atendimentos";
-import { contemNormalizado } from "@/lib/utils/normalizar";
+import { contemNormalizado, normalizar } from "@/lib/utils/normalizar";
 
 interface BairrosInteresseInputProps {
   value: string[];
@@ -29,19 +29,22 @@ export function BairrosInteresseInput({
     });
   }, []);
 
+  function bairroJaSelecionado(bairro: string): boolean {
+    const alvo = normalizar(bairro);
+    return value.some((item) => normalizar(item) === alvo);
+  }
+
   const sugestoes = useMemo(() => {
     if (!bairroInput.trim()) return [];
     return bairrosCadastrados
-      .filter((bairro) => !value.includes(bairro) && contemNormalizado(bairro, bairroInput))
+      .filter((bairro) => !bairroJaSelecionado(bairro) && contemNormalizado(bairro, bairroInput))
       .slice(0, 8);
   }, [bairroInput, bairrosCadastrados, value]);
 
   function adicionarBairro(bairro: string) {
-    const normalizado = bairro.trim();
-    if (!normalizado) return;
-    if (!value.includes(normalizado)) {
-      onChange([...value, normalizado]);
-    }
+    const nome = bairro.trim();
+    if (!nome || bairroJaSelecionado(nome)) return;
+    onChange([...value, nome]);
     setBairroInput("");
   }
 

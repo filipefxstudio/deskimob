@@ -2,14 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { MapPin } from "lucide-react";
 
-import {
-  IconAreaTotal,
-  IconAreaUtil,
-  IconBanheiro,
-  IconQuartos,
-  IconSuite,
-  IconVagas,
-} from "@/components/icons/ImovelStatIcons";
+import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
 import { FaleComCorretorCard } from "@/components/site/FaleComCorretorCard";
 import { ImovelGaleriaPublica } from "@/components/site/ImovelGaleriaPublica";
@@ -128,50 +121,12 @@ export async function SiteImovelDetalheContent({
               </div>
             </section>
 
-            <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {imovel.quartos > 0 ? (
-                <div className="rounded-xl border border-border p-4 text-center">
-                  <IconQuartos size="detail" className="mx-auto text-primary" />
-                  <p className="mt-2 text-lg font-semibold">{imovel.quartos}</p>
-                  <p className="text-xs text-muted-foreground">Quartos</p>
-                </div>
-              ) : null}
-              {imovel.suites > 0 ? (
-                <div className="rounded-xl border border-border p-4 text-center">
-                  <IconSuite size="detail" className="mx-auto text-primary" />
-                  <p className="mt-2 text-lg font-semibold">{imovel.suites}</p>
-                  <p className="text-xs text-muted-foreground">Suítes</p>
-                </div>
-              ) : null}
-              {imovel.banheiros > 0 ? (
-                <div className="rounded-xl border border-border p-4 text-center">
-                  <IconBanheiro size="detail" className="mx-auto text-primary" />
-                  <p className="mt-2 text-lg font-semibold">{imovel.banheiros}</p>
-                  <p className="text-xs text-muted-foreground">Banheiros</p>
-                </div>
-              ) : null}
-              {imovel.vagas > 0 ? (
-                <div className="rounded-xl border border-border p-4 text-center">
-                  <IconVagas size="detail" className="mx-auto text-primary" />
-                  <p className="mt-2 text-lg font-semibold">{imovel.vagas}</p>
-                  <p className="text-xs text-muted-foreground">Vagas</p>
-                </div>
-              ) : null}
-              {imovel.area_util ? (
-                <div className="rounded-xl border border-border p-4 text-center">
-                  <IconAreaUtil size="detail" className="mx-auto text-primary" />
-                  <p className="mt-2 text-lg font-semibold">{imovel.area_util} m²</p>
-                  <p className="text-xs text-muted-foreground">Área útil</p>
-                </div>
-              ) : null}
-              {imovel.area_total ? (
-                <div className="rounded-xl border border-border p-4 text-center">
-                  <IconAreaTotal size="detail" className="mx-auto text-primary" />
-                  <p className="mt-2 text-lg font-semibold">{imovel.area_total} m²</p>
-                  <p className="text-xs text-muted-foreground">Área total</p>
-                </div>
-              ) : null}
-            </section>
+            <ImovelStats
+              imovel={imovel}
+              variant="detail"
+              showAreaTotal
+              iconClassName="text-primary"
+            />
 
             {imovel.descricao ? (
               <section>

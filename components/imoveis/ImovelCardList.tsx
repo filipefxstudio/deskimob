@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  IconAreaUtil,
-  IconBanheiro,
-  IconQuartos,
-  IconSuite,
-  IconVagas,
-} from "@/components/icons/ImovelStatIcons";
+import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
 import { StatusBadge } from "@/components/imoveis/StatusBadge";
@@ -107,32 +101,11 @@ function ImovelListItem({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            {imovel.area_util ? (
-              <span className="inline-flex items-center gap-1.5">
-                <IconAreaUtil className="text-muted-foreground" />
-                {imovel.area_util} m²
-              </span>
-            ) : null}
-            <span className="inline-flex items-center gap-1.5">
-              <IconQuartos className="text-muted-foreground" />
-              {imovel.quartos} quartos
-            </span>
-            {imovel.suites > 0 ? (
-              <span className="inline-flex items-center gap-1.5">
-                <IconSuite className="text-muted-foreground" />
-                {imovel.suites} suítes
-              </span>
-            ) : null}
-            <span className="inline-flex items-center gap-1.5">
-              <IconBanheiro className="text-muted-foreground" />
-              {imovel.banheiros} banh.
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <IconVagas className="text-muted-foreground" />
-              {imovel.vagas} vagas
-            </span>
-          </div>
+          <ImovelStats
+            imovel={imovel}
+            variant="card"
+            iconClassName="text-muted-foreground"
+          />
         </div>
       </Link>
 

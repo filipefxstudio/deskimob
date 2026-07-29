@@ -5,14 +5,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 
-import {
-  IconAreaTotal,
-  IconAreaUtil,
-  IconBanheiro,
-  IconQuartos,
-  IconSuite,
-  IconVagas,
-} from "@/components/icons/ImovelStatIcons";
+import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
 import { ImovelGaleria } from "@/components/site/ImovelGaleria";
 import { Button } from "@/components/ui/button";
@@ -88,44 +81,12 @@ export default async function PreviewImovelPage({ params }: PreviewPageProps) {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          {imovel.quartos ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconQuartos className="text-muted-foreground" />
-              {imovel.quartos} quartos
-            </span>
-          ) : null}
-          {imovel.suites ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconSuite className="text-muted-foreground" />
-              {imovel.suites} suítes
-            </span>
-          ) : null}
-          {imovel.banheiros ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconBanheiro className="text-muted-foreground" />
-              {imovel.banheiros} banheiros
-            </span>
-          ) : null}
-          {imovel.vagas ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconVagas className="text-muted-foreground" />
-              {imovel.vagas} vagas
-            </span>
-          ) : null}
-          {imovel.area_util ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconAreaUtil className="text-muted-foreground" />
-              {imovel.area_util} m² útil
-            </span>
-          ) : null}
-          {imovel.area_total ? (
-            <span className="inline-flex items-center gap-1.5">
-              <IconAreaTotal className="text-muted-foreground" />
-              {imovel.area_total} m² total
-            </span>
-          ) : null}
-        </div>
+        <ImovelStats
+          imovel={imovel}
+          variant="detail"
+          showAreaTotal
+          iconClassName="text-muted-foreground"
+        />
 
         <p className="inline-flex items-start gap-2 text-sm text-muted-foreground">
           <MapPin className="mt-0.5 size-4 shrink-0" />

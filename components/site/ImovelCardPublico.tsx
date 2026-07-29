@@ -1,15 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
 
-import {
-  IconAreaUtil,
-  IconBanheiro,
-  IconQuartos,
-  IconSuite,
-  IconVagas,
-} from "@/components/icons/ImovelStatIcons";
+import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
 import {
   getBairroCidadeCardLabel,
@@ -25,21 +18,6 @@ import { useSite } from "./SiteProvider";
 
 interface ImovelCardPublicoProps {
   imovel: Imovel;
-}
-
-function StatItem({
-  icon,
-  value,
-}: {
-  icon: ReactNode;
-  value: string | number;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-      {icon}
-      <span className="text-sm leading-none">{value}</span>
-    </span>
-  );
 }
 
 export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
@@ -93,26 +71,7 @@ export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
 
           <p className="pt-1 text-xl font-black text-black">{getValorExibicao(imovel)}</p>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
-            {imovel.area_util ? (
-              <StatItem
-                icon={<IconAreaUtil className="text-primary" />}
-                value={`${imovel.area_util} m²`}
-              />
-            ) : null}
-            {imovel.quartos > 0 ? (
-              <StatItem icon={<IconQuartos className="text-primary" />} value={imovel.quartos} />
-            ) : null}
-            {imovel.suites > 0 ? (
-              <StatItem icon={<IconSuite className="text-primary" />} value={imovel.suites} />
-            ) : null}
-            {imovel.banheiros > 0 ? (
-              <StatItem icon={<IconBanheiro className="text-primary" />} value={imovel.banheiros} />
-            ) : null}
-            {imovel.vagas > 0 ? (
-              <StatItem icon={<IconVagas className="text-primary" />} value={imovel.vagas} />
-            ) : null}
-          </div>
+          <ImovelStats imovel={imovel} variant="card" className="pt-1" />
         </div>
       </Link>
     </article>

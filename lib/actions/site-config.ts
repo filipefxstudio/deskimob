@@ -2,13 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  DEFAULT_SITE_COR_PRIMARIA,
-  DEFAULT_SITE_COR_SECUNDARIA,
-  STORAGE_BUCKET_SITE_ASSETS,
-} from "@/lib/constants/site";
+import { STORAGE_BUCKET_SITE_ASSETS } from "@/lib/constants/site";
 import { requireSiteAdmin } from "@/lib/auth/equipe-access";
 import { isReservedTenantSlug } from "@/lib/site/host";
+import { normalizeSiteCorPrimaria, normalizeSiteCorSecundaria, isValidSiteHexColor } from "@/lib/site/color";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
@@ -57,7 +54,26 @@ export type SaveSiteDominioInput = {
 };
 
 function isValidHexColor(value: string): boolean {
-  return /^#[0-9A-Fa-f]{6}$/.test(value);
+  return isValidSiteHexColor(value);
+}
+
+function mapCorretorUpdateError(error: { code?: string; message?: string }): string {
+  const message = error.message ?? "";
+
+  if (
+    error.code === "PGRST204" ||
+    error.code === "42703" ||
+    message.includes("site_cor_primaria") ||
+    message.includes("site_cor_secundaria")
+  ) {
+    return "O banco de dados está desatualizado. Avise o suporte para aplicar as migrations pendentes.";
+  }
+
+  if (error.code === "42501" || message.toLowerCase().includes("permission denied")) {
+    return "Sem permissão para salvar. Saia e entre novamente na conta.";
+  }
+
+  return "Não foi possível salvar. Tente novamente em instantes.";
 }
 
 async function requireSiteAdminCorretor(): Promise<
@@ -107,13 +123,28 @@ async function updateCorretorSiteFields(
   payload: CorretorSiteUpdatePayload,
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase.from("corretores").update(payload).eq("id", corretorId);
+  const { data, error } = await supabase
+    .from("corretores")
+    .update(payload)
+    .eq("id", corretorId)
+    .select("id")
+    .maybeSingle();
 
-  if (!error) {
+  if (!error && data) {
     return {};
   }
 
-  console.error("[updateCorretorSiteFields] authenticated update failed", error);
+  if (error) {
+    console.error("[updateCorretorSiteFields] authenticated update failed", {
+      corretorId,
+      code: error.code,
+      message: error.message,
+    });
+  } else {
+    console.error("[updateCorretorSiteFields] authenticated update matched 0 rows", {
+      corretorId,
+    });
+  }
 
   let admin;
 
@@ -121,17 +152,38 @@ async function updateCorretorSiteFields(
     admin = createServiceRoleClient();
   } catch (fallbackError) {
     console.error("[updateCorretorSiteFields] service role unavailable", fallbackError);
-    return { error: "Operação indisponível. Verifique a configuração do servidor." };
+    return {
+      error: error
+        ? mapCorretorUpdateError(error)
+        : "Operação indisponível. Verifique a configuração do servidor.",
+    };
   }
 
-  const { error: adminError } = await admin.from("corretores").update(payload).eq("id", corretorId);
+  const { data: adminData, error: adminError } = await admin
+    .from("corretores")
+    .update(payload)
+    .eq("id", corretorId)
+    .select("id")
+    .maybeSingle();
 
   if (adminError) {
-    console.error("[updateCorretorSiteFields] service role update failed", adminError);
-    return { error: "update failed" };
+    console.error("[updateCorretorSiteFields] service role update failed", {
+      corretorId,
+      code: adminError.code,
+      message: adminError.message,
+    });
+    return { error: mapCorretorUpdateError(adminError) };
   }
 
-  console.warn("[updateCorretorSiteFields] used service role fallback", { corretorId });
+  if (!adminData) {
+    console.error("[updateCorretorSiteFields] service role update matched 0 rows", { corretorId });
+    return { error: "Conta não encontrada. Entre em contato com o suporte." };
+  }
+
+  if (error || !data) {
+    console.warn("[updateCorretorSiteFields] used service role fallback", { corretorId });
+  }
+
   return {};
 }
 
@@ -196,8 +248,8 @@ export async function saveIdentidadeVisual(
 
   const { corretor } = access;
 
-  const primaria = data.site_cor_primaria.trim() || DEFAULT_SITE_COR_PRIMARIA;
-  const secundaria = data.site_cor_secundaria.trim() || DEFAULT_SITE_COR_SECUNDARIA;
+  const primaria = normalizeSiteCorPrimaria(data.site_cor_primaria);
+  const secundaria = normalizeSiteCorSecundaria(data.site_cor_secundaria);
 
   if (!isValidHexColor(primaria) || !isValidHexColor(secundaria)) {
     return { error: "Informe cores válidas no formato #RRGGBB." };
@@ -209,7 +261,7 @@ export async function saveIdentidadeVisual(
   });
 
   if (updateResult.error) {
-    return { error: "Não foi possível salvar a identidade visual." };
+    return { error: updateResult.error };
   }
 
   revalidatePath("/dashboard/configuracoes");
@@ -239,7 +291,7 @@ export async function uploadLogo(formData: FormData): Promise<SiteConfigActionRe
   });
 
   if (updateResult.error) {
-    return { error: "Não foi possível salvar a logo." };
+    return { error: updateResult.error };
   }
 
   revalidatePath("/dashboard/configuracoes");

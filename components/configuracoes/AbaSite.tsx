@@ -22,10 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DEFAULT_SITE_COR_PRIMARIA,
-  DEFAULT_SITE_COR_SECUNDARIA,
-} from "@/lib/constants/site";
+import { normalizeSiteCorPrimaria, normalizeSiteCorSecundaria } from "@/lib/site/color";
 import type { Corretor } from "@/types";
 
 interface AbaSiteProps {
@@ -47,8 +44,10 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
   const faviconInputRef = useRef<HTMLInputElement>(null);
   const [logoUrl, setLogoUrl] = useState(corretor.logo_url ?? "");
   const [faviconUrl, setFaviconUrl] = useState(corretor.site_favicon_url ?? "");
-  const [corPrimaria, setCorPrimaria] = useState(corretor.site_cor_primaria ?? DEFAULT_SITE_COR_PRIMARIA);
-  const [corSecundaria, setCorSecundaria] = useState(corretor.site_cor_secundaria ?? DEFAULT_SITE_COR_SECUNDARIA);
+  const [corPrimaria, setCorPrimaria] = useState(() => normalizeSiteCorPrimaria(corretor.site_cor_primaria));
+  const [corSecundaria, setCorSecundaria] = useState(() =>
+    normalizeSiteCorSecundaria(corretor.site_cor_secundaria),
+  );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

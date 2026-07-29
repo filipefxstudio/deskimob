@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 
 import { CheckboxFilterDropdown } from "@/components/imoveis/CheckboxFilterDropdown";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,8 @@ export interface ImoveisFilterState {
   finalidade: FinalidadeImovel | "all";
   tipos: TipoImovel[];
   statusIds: string[];
-  valorMin: string;
-  valorMax: string;
+  valorMin: number | null;
+  valorMax: number | null;
   bairros: string[];
   quartosMin: MinimoNumericoFilter;
   banheirosMin: MinimoNumericoFilter;
@@ -43,8 +44,8 @@ export const defaultImoveisFilters: ImoveisFilterState = {
   finalidade: "all",
   tipos: [],
   statusIds: [],
-  valorMin: "",
-  valorMax: "",
+  valorMin: null,
+  valorMax: null,
   bairros: [],
   quartosMin: "all",
   banheirosMin: "all",
@@ -150,8 +151,8 @@ export function ImoveisFilters({
     filters.finalidade !== "all" ||
     filters.tipos.length > 0 ||
     !isDefaultStatusFilter(filters.statusIds, statusList) ||
-    filters.valorMin !== "" ||
-    filters.valorMax !== "" ||
+    filters.valorMin != null ||
+    filters.valorMax != null ||
     filters.bairros.length > 0 ||
     filters.quartosMin !== "all" ||
     filters.banheirosMin !== "all" ||
@@ -213,26 +214,22 @@ export function ImoveisFilters({
         />
 
         <div className="space-y-2">
-          <Label htmlFor="filtro-valor-min">Valor mínimo (R$)</Label>
-          <Input
+          <Label htmlFor="filtro-valor-min">Valor mínimo</Label>
+          <CurrencyInput
             id="filtro-valor-min"
-            type="number"
-            min={0}
-            placeholder="0"
+            mode="filter"
             value={filters.valorMin}
-            onChange={(event) => update("valorMin", event.target.value)}
+            onChange={(valorMin) => update("valorMin", valorMin)}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="filtro-valor-max">Valor máximo (R$)</Label>
-          <Input
+          <Label htmlFor="filtro-valor-max">Valor máximo</Label>
+          <CurrencyInput
             id="filtro-valor-max"
-            type="number"
-            min={0}
-            placeholder="Sem limite"
+            mode="filter"
             value={filters.valorMax}
-            onChange={(event) => update("valorMax", event.target.value)}
+            onChange={(valorMax) => update("valorMax", valorMax)}
           />
         </div>
 
@@ -359,8 +356,8 @@ export function countActiveFilters(
   if (!isDefaultStatusFilter(filters.statusIds, statusList)) {
     count += filters.statusIds.length;
   }
-  if (filters.valorMin) count += 1;
-  if (filters.valorMax) count += 1;
+  if (filters.valorMin != null) count += 1;
+  if (filters.valorMax != null) count += 1;
   count += filters.bairros.length;
   if (filters.quartosMin !== "all") count += 1;
   if (filters.banheirosMin !== "all") count += 1;

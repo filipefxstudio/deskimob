@@ -391,6 +391,7 @@ export function LeadsFilters({
               <CurrencyInput
                 value={filters.interesse.valorMin}
                 onChange={(valorMin) => patchInteresse({ valorMin })}
+                mode="filter"
               />
             </div>
 
@@ -399,6 +400,7 @@ export function LeadsFilters({
               <CurrencyInput
                 value={filters.interesse.valorMax}
                 onChange={(valorMax) => patchInteresse({ valorMax })}
+                mode="filter"
               />
             </div>
 

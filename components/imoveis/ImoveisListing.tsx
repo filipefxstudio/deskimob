@@ -100,16 +100,14 @@ function matchesFilters(imovel: Imovel, filters: ImoveisFilterState): boolean {
 
   const valor = getValorNumerico(imovel);
 
-  if (filters.valorMin) {
-    const min = Number(filters.valorMin);
-    if (valor === null || valor < min) {
+  if (filters.valorMin != null) {
+    if (valor === null || valor < filters.valorMin) {
       return false;
     }
   }
 
-  if (filters.valorMax) {
-    const max = Number(filters.valorMax);
-    if (valor === null || valor > max) {
+  if (filters.valorMax != null) {
+    if (valor === null || valor > filters.valorMax) {
       return false;
     }
   }

@@ -37,6 +37,8 @@ export const ACTION_MENU_ICONS = {
   agendarVisita: Calendar,
   compartilharLink: Copy,
   compartilhar: Share2,
+  republicar: RefreshCw,
+  duplicar: Copy,
   remover: Trash2,
   transferir: UserCog,
   descartar: Trash2,

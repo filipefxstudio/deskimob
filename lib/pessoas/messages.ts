@@ -22,8 +22,28 @@ export function mensagemSelecionarCadastroExistente(): string {
   return "Já existe um cadastro com este contato. Selecione o cadastro existente na lista.";
 }
 
-export function mensagemImovelDuplicado(codigo: string, bairro: string): string {
+export type ImovelDuplicidadeMotivo =
+  | "mesmo_complemento"
+  | "complemento_vazio_existente_com_complemento"
+  | "complemento_preenchido_existente_sem_complemento";
+
+export function mensagemImovelDuplicado(codigo: string, _bairro?: string): string {
   return `Já existe o imóvel #${codigo} cadastrado neste endereço. Verifique antes de continuar.`;
+}
+
+export function mensagemImovelDuplicadoPorMotivo(
+  motivo: ImovelDuplicidadeMotivo,
+  codigo: string,
+): string {
+  switch (motivo) {
+    case "complemento_vazio_existente_com_complemento":
+      return `Já existe o imóvel #${codigo} neste endereço com complemento cadastrado. Informe o complemento/identificação da unidade.`;
+    case "complemento_preenchido_existente_sem_complemento":
+      return `Já existe o imóvel #${codigo} neste endereço sem complemento. Não é possível cadastrar outra unidade com complemento no mesmo endereço.`;
+    case "mesmo_complemento":
+    default:
+      return mensagemImovelDuplicado(codigo);
+  }
 }
 
 export function mensagemProprietarioIndisponivel(): string {

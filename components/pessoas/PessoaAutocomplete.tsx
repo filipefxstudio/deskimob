@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { AtendimentoAnteriorModal } from "@/components/atendimentos/AtendimentoAnteriorModal";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   avaliarSelecaoPessoaAtendimento,
@@ -189,10 +190,10 @@ export function PessoaAutocomplete({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="pessoa-telefone">Telefone {telefoneRequired ? "*" : ""}</Label>
-            <Input
+            <TelefoneInput
               id="pessoa-telefone"
               value={telefone}
-              onChange={(event) => onTelefoneChange(formatTelefoneBr(event.target.value))}
+              onChange={onTelefoneChange}
               required={telefoneRequired}
               disabled={disabled}
             />

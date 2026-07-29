@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -254,10 +255,10 @@ export function AbaEquipe({ perfis: initialPerfis, corretor, isAdmin = false }: 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="equipe_telefone">Telefone</Label>
-                <Input
+                <TelefoneInput
                   id="equipe_telefone"
                   value={telefone}
-                  onChange={(event) => setTelefone(event.target.value)}
+                  onChange={setTelefone}
                 />
               </div>
               <div className="space-y-2">

@@ -223,6 +223,25 @@ export function fotosToFotoItems(fotos: ImovelFoto[]): FotoItem[] {
     }));
 }
 
+export function imovelToDuplicarFormValues(
+  imovel: Imovel,
+  statusList: StatusImovel[] = [],
+): ImovelFormValues {
+  const base = imovelToFormValues(imovel);
+
+  return {
+    ...base,
+    complemento: "",
+    complemento_tipo: "",
+    complemento_numero: "",
+    complemento_torre: "",
+    status_imovel_id: resolveStatusEmCadastroId(statusList),
+    publicado_site: false,
+    destaque_site: false,
+    publicado_portais: false,
+  };
+}
+
 export function buildComplementoString(values: ImovelFormValues): string {
   const parts: string[] = [];
   if (values.complemento_tipo && values.complemento_numero) {

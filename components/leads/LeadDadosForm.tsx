@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -78,8 +79,8 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
   const [tipoImovel, setTipoImovel] = useState(lead.tipo_imovel_busca ?? "");
   const [bairros, setBairros] = useState(lead.bairros_interesse?.join(", ") ?? "");
   const [quartos, setQuartos] = useState(lead.quartos_minimo?.toString() ?? "");
-  const [valorMin, setValorMin] = useState(lead.valor_minimo?.toString() ?? "");
-  const [valorMax, setValorMax] = useState(lead.valor_maximo?.toString() ?? "");
+  const [valorMin, setValorMin] = useState<number | null>(lead.valor_minimo ?? null);
+  const [valorMax, setValorMax] = useState<number | null>(lead.valor_maximo ?? null);
   const [prazo, setPrazo] = useState(lead.prazo_decisao ?? "");
   const [obsTexto, setObsTexto] = useState(texto);
   const [renda, setRenda] = useState(perfilFinanceiro.renda_mensal ?? "");
@@ -118,8 +119,8 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
           ? bairros.split(",").map((b) => b.trim()).filter(Boolean)
           : [],
         quartos_minimo: quartos ? Number(quartos) : null,
-        valor_minimo: valorMin ? Number(valorMin) : null,
-        valor_maximo: valorMax ? Number(valorMax) : null,
+        valor_minimo: valorMin,
+        valor_maximo: valorMax,
         prazo_decisao: prazo || null,
         observacoes: obsTexto,
         perfil_financeiro: {
@@ -367,11 +368,11 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
           </div>
           <div className="space-y-2">
             <Label>Valor mín.</Label>
-            <Input type="number" value={valorMin} onChange={(e) => setValorMin(e.target.value)} />
+            <CurrencyInput value={valorMin} onChange={setValorMin} mode="filter" />
           </div>
           <div className="space-y-2">
             <Label>Valor máx.</Label>
-            <Input type="number" value={valorMax} onChange={(e) => setValorMax(e.target.value)} />
+            <CurrencyInput value={valorMax} onChange={setValorMax} mode="filter" />
           </div>
           <div className="space-y-2">
             <Label>Prazo decisão</Label>

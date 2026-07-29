@@ -9,6 +9,7 @@ import { getTiposImovelCustom } from "@/lib/actions/configuracoes";
 import { getMidiasOrigem, getPerfisForLeads } from "@/lib/actions/leads";
 import { parseNovoAtendimentoPrefill } from "@/lib/atendimentos/novo-prefill";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 
 export const metadata: Metadata = {
   title: "Novo atendimento | Deskimob",
@@ -29,11 +30,12 @@ export default async function NovoAtendimentoPage({
   const params = await searchParams;
   const prefill = parseNovoAtendimentoPrefill(params);
 
-  const [midias, perfis, config, tiposImovel] = await Promise.all([
+  const [midias, perfis, config, tiposImovel, perfilAtual] = await Promise.all([
     getMidiasOrigem(),
     getPerfisForLeads(),
     getAtendimentoConfig(),
     getTiposImovelCustom(),
+    getPerfilForUser(),
   ]);
 
   return (
@@ -48,6 +50,7 @@ export default async function NovoAtendimentoPage({
       <NovoAtendimentoForm
         midias={midias}
         perfis={perfis}
+        perfilAtualId={perfilAtual?.id ?? null}
         tiposImovel={tiposImovel}
         faixaValorPercent={config?.faixa_valor_percent ?? 20}
         prefill={prefill}

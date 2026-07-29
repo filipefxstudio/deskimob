@@ -7,6 +7,7 @@ import { ImovelForm } from "@/components/imoveis/ImovelForm";
 import { Button } from "@/components/ui/button";
 import { getPerfisEquipe } from "@/lib/actions/configuracoes";
 import { getImovelById, getStatusImovelList } from "@/lib/actions/imoveis";
+import { getAlertaRepublicacaoImovel } from "@/lib/imoveis/republicacao-alerta";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 
@@ -34,11 +35,12 @@ export default async function EditarImovelPage({ params }: EditarImovelPageProps
   }
 
   const { id } = await params;
-  const [imovel, statusList, perfis, perfilAtual] = await Promise.all([
+  const [imovel, statusList, perfis, perfilAtual, alertaRepublicacao] = await Promise.all([
     getImovelById(id),
     getStatusImovelList(corretor.id),
     getPerfisEquipe(),
     getPerfilForUser(),
+    getAlertaRepublicacaoImovel(id),
   ]);
 
   if (!imovel) {
@@ -69,6 +71,7 @@ export default async function EditarImovelPage({ params }: EditarImovelPageProps
         perfis={perfis}
         perfilAtualId={perfilAtual?.id ?? null}
         perfil={perfilAtual}
+        alertaRepublicacao={alertaRepublicacao}
       />
     </div>
   );

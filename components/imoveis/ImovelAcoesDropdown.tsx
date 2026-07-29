@@ -18,9 +18,10 @@ import {
   ImovelDesativarModal,
 } from "@/components/imoveis/ImovelStatusModals";
 import { toast } from "@/hooks/use-toast";
-import { aprovarImovel, reprovarImovel, validarAtualizacao } from "@/lib/actions/imoveis";
+import { aprovarImovel, reprovarImovel, republicarImovel, validarAtualizacao } from "@/lib/actions/imoveis";
 import { STATUS_IMOVEL_SISTEMA } from "@/lib/constants/imoveis";
 import { podeAprovarImovel, podeAlterarStatusImovel } from "@/lib/imoveis/aprovacao";
+import { isImovelDuplicavel, isImovelRepublicavel } from "@/lib/imoveis/republicar";
 import { getPublicImovelShareUrlClient } from "@/lib/imoveis/share-url";
 import { cn } from "@/lib/utils";
 import type { Imovel, Perfil, StatusImovel } from "@/types";
@@ -76,6 +77,8 @@ export function ImovelAcoesDropdown({
   const canChangeStatus = podeAlterarStatusImovel(imovel, perfil);
   const canApprove =
     podeAprovarImovel(perfil) && imovel.status_aprovacao === "aguardando_aprovacao";
+  const canRepublicar = isImovelRepublicavel(imovel.status);
+  const canDuplicar = isImovelDuplicavel(imovel.status);
 
   const updateMenuPosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -248,6 +251,37 @@ export function ImovelAcoesDropdown({
     setDesativarOpen(true);
   }
 
+  function handleRepublicar(event: React.MouseEvent) {
+    stopCardNav(event);
+    closeMenu();
+
+    startTransition(async () => {
+      const result = await republicarImovel(imovel.id);
+
+      if (result.error) {
+        toast({ variant: "destructive", title: "Erro", description: result.error });
+        return;
+      }
+
+      toast({
+        title: "Imóvel republicado.",
+        description: "Um novo cadastro foi criado em Em cadastro.",
+      });
+
+      if (result.imovelId) {
+        router.push(`/dashboard/imoveis/${result.imovelId}/editar`);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
+  function handleDuplicar(event: React.MouseEvent) {
+    stopCardNav(event);
+    closeMenu();
+    router.push(`/dashboard/imoveis/novo?duplicar=${imovel.id}`);
+  }
+
   const triggerClass =
     variant === "header"
       ? "inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
@@ -366,6 +400,30 @@ export function ImovelAcoesDropdown({
         >
           <ActionMenuIcon action="validarAtualizacao" />
           Validar atualização
+        </button>
+      ) : null}
+
+      {canRepublicar ? (
+        <button
+          type="button"
+          disabled={isPending}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+          onClick={handleRepublicar}
+        >
+          <ActionMenuIcon action="republicar" />
+          Republicar imóvel
+        </button>
+      ) : null}
+
+      {canDuplicar ? (
+        <button
+          type="button"
+          disabled={isPending}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+          onClick={handleDuplicar}
+        >
+          <ActionMenuIcon action="duplicar" />
+          Duplicar imóvel
         </button>
       ) : null}
 

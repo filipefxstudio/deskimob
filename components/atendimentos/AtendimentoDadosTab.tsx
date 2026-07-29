@@ -403,11 +403,11 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
           </div>
           <div className="space-y-2">
             <Label>Valor mín.</Label>
-            <CurrencyInput value={valorMin} onChange={setValorMin} />
+            <CurrencyInput value={valorMin} onChange={setValorMin} mode="filter" />
           </div>
           <div className="space-y-2">
             <Label>Valor máx.</Label>
-            <CurrencyInput value={valorMax} onChange={setValorMax} />
+            <CurrencyInput value={valorMax} onChange={setValorMax} mode="filter" />
           </div>
           <div className="space-y-2">
             <Label>Prazo decisão</Label>

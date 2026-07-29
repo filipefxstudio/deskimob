@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ImovelDetalhes } from "@/components/imoveis/ImovelDetalhes";
 import { getAuditoriaImovel, getImovelDesempenho } from "@/lib/actions/imovel-desempenho";
 import { getImovelById, getStatusImovelList } from "@/lib/actions/imoveis";
+import { getAlertaRepublicacaoImovel } from "@/lib/imoveis/republicacao-alerta";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 
@@ -31,12 +32,14 @@ export default async function ImovelDetailPage({ params }: ImovelDetailPageProps
   }
 
   const { id } = await params;
-  const [imovel, statusList, auditoria, desempenho, perfil] = await Promise.all([
+  const [imovel, statusList, auditoria, desempenho, perfil, alertaRepublicacao] =
+    await Promise.all([
     getImovelById(id),
     getStatusImovelList(corretor.id),
     getAuditoriaImovel(id),
     getImovelDesempenho(id),
     getPerfilForUser(),
+    getAlertaRepublicacaoImovel(id),
   ]);
 
   if (!imovel) {
@@ -52,6 +55,7 @@ export default async function ImovelDetailPage({ params }: ImovelDetailPageProps
         auditoria={auditoria}
         desempenho={desempenho}
         perfil={perfil}
+        alertaRepublicacao={alertaRepublicacao}
       />
     </div>
   );

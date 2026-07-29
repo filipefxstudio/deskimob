@@ -7,7 +7,9 @@ import { saveWhatsAppConfig } from "@/lib/actions/corretor-config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
+import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import type { AgenteConfigPublic } from "@/lib/actions/agente-config";
 import type { Corretor, PlanoAssinatura } from "@/types";
 
@@ -20,7 +22,9 @@ interface AbaWhatsAppProps {
 export function AbaWhatsApp({ corretor, plano, agenteConfig }: AbaWhatsAppProps) {
   const [zapiInstanceId, setZapiInstanceId] = useState(corretor.zapi_instance_id ?? "");
   const [zapiToken, setZapiToken] = useState(corretor.zapi_token ?? "");
-  const [whatsapp, setWhatsapp] = useState(corretor.whatsapp ?? corretor.telefone ?? "");
+  const [whatsapp, setWhatsapp] = useState(
+    formatTelefoneBr(corretor.whatsapp ?? corretor.telefone ?? ""),
+  );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -82,11 +86,10 @@ export function AbaWhatsApp({ corretor, plano, agenteConfig }: AbaWhatsAppProps)
 
             <div className="space-y-2">
               <Label htmlFor="whatsapp">Número WhatsApp</Label>
-              <Input
+              <TelefoneInput
                 id="whatsapp"
                 value={whatsapp}
-                onChange={(event) => setWhatsapp(event.target.value)}
-                placeholder="(11) 99999-9999"
+                onChange={setWhatsapp}
               />
               <p className="text-xs text-muted-foreground">
                 Número que receberá mensagens do chat do site e notificações.

@@ -19,7 +19,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
+import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizeSiteCorPrimaria, normalizeSiteCorSecundaria } from "@/lib/site/color";
@@ -298,8 +300,10 @@ function SobreTab({ corretor }: { corretor: Corretor }) {
 function ContatoTab({ corretor }: { corretor: Corretor }) {
   const [nomeExibicao, setNomeExibicao] = useState(corretor.site_nome_exibicao ?? corretor.nome);
   const [creci, setCreci] = useState(corretor.site_creci ?? corretor.creci ?? "");
-  const [telVendas, setTelVendas] = useState(corretor.site_telefone_vendas ?? corretor.contato_telefone ?? corretor.telefone ?? "");
-  const [telLocacao, setTelLocacao] = useState(corretor.site_telefone_locacao ?? "");
+  const [telVendas, setTelVendas] = useState(
+    formatTelefoneBr(corretor.site_telefone_vendas ?? corretor.contato_telefone ?? corretor.telefone ?? ""),
+  );
+  const [telLocacao, setTelLocacao] = useState(formatTelefoneBr(corretor.site_telefone_locacao ?? ""));
   const [email, setEmail] = useState(corretor.site_email ?? corretor.contato_email ?? corretor.email ?? "");
   const [instagram, setInstagram] = useState(corretor.site_instagram ?? "");
   const [youtube, setYoutube] = useState(corretor.site_youtube ?? "");
@@ -347,11 +351,11 @@ function ContatoTab({ corretor }: { corretor: Corretor }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="tel-vendas">Telefone vendas</Label>
-          <Input id="tel-vendas" value={telVendas} onChange={(e) => setTelVendas(e.target.value)} />
+          <TelefoneInput id="tel-vendas" value={telVendas} onChange={setTelVendas} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="tel-locacao">Telefone locação</Label>
-          <Input id="tel-locacao" value={telLocacao} onChange={(e) => setTelLocacao(e.target.value)} />
+          <TelefoneInput id="tel-locacao" value={telLocacao} onChange={setTelLocacao} />
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="site-email">E-mail</Label>

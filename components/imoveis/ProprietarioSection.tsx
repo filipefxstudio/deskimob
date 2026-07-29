@@ -6,6 +6,7 @@ import { Controller, type Control, type UseFormSetValue } from "react-hook-form"
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -364,15 +365,13 @@ export function ProprietarioSection({
                 render={({ field }) => (
                   <div className="space-y-2">
                     <Label>Telefone *</Label>
-                    <Input
+                    <TelefoneInput
                       value={field.value ?? ""}
-                      onChange={(event) => {
-                        const formatted = formatTelefoneBr(event.target.value);
+                      onChange={(formatted) => {
                         field.onChange(formatted);
                         setNovoTelefone(formatted);
                         setBloqueioNovo(null);
                       }}
-                      placeholder="(00) 00000-0000"
                       disabled={disabled}
                     />
                   </div>

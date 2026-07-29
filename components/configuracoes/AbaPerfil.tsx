@@ -12,7 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
+import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import type { Corretor } from "@/types";
 
 interface AbaPerfilProps {
@@ -36,7 +38,9 @@ export function AbaPerfil({
   const logoCrmInputRef = useRef<HTMLInputElement>(null);
 
   const [nome, setNome] = useState(initialNome);
-  const [telefone, setTelefone] = useState(initialTelefone ?? "");
+  const [telefone, setTelefone] = useState(
+    initialTelefone ? formatTelefoneBr(initialTelefone) : "",
+  );
   const [fotoUrl, setFotoUrl] = useState(initialFotoUrl ?? "");
   const [logoCrmUrl, setLogoCrmUrl] = useState(corretor.logo_crm_url ?? "");
   const [novaSenha, setNovaSenha] = useState("");
@@ -211,11 +215,10 @@ export function AbaPerfil({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone</Label>
-                <Input
+                <TelefoneInput
                   id="telefone"
                   value={telefone}
-                  onChange={(event) => setTelefone(event.target.value)}
-                  placeholder="(11) 99999-9999"
+                  onChange={setTelefone}
                 />
               </div>
             </div>

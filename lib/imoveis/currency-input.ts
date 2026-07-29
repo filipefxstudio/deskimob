@@ -1,3 +1,16 @@
+import {
+  CURRENCY_FILTER_PLACEHOLDER,
+  CURRENCY_PLACEHOLDER,
+} from "@/lib/constants/input-placeholders";
+
+const CURRENCY_PREFIX = "R$ ";
+
+export { CURRENCY_PLACEHOLDER, CURRENCY_FILTER_PLACEHOLDER };
+
+function stripCurrencyPrefix(input: string): string {
+  return input.replace(/^\s*R\$\s*/i, "").trim();
+}
+
 function formatIntegerPart(intPart: string): string {
   const digits = intPart.replace(/\D/g, "");
   if (!digits) {
@@ -6,8 +19,13 @@ function formatIntegerPart(intPart: string): string {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-function formatFromRawInput(input: string): string {
-  const cleaned = input.replace(/[^\d,]/g, "");
+function formatFromRawInput(input: string, allowCents: boolean): string {
+  const cleaned = stripCurrencyPrefix(input).replace(/[^\d,]/g, "");
+
+  if (!allowCents) {
+    return formatIntegerPart(cleaned);
+  }
+
   const commaIndex = cleaned.indexOf(",");
   const intRaw = commaIndex >= 0 ? cleaned.slice(0, commaIndex) : cleaned;
   const decRaw = commaIndex >= 0 ? cleaned.slice(commaIndex + 1) : "";
@@ -20,11 +38,18 @@ function formatFromRawInput(input: string): string {
   return formattedInt;
 }
 
-/** Formata valor numérico ou texto bruto para exibição no input (ex.: 800.000 ou 800.000,00). */
-export function formatCurrencyInput(value: number | string | null | undefined): string {
+export type CurrencyInputMode = "default" | "filter";
+
+/** Formata valor numérico ou texto bruto para exibição no input. */
+export function formatCurrencyInput(
+  value: number | string | null | undefined,
+  mode: CurrencyInputMode = "default",
+): string {
   if (value === null || value === undefined || value === "") {
     return "";
   }
+
+  const allowCents = mode === "default";
 
   if (typeof value === "number") {
     if (!Number.isFinite(value)) {
@@ -34,19 +59,24 @@ export function formatCurrencyInput(value: number | string | null | undefined): 
     const [intPart, decPart] = value.toFixed(2).split(".");
     const formatted = formatIntegerPart(intPart);
 
-    if (decPart === "00") {
-      return formatted;
+    if (!formatted) {
+      return "";
     }
 
-    return `${formatted},${decPart}`;
+    if (!allowCents) {
+      return `${CURRENCY_PREFIX}${formatted}`;
+    }
+
+    return `${CURRENCY_PREFIX}${formatted},${decPart}`;
   }
 
-  return formatFromRawInput(value);
+  const body = formatFromRawInput(String(value), allowCents);
+  return body ? `${CURRENCY_PREFIX}${body}` : "";
 }
 
-/** Converte texto formatado (800.000,50) em número puro para persistência. */
+/** Converte texto formatado (R$ 800.000,50) em número puro para persistência. */
 export function parseCurrencyInput(formatted: string): number | null {
-  const trimmed = formatted.trim();
+  const trimmed = stripCurrencyPrefix(formatted.trim());
   if (!trimmed) {
     return null;
   }

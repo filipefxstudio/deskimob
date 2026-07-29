@@ -21,12 +21,16 @@ import { removeImovelFotosFromStorage, uploadFotoImovel } from "@/lib/imoveis/fo
 import { createClienteFromImovel } from "@/lib/actions/clientes";
 import { getMarcaDaguaConfigByCorretorId } from "@/lib/actions/configuracoes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
+import { isImovelIgnoradoNaDuplicidadeEndereco, isImovelRepublicavel } from "@/lib/imoveis/republicar";
 import {
   ensureStatusImovelDefaults,
   formatStatusImovelResolveError,
   resolveStatusImovelByNome,
 } from "@/lib/imoveis/status-defaults";
-import { mensagemImovelDuplicado } from "@/lib/pessoas/messages";
+import {
+  mensagemImovelDuplicadoPorMotivo,
+  type ImovelDuplicidadeMotivo,
+} from "@/lib/pessoas/messages";
 import { registrarAuditoriaImovel } from "@/lib/imoveis/auditoria";
 import { applyWatermark } from "@/lib/imoveis/watermark";
 import { compressImageBufferForStorage } from "@/lib/imoveis/foto-compress.server";
@@ -1572,6 +1576,24 @@ async function resolveClienteId(data: ImovelFormValues): Promise<string | null> 
   return ids[0] ?? null;
 }
 
+function normalizeComplementoEndereco(value: string | null | undefined): string {
+  return (value ?? "").toLowerCase().trim();
+}
+
+function complementoFromImovelRow(imovel: {
+  complemento_valor?: string | null;
+  complemento?: string | null;
+  complemento_numero?: string | null;
+  complemento_tipo?: string | null;
+}): string {
+  const fromValor =
+    imovel.complemento_valor?.trim() ||
+    imovel.complemento?.trim() ||
+    [imovel.complemento_tipo, imovel.complemento_numero].filter(Boolean).join(" ").trim();
+
+  return normalizeComplementoEndereco(fromValor);
+}
+
 export async function verificarImovelExistente(
   corretorId: string,
   dados: {
@@ -1582,13 +1604,14 @@ export async function verificarImovelExistente(
   imovelIdIgnorar?: string,
 ): Promise<{
   existe: boolean;
+  motivo?: ImovelDuplicidadeMotivo;
   imovel?: { id: string; codigo: string; titulo?: string; bairro: string };
 }> {
   const supabase = await createClient();
 
   const logradouroNorm = dados.logradouro.toLowerCase().trim();
   const numeroNorm = dados.numero.toLowerCase().trim();
-  const complementoNorm = (dados.complementoValor ?? "").toLowerCase().trim();
+  const complementoNorm = normalizeComplementoEndereco(dados.complementoValor);
 
   if (!logradouroNorm || !numeroNorm) {
     return { existe: false };
@@ -1596,7 +1619,9 @@ export async function verificarImovelExistente(
 
   let query = supabase
     .from("imoveis")
-    .select("id, codigo, titulo, bairro, logradouro, numero, complemento_valor, complemento")
+    .select(
+      "id, codigo, titulo, bairro, logradouro, numero, status, complemento_valor, complemento, complemento_numero, complemento_tipo",
+    )
     .eq("corretor_id", corretorId)
     .ilike("logradouro", logradouroNorm)
     .ilike("numero", numeroNorm);
@@ -1611,30 +1636,39 @@ export async function verificarImovelExistente(
     return { existe: false };
   }
 
-  const duplicado = data.find((imovel) => {
-    const compExistente = (
-      imovel.complemento_valor ??
-      imovel.complemento ??
-      ""
-    )
-      .toLowerCase()
-      .trim();
-    return compExistente === complementoNorm;
-  });
+  const candidatos = data.filter(
+    (imovel) => !isImovelIgnoradoNaDuplicidadeEndereco(imovel.status ?? ""),
+  );
 
-  if (!duplicado) {
-    return { existe: false };
+  for (const existente of candidatos) {
+    const compExistente = complementoFromImovelRow(existente);
+    let motivo: ImovelDuplicidadeMotivo | null = null;
+
+    if (!complementoNorm && !compExistente) {
+      motivo = "mesmo_complemento";
+    } else if (!complementoNorm && compExistente) {
+      motivo = "complemento_vazio_existente_com_complemento";
+    } else if (complementoNorm && !compExistente) {
+      motivo = "complemento_preenchido_existente_sem_complemento";
+    } else if (complementoNorm === compExistente) {
+      motivo = "mesmo_complemento";
+    }
+
+    if (motivo) {
+      return {
+        existe: true,
+        motivo,
+        imovel: {
+          id: existente.id,
+          codigo: existente.codigo ?? "",
+          titulo: existente.titulo ?? undefined,
+          bairro: existente.bairro ?? "",
+        },
+      };
+    }
   }
 
-  return {
-    existe: true,
-    imovel: {
-      id: duplicado.id,
-      codigo: duplicado.codigo ?? "",
-      titulo: duplicado.titulo ?? undefined,
-      bairro: duplicado.bairro ?? "",
-    },
-  };
+  return { existe: false };
 }
 
 export async function checkImovelDuplicado(
@@ -1643,7 +1677,15 @@ export async function checkImovelDuplicado(
   complemento: string,
   logradouro?: string,
   excludeId?: string,
-): Promise<{ duplicado: boolean; imovelId?: string; titulo?: string; codigo?: string; bairro?: string }> {
+): Promise<{
+  duplicado: boolean;
+  motivo?: ImovelDuplicidadeMotivo;
+  mensagem?: string;
+  imovelId?: string;
+  titulo?: string;
+  codigo?: string;
+  bairro?: string;
+}> {
   const corretor = await getCorretorForUser();
 
   if (!corretor) {
@@ -1662,23 +1704,29 @@ export async function checkImovelDuplicado(
     );
 
     if (result.existe && result.imovel) {
+      const motivo = result.motivo ?? "mesmo_complemento";
       return {
         duplicado: true,
+        motivo,
+        mensagem: mensagemImovelDuplicadoPorMotivo(motivo, result.imovel.codigo),
         imovelId: result.imovel.id,
         titulo: result.imovel.titulo,
         codigo: result.imovel.codigo,
         bairro: result.imovel.bairro,
       };
     }
+
+    return { duplicado: false };
   }
 
   const supabase = await createClient();
   const sanitizedCep = sanitizeCep(cep);
-  const normalizedComplemento = complemento.trim().toLowerCase();
 
   let query = supabase
     .from("imoveis")
-    .select("id, titulo, codigo, bairro, complemento, complemento_valor, complemento_numero, complemento_tipo")
+    .select(
+      "id, titulo, codigo, bairro, status, complemento, complemento_valor, complemento_numero, complemento_tipo",
+    )
     .eq("corretor_id", corretor.id)
     .eq("cep", sanitizedCep)
     .eq("numero", numero.trim());
@@ -1693,29 +1741,39 @@ export async function checkImovelDuplicado(
     return { duplicado: false };
   }
 
-  const match = data.find((imovel) => {
-    const existing =
-      imovel.complemento_valor?.trim().toLowerCase() ??
-      imovel.complemento?.trim().toLowerCase() ??
-      [imovel.complemento_tipo, imovel.complemento_numero]
-        .filter(Boolean)
-        .join(" ")
-        .trim()
-        .toLowerCase();
-    return existing === normalizedComplemento;
-  });
+  const complementoNorm = normalizeComplementoEndereco(complemento);
+  const candidatos = data.filter(
+    (imovel) => !isImovelIgnoradoNaDuplicidadeEndereco(imovel.status ?? ""),
+  );
 
-  if (!match) {
-    return { duplicado: false };
+  for (const existente of candidatos) {
+    const compExistente = complementoFromImovelRow(existente);
+    let motivo: ImovelDuplicidadeMotivo | null = null;
+
+    if (!complementoNorm && !compExistente) {
+      motivo = "mesmo_complemento";
+    } else if (!complementoNorm && compExistente) {
+      motivo = "complemento_vazio_existente_com_complemento";
+    } else if (complementoNorm && !compExistente) {
+      motivo = "complemento_preenchido_existente_sem_complemento";
+    } else if (complementoNorm === compExistente) {
+      motivo = "mesmo_complemento";
+    }
+
+    if (motivo) {
+      return {
+        duplicado: true,
+        motivo,
+        mensagem: mensagemImovelDuplicadoPorMotivo(motivo, existente.codigo ?? ""),
+        imovelId: existente.id,
+        titulo: existente.titulo ?? undefined,
+        codigo: existente.codigo ?? undefined,
+        bairro: existente.bairro ?? undefined,
+      };
+    }
   }
 
-  return {
-    duplicado: true,
-    imovelId: match.id,
-    titulo: match.titulo ?? undefined,
-    codigo: match.codigo ?? undefined,
-    bairro: match.bairro ?? undefined,
-  };
+  return { duplicado: false };
 }
 
 async function fetchImoveisRows(
@@ -2180,7 +2238,10 @@ export async function createImovel(
 
   if (duplicidade.existe && duplicidade.imovel) {
     return {
-      error: mensagemImovelDuplicado(duplicidade.imovel.codigo, duplicidade.imovel.bairro),
+      error: mensagemImovelDuplicadoPorMotivo(
+        duplicidade.motivo ?? "mesmo_complemento",
+        duplicidade.imovel.codigo,
+      ),
     };
   }
 
@@ -2402,7 +2463,10 @@ export async function updateImovel(
 
   if (duplicidade.existe && duplicidade.imovel) {
     return {
-      error: mensagemImovelDuplicado(duplicidade.imovel.codigo, duplicidade.imovel.bairro),
+      error: mensagemImovelDuplicadoPorMotivo(
+        duplicidade.motivo ?? "mesmo_complemento",
+        duplicidade.imovel.codigo,
+      ),
     };
   }
 
@@ -2549,4 +2613,335 @@ export async function updateImovel(
   revalidatePath(`/dashboard/imoveis/${id}`);
 
   return { success: true, imovelId: id };
+}
+
+async function copyImovelFotosFromSource(
+  sourceImovelId: string,
+  targetImovelId: string,
+  supabase: ImovelDbClient,
+): Promise<void> {
+  const { data: fotos, error } = await supabase
+    .from("imovel_fotos")
+    .select("url, cloudinary_public_id, ordem, legenda")
+    .eq("imovel_id", sourceImovelId)
+    .order("ordem", { ascending: true });
+
+  if (error) {
+    logSupabaseError("copyImovelFotosFromSource:select", error);
+    throw new Error("Não foi possível copiar as fotos do imóvel.");
+  }
+
+  if (!fotos?.length) {
+    return;
+  }
+
+  const rows = fotos.map((foto) => ({
+    imovel_id: targetImovelId,
+    url: foto.url,
+    cloudinary_public_id: foto.cloudinary_public_id,
+    ordem: foto.ordem,
+    legenda: foto.legenda,
+  }));
+
+  const { error: insertError } = await supabase.from("imovel_fotos").insert(rows);
+
+  if (insertError) {
+    logSupabaseError("copyImovelFotosFromSource:insert", insertError);
+    throw new Error("Não foi possível copiar as fotos do imóvel.");
+  }
+}
+
+function buildRepublicarFormValues(source: Imovel): ImovelFormValues {
+  const values = imovelToFormValues(source);
+
+  return {
+    ...values,
+    cliente_id: null,
+    proprietario_ids: [],
+    proprietario_novo: null,
+    publicado_site: false,
+    destaque_site: false,
+    publicado_portais: false,
+  };
+}
+
+async function assertImovelCloneLimit(corretorId: string): Promise<ImovelActionResult | null> {
+  try {
+    const plano = await getPlanoAtivo(corretorId);
+    const limite = IMOVEL_LIMITS[plano];
+
+    if (limite !== null) {
+      const total = await countImoveis(corretorId);
+
+      if (total >= limite) {
+        return {
+          error: `Seu plano ${plano === "basico" ? "Básico" : plano} permite até ${limite} imóveis. Faça upgrade para cadastrar mais.`,
+        };
+      }
+    }
+  } catch (error) {
+    console.error("[assertImovelCloneLimit] limit check failed", error);
+    return { error: "Não foi possível verificar o limite do seu plano." };
+  }
+
+  return null;
+}
+
+async function persistImovelCloneFromSource(
+  corretorId: string,
+  source: Imovel,
+  options: {
+    includeProprietarios: boolean;
+    clearComplement: boolean;
+  },
+): Promise<ImovelActionResult> {
+  const limitError = await assertImovelCloneLimit(corretorId);
+  if (limitError) {
+    return limitError;
+  }
+
+  let formValues = options.includeProprietarios
+    ? imovelToFormValues(source)
+    : buildRepublicarFormValues(source);
+
+  if (options.clearComplement) {
+    formValues = {
+      ...formValues,
+      complemento: "",
+      complemento_tipo: "",
+      complemento_numero: "",
+      complemento_torre: "",
+    };
+  }
+
+  formValues = {
+    ...formValues,
+    publicado_site: false,
+    destaque_site: false,
+    publicado_portais: false,
+  };
+
+  const complementoValor = buildComplementoString(formValues);
+  const duplicidade = await verificarImovelExistente(corretorId, {
+    logradouro: formValues.logradouro,
+    numero: formValues.numero,
+    complementoValor,
+  });
+
+  if (duplicidade.existe && duplicidade.imovel) {
+    return {
+      error: mensagemImovelDuplicadoPorMotivo(
+        duplicidade.motivo ?? "mesmo_complemento",
+        duplicidade.imovel.codigo,
+      ),
+    };
+  }
+
+  const supabase = await createClient();
+
+  let statusResult;
+  try {
+    await ensureStatusImovelDefaults(corretorId);
+    statusResult = await resolveStatusImovelByNome(corretorId, "Em cadastro", supabase);
+  } catch (error) {
+    console.error("[persistImovelCloneFromSource] status failed", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível configurar o status Em cadastro.",
+    };
+  }
+
+  if (!statusResult.ok) {
+    return { error: formatStatusImovelResolveError("Em cadastro", statusResult) };
+  }
+
+  const baseSlug = generateImovelSlug(formValues.titulo ?? "", formValues.cidade);
+  const slug = await ensureUniqueImovelSlug(corretorId, baseSlug);
+
+  let codigo: string;
+  try {
+    codigo = await generateNextCodigo(corretorId);
+  } catch (error) {
+    console.error("[persistImovelCloneFromSource] codigo failed", error);
+    return { error: "Não foi possível gerar o código do imóvel." };
+  }
+
+  let writeClient: ImovelDbClient;
+  try {
+    writeClient = createImovelWriteClient();
+  } catch (error) {
+    console.error("[persistImovelCloneFromSource] write client failed", error);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar o imóvel. Verifique a configuração do servidor.",
+    };
+  }
+
+  let clienteId: string | null = null;
+  let proprietarioIds: string[] = [];
+
+  if (options.includeProprietarios) {
+    try {
+      proprietarioIds = await resolveProprietarioIds(formValues);
+      clienteId = proprietarioIds[0] ?? null;
+    } catch (error) {
+      console.error("[persistImovelCloneFromSource] proprietario failed", error);
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível vincular o proprietário.",
+      };
+    }
+  }
+
+  const perfil = await getPerfilForUser();
+  const insertPayloadBase = buildImovelInsert(
+    corretorId,
+    formValues,
+    slug,
+    "0000",
+    clienteId,
+    "em_cadastro",
+    statusResult.status.id,
+    perfil?.id ?? null,
+  );
+
+  let imovel: { id: string } | null = null;
+  let insertError: PostgrestError | null = null;
+  let codigoUsado = codigo;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt > 0) {
+      try {
+        codigoUsado = await generateNextCodigo(corretorId);
+      } catch (error) {
+        console.error("[persistImovelCloneFromSource] codigo regeneration failed", error);
+        return { error: "Não foi possível gerar o código do imóvel." };
+      }
+    }
+
+    const result = await persistImovelRowInsert(writeClient, {
+      ...insertPayloadBase,
+      codigo: codigoUsado,
+    });
+
+    imovel = result.data;
+    insertError = result.error;
+
+    if (!insertError) {
+      break;
+    }
+
+    if (!isImovelCodigoConflict(insertError)) {
+      break;
+    }
+  }
+
+  if (insertError || !imovel) {
+    return {
+      error: insertError
+        ? mapImovelPersistError(insertError, "insert")
+        : "Não foi possível cadastrar o imóvel. Tente novamente.",
+    };
+  }
+
+  try {
+    await saveImovelCaptadores(imovel.id, formValues.captadores, writeClient);
+
+    if (options.includeProprietarios) {
+      await saveImovelProprietarios(imovel.id, proprietarioIds, writeClient);
+    }
+
+    await copyImovelFotosFromSource(source.id, imovel.id, writeClient);
+  } catch (error) {
+    console.error("[persistImovelCloneFromSource] relacionamentos failed", error);
+    await writeClient.from("imoveis").delete().eq("id", imovel.id);
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível copiar captadores, proprietários ou fotos.",
+    };
+  }
+
+  await registrarAuditoriaImovel(imovel.id, "imovel_cadastrado", {
+    detalhes: {
+      codigo: codigoUsado,
+      origem: options.includeProprietarios ? "duplicar" : "republicar",
+      imovelOrigemId: source.id,
+    },
+  });
+
+  revalidatePath("/dashboard/imoveis");
+  revalidatePath(`/dashboard/imoveis/${source.id}`);
+
+  return { success: true, imovelId: imovel.id };
+}
+
+export async function republicarImovel(id: string): Promise<ImovelActionResult> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return { error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const source = await getImovelById(id);
+
+  if (!source) {
+    return { error: "Imóvel não encontrado." };
+  }
+
+  if (!isImovelRepublicavel(source.status)) {
+    return {
+      error: "Só é possível republicar imóveis vendidos ou desativados.",
+    };
+  }
+
+  return persistImovelCloneFromSource(corretor.id, source, {
+    includeProprietarios: false,
+    clearComplement: false,
+  });
+}
+
+export async function copyImovelFotosFromImovel(
+  sourceImovelId: string,
+  targetImovelId: string,
+): Promise<ImovelActionResult> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return { error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const ownsSource = await ensureImovelOwnership(sourceImovelId, corretor.id);
+  const ownsTarget = await ensureImovelOwnership(targetImovelId, corretor.id);
+
+  if (!ownsSource || !ownsTarget) {
+    return { error: "Imóvel não encontrado." };
+  }
+
+  let writeClient: ImovelDbClient;
+  try {
+    writeClient = createImovelWriteClient();
+  } catch (error) {
+    console.error("[copyImovelFotosFromImovel] write client failed", error);
+    return { error: "Não foi possível copiar as fotos." };
+  }
+
+  try {
+    await copyImovelFotosFromSource(sourceImovelId, targetImovelId, writeClient);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Não foi possível copiar as fotos.",
+    };
+  }
+
+  revalidatePath(`/dashboard/imoveis/${targetImovelId}`);
+
+  return { success: true, imovelId: targetImovelId };
 }

@@ -16,6 +16,7 @@ import { ImovelAuditoriaTab } from "@/components/imoveis/ImovelAuditoriaTab";
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
 import { ImovelDesempenhoTab } from "@/components/imoveis/ImovelDesempenhoTab";
 import { ImovelGaleriaDetalhes } from "@/components/imoveis/ImovelGaleriaDetalhes";
+import { ImovelRepublicacaoAlerta } from "@/components/imoveis/ImovelRepublicacaoAlerta";
 import { StatusBadge } from "@/components/imoveis/StatusBadge";
 import { ImovelMapa } from "@/components/site/ImovelMapa";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import {
   getTipoLabel,
   getValorExibicao,
 } from "@/lib/site/format";
+import type { AlertaRepublicacaoImovel } from "@/lib/imoveis/republicacao-alerta";
 import type { AuditoriaImovel, Imovel, ImovelDesempenho, Perfil, StatusImovel } from "@/types";
 
 interface ImovelDetalhesProps {
@@ -52,6 +54,7 @@ interface ImovelDetalhesProps {
   auditoria: AuditoriaImovel[];
   desempenho: ImovelDesempenho | null;
   perfil?: Perfil | null;
+  alertaRepublicacao?: AlertaRepublicacaoImovel | null;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -81,6 +84,7 @@ export function ImovelDetalhes({
   auditoria,
   desempenho,
   perfil = null,
+  alertaRepublicacao = null,
 }: ImovelDetalhesProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -149,6 +153,10 @@ export function ImovelDetalhes({
 
   return (
     <div className="space-y-6">
+      {imovel.status_aprovacao === "aguardando_aprovacao" && alertaRepublicacao ? (
+        <ImovelRepublicacaoAlerta alerta={alertaRepublicacao} />
+      ) : null}
+
       <nav className="text-sm text-muted-foreground">
         <Link href="/dashboard/imoveis" className="hover:text-primary">
           Imóveis

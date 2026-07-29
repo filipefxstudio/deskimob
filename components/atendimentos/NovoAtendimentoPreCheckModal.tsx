@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   avaliarSelecaoPessoaAtendimento,
@@ -271,11 +272,10 @@ export function NovoAtendimentoPreCheckModal({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="precheck-telefone">Telefone *</Label>
-              <Input
+              <TelefoneInput
                 id="precheck-telefone"
                 value={telefone}
-                onChange={(event) => handleTelefoneChange(event.target.value)}
-                placeholder="(11) 99999-9999"
+                onChange={handleTelefoneChange}
                 autoFocus
               />
             </div>

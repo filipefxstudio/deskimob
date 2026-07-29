@@ -6,7 +6,8 @@ import { ArrowLeft } from "lucide-react";
 import { ImovelForm } from "@/components/imoveis/ImovelForm";
 import { Button } from "@/components/ui/button";
 import { getPerfisEquipe } from "@/lib/actions/configuracoes";
-import { getStatusImovelList } from "@/lib/actions/imoveis";
+import { getImovelById, getStatusImovelList } from "@/lib/actions/imoveis";
+import { isImovelDuplicavel } from "@/lib/imoveis/republicar";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 
@@ -15,11 +16,25 @@ export const metadata: Metadata = {
   description: "Cadastre um novo imóvel no portfólio",
 };
 
-export default async function NovoImovelPage() {
+export default async function NovoImovelPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ duplicar?: string }>;
+}) {
   const corretor = await getCorretorForUser();
 
   if (!corretor) {
     redirect("/login");
+  }
+
+  const params = await searchParams;
+  let duplicarSource = null;
+
+  if (params.duplicar) {
+    const source = await getImovelById(params.duplicar);
+    if (source && isImovelDuplicavel(source.status)) {
+      duplicarSource = source;
+    }
   }
 
   const [statusList, perfis, perfilAtual] = await Promise.all([
@@ -38,14 +53,19 @@ export default async function NovoImovelPage() {
                 Voltar para imóveis
               </Link>
             </Button>
-            <h2 className="text-lg font-semibold text-primary">Novo imóvel</h2>
+            <h2 className="text-lg font-semibold text-primary">
+              {duplicarSource ? "Duplicar imóvel" : "Novo imóvel"}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Preencha as informações para cadastrar um imóvel no seu portfólio.
+              {duplicarSource
+                ? "Revise os dados copiados, informe o complemento da nova unidade e salve."
+                : "Preencha as informações para cadastrar um imóvel no seu portfólio."}
             </p>
           </div>
         </div>
 
       <ImovelForm
+        duplicarSource={duplicarSource}
         statusList={statusList}
         perfis={perfis}
         perfilAtualId={perfilAtual?.id ?? null}

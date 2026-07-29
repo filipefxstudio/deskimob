@@ -5,10 +5,10 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import { cn } from "@/lib/utils";
 
 import { useSite } from "./SiteProvider";
@@ -118,12 +118,11 @@ export function FormularioLeadSite({
 
       <div className="space-y-2">
         <Label htmlFor="lead-telefone">Telefone *</Label>
-        <Input
+        <TelefoneInput
           id="lead-telefone"
           value={telefone}
-          onChange={(event) => setTelefone(formatTelefoneBr(event.target.value))}
+          onChange={setTelefone}
           required
-          placeholder="(00) 00000-0000"
         />
       </div>
 

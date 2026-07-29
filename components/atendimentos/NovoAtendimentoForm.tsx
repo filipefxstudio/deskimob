@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -35,6 +36,7 @@ import type { MidiaOrigem, TipoImovelCustom } from "@/types";
 interface NovoAtendimentoFormProps {
   midias: MidiaOrigem[];
   perfis: { id: string; nome: string }[];
+  perfilAtualId?: string | null;
   tiposImovel: TipoImovelCustom[];
   faixaValorPercent: number;
   prefill?: NovoAtendimentoPrefill;
@@ -43,6 +45,7 @@ interface NovoAtendimentoFormProps {
 export function NovoAtendimentoForm({
   midias,
   perfis,
+  perfilAtualId = null,
   tiposImovel,
   faixaValorPercent,
   prefill,
@@ -58,7 +61,7 @@ export function NovoAtendimentoForm({
   const [email, setEmail] = useState(prefill?.email ?? "");
   const [clienteId, setClienteId] = useState<string | undefined>(prefill?.clienteId);
   const [midiaNome, setMidiaNome] = useState("");
-  const [perfilId, setPerfilId] = useState("");
+  const [perfilId, setPerfilId] = useState(prefill?.perfilId ?? perfilAtualId ?? "");
   const [observacoes, setObservacoes] = useState("");
 
   const [imovelSelecionado, setImovelSelecionado] = useState<ImovelSearchResult | null>(null);
@@ -78,6 +81,18 @@ export function NovoAtendimentoForm({
     () => tiposImovel.filter((t) => t.ativo),
     [tiposImovel],
   );
+
+  const midiasAtivas = useMemo(
+    () => midias.filter((m) => m.ativo),
+    [midias],
+  );
+
+  useEffect(() => {
+    if (perfilId || !perfilAtualId) {
+      return;
+    }
+    setPerfilId(perfilAtualId);
+  }, [perfilAtualId, perfilId]);
 
   useEffect(() => {
     if (!imovelSelecionado) return;
@@ -171,10 +186,10 @@ export function NovoAtendimentoForm({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="contato-telefone">Telefone *</Label>
-                <Input
+                <TelefoneInput
                   id="contato-telefone"
                   value={telefone}
-                  onChange={(e) => setTelefone(formatTelefoneBr(e.target.value))}
+                  onChange={setTelefone}
                   required
                   disabled={isPending}
                 />
@@ -198,7 +213,7 @@ export function NovoAtendimentoForm({
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {midias.filter((m) => m.ativo).map((m) => (
+                    {midiasAtivas.map((m) => (
                       <SelectItem key={m.id} value={m.nome}>
                         {m.nome}
                       </SelectItem>
@@ -206,8 +221,8 @@ export function NovoAtendimentoForm({
                   </SelectContent>
                 </Select>
               </div>
-              {perfis.length > 1 ? (
-                <div className="space-y-2 sm:col-span-2">
+              {perfis.length > 0 ? (
+                <div className="space-y-2">
                   <Label>Corretor responsável</Label>
                   <Select value={perfilId} onValueChange={setPerfilId}>
                     <SelectTrigger>
@@ -314,11 +329,11 @@ export function NovoAtendimentoForm({
               </div>
               <div className="space-y-2">
                 <Label>Valor mínimo</Label>
-                <CurrencyInput value={valorMin} onChange={setValorMin} />
+                <CurrencyInput value={valorMin} onChange={setValorMin} mode="filter" />
               </div>
               <div className="space-y-2">
                 <Label>Valor máximo</Label>
-                <CurrencyInput value={valorMax} onChange={setValorMax} />
+                <CurrencyInput value={valorMax} onChange={setValorMax} mode="filter" />
               </div>
             </div>
             <div className="space-y-2">

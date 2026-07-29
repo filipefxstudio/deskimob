@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { CheckboxFilterDropdown } from "@/components/imoveis/CheckboxFilterDropdown";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,8 +37,8 @@ function createEmptyFilterState(fixedFinalidade?: FinalidadeImovel) {
     selectedCidades: [] as string[],
     selectedBairros: [] as string[],
     codigo: "",
-    valorMin: "",
-    valorMax: "",
+    valorMin: null as number | null,
+    valorMax: null as number | null,
     areaMin: "",
     areaMax: "",
     quartosMin: undefined as number | undefined,
@@ -161,12 +162,8 @@ export function FiltrosBusca({
         : [],
   );
   const [codigo, setCodigo] = useState(initialValues.codigo ?? "");
-  const [valorMin, setValorMin] = useState(
-    initialValues.valorMin ? String(initialValues.valorMin) : "",
-  );
-  const [valorMax, setValorMax] = useState(
-    initialValues.valorMax ? String(initialValues.valorMax) : "",
-  );
+  const [valorMin, setValorMin] = useState<number | null>(initialValues.valorMin ?? null);
+  const [valorMax, setValorMax] = useState<number | null>(initialValues.valorMax ?? null);
   const [areaMin, setAreaMin] = useState(
     initialValues.areaMin ? String(initialValues.areaMin) : "",
   );
@@ -196,8 +193,8 @@ export function FiltrosBusca({
       cidades: state.selectedCidades.length > 0 ? state.selectedCidades : undefined,
       bairros: state.selectedBairros.length > 0 ? state.selectedBairros : undefined,
       codigo: state.codigo.trim() || undefined,
-      valorMin: state.valorMin ? Number(state.valorMin.replace(/\D/g, "")) : undefined,
-      valorMax: state.valorMax ? Number(state.valorMax.replace(/\D/g, "")) : undefined,
+      valorMin: state.valorMin ?? undefined,
+      valorMax: state.valorMax ?? undefined,
       areaMin: state.areaMin ? Number(state.areaMin.replace(/\D/g, "")) : undefined,
       areaMax: state.areaMax ? Number(state.areaMax.replace(/\D/g, "")) : undefined,
       quartosMin: state.quartosMin,
@@ -324,19 +321,17 @@ export function FiltrosBusca({
       <div className="space-y-2">
         <Label>Preço</Label>
         <div className="grid grid-cols-2 gap-2">
-          <Input
+          <CurrencyInput
             id="valorMin"
-            inputMode="numeric"
+            mode="filter"
             value={valorMin}
-            onChange={(event) => setValorMin(event.target.value)}
-            placeholder="Mínimo"
+            onChange={setValorMin}
           />
-          <Input
+          <CurrencyInput
             id="valorMax"
-            inputMode="numeric"
+            mode="filter"
             value={valorMax}
-            onChange={(event) => setValorMax(event.target.value)}
-            placeholder="Máximo"
+            onChange={setValorMax}
           />
         </div>
       </div>

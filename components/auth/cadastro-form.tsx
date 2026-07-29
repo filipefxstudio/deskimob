@@ -14,7 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatTelefoneInputElement, TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
+import { TELEFONE_PLACEHOLDER } from "@/lib/constants/input-placeholders";
 
 const initialState: AuthActionState = {};
 
@@ -84,7 +86,8 @@ export function CadastroForm() {
               name="telefone"
               type="tel"
               autoComplete="tel"
-              placeholder="(11) 99999-9999"
+              placeholder={TELEFONE_PLACEHOLDER}
+              onInput={formatTelefoneInputElement}
             />
           </div>
           <div className="space-y-2">

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -113,7 +114,19 @@ export function ClienteForm({ mode, cliente, onSuccess }: ClienteFormProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="telefone">Telefone *</Label>
-              <Input id="telefone" {...register("telefone")} aria-invalid={Boolean(errors.telefone)} />
+              <Controller
+                control={control}
+                name="telefone"
+                render={({ field }) => (
+                  <TelefoneInput
+                    id="telefone"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    aria-invalid={Boolean(errors.telefone)}
+                  />
+                )}
+              />
               {errors.telefone ? (
                 <p className="text-sm text-destructive">{errors.telefone.message}</p>
               ) : null}

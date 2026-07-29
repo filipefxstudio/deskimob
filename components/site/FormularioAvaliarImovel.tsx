@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { CepInput, type CepAddressData } from "@/components/imoveis/CepInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -17,7 +18,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { TIPOS_IMOVEL } from "@/lib/constants/imoveis";
 import { toast } from "@/hooks/use-toast";
-import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import type { TipoImovel } from "@/types";
 
 import { useSite } from "./SiteProvider";
@@ -140,10 +140,10 @@ export function FormularioAvaliarImovel() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="avaliar-telefone">Telefone *</Label>
-          <Input
+          <TelefoneInput
             id="avaliar-telefone"
             value={telefone}
-            onChange={(event) => setTelefone(formatTelefoneBr(event.target.value))}
+            onChange={setTelefone}
             required
           />
         </div>

@@ -21,6 +21,7 @@ import {
 } from "@/lib/auth/equipe-access";
 import { mapAuthErrorFromSupabase } from "@/lib/auth/errors";
 import { enviarConviteEquipe } from "@/lib/email/invite";
+import { ensureStatusImovelDefaults } from "@/lib/imoveis/status-defaults";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { logPostgrestError } from "@/lib/supabase/postgrest-error";
@@ -33,18 +34,88 @@ export type ConfigActionResult = {
   message?: string;
 };
 
-async function ensureTiposDefaults(corretorId: string) {
-  const supabase = await createClient();
-  const { count } = await supabase
-    .from("tipo_imovel_custom")
+async function getServiceRoleClientSafe() {
+  try {
+    return createServiceRoleClient();
+  } catch (error) {
+    console.error("[configuracoes] service role unavailable", error);
+    return null;
+  }
+}
+
+async function seedConfigRowsIfEmpty(
+  corretorId: string,
+  table: "tipo_imovel_custom" | "midia_origem" | "motivos_desativacao",
+  rows: Record<string, unknown>[],
+): Promise<void> {
+  const admin = await getServiceRoleClientSafe();
+  const countClient = admin ?? (await createClient());
+
+  const { count, error: countError } = await countClient
+    .from(table)
     .select("id", { count: "exact", head: true })
     .eq("corretor_id", corretorId);
+
+  if (countError) {
+    logPostgrestError(`seedConfigRowsIfEmpty:${table}:count`, countError);
+    return;
+  }
 
   if ((count ?? 0) > 0) {
     return;
   }
 
-  await supabase.from("tipo_imovel_custom").insert(
+  const writeClient = admin ?? (await createClient());
+  const { error: insertError } = await writeClient.from(table).insert(rows);
+
+  if (insertError) {
+    logPostgrestError(`seedConfigRowsIfEmpty:${table}:insert`, insertError);
+  }
+}
+
+async function fetchConfigRows<T>(
+  corretorId: string,
+  table: "tipo_imovel_custom" | "midia_origem" | "motivos_desativacao" | "status_imovel",
+  orderColumn: string,
+): Promise<T[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from(table)
+    .select("*")
+    .eq("corretor_id", corretorId)
+    .order(orderColumn);
+
+  if (!error && (data?.length ?? 0) > 0) {
+    return data as T[];
+  }
+
+  if (error) {
+    logPostgrestError(`fetchConfigRows:${table}:user`, error);
+  }
+
+  const admin = await getServiceRoleClientSafe();
+  if (!admin) {
+    return (data ?? []) as T[];
+  }
+
+  const { data: fallback, error: fallbackError } = await admin
+    .from(table)
+    .select("*")
+    .eq("corretor_id", corretorId)
+    .order(orderColumn);
+
+  if (fallbackError) {
+    logPostgrestError(`fetchConfigRows:${table}:admin`, fallbackError);
+    return (data ?? []) as T[];
+  }
+
+  return (fallback ?? []) as T[];
+}
+
+async function ensureTiposDefaults(corretorId: string) {
+  await seedConfigRowsIfEmpty(
+    corretorId,
+    "tipo_imovel_custom",
     DEFAULT_TIPOS_IMOVEL_CUSTOM.map((nome) => ({
       corretor_id: corretorId,
       nome,
@@ -54,18 +125,23 @@ async function ensureTiposDefaults(corretorId: string) {
 }
 
 async function ensureMidiasDefaults(corretorId: string) {
-  const supabase = await createClient();
-  const { count } = await supabase
-    .from("midia_origem")
-    .select("id", { count: "exact", head: true })
-    .eq("corretor_id", corretorId);
-
-  if ((count ?? 0) > 0) {
-    return;
-  }
-
-  await supabase.from("midia_origem").insert(
+  await seedConfigRowsIfEmpty(
+    corretorId,
+    "midia_origem",
     DEFAULT_MIDIAS_ORIGEM.map((nome, ordem) => ({
+      corretor_id: corretorId,
+      nome,
+      ordem,
+      ativo: true,
+    })),
+  );
+}
+
+async function seedMotivosDesativacao(corretorId: string) {
+  await seedConfigRowsIfEmpty(
+    corretorId,
+    "motivos_desativacao",
+    MOTIVOS_DESATIVACAO.map((nome, ordem) => ({
       corretor_id: corretorId,
       nome,
       ordem,
@@ -83,19 +159,7 @@ export async function getTiposImovelCustom(): Promise<TipoImovelCustom[]> {
 
   await ensureTiposDefaults(corretor.id);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tipo_imovel_custom")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .order("nome");
-
-  if (error) {
-    console.error("[getTiposImovelCustom] failed", error);
-    return [];
-  }
-
-  return (data ?? []) as TipoImovelCustom[];
+  return fetchConfigRows<TipoImovelCustom>(corretor.id, "tipo_imovel_custom", "nome");
 }
 
 export async function getMidiasOrigem(): Promise<MidiaOrigem[]> {
@@ -107,19 +171,7 @@ export async function getMidiasOrigem(): Promise<MidiaOrigem[]> {
 
   await ensureMidiasDefaults(corretor.id);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("midia_origem")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .order("ordem");
-
-  if (error) {
-    console.error("[getMidiasOrigem] failed", error);
-    return [];
-  }
-
-  return (data ?? []) as MidiaOrigem[];
+  return fetchConfigRows<MidiaOrigem>(corretor.id, "midia_origem", "ordem");
 }
 
 export async function getPerfisEquipe(): Promise<Perfil[]> {
@@ -874,19 +926,13 @@ export async function getStatusImovelConfig(): Promise<StatusImovel[]> {
     return [];
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("status_imovel")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .order("ordem");
-
-  if (error) {
-    console.error("[getStatusImovelConfig] failed", error);
-    return [];
+  try {
+    await ensureStatusImovelDefaults(corretor.id);
+  } catch (error) {
+    console.error("[getStatusImovelConfig] ensure defaults failed", error);
   }
 
-  return (data ?? []) as StatusImovel[];
+  return fetchConfigRows<StatusImovel>(corretor.id, "status_imovel", "ordem");
 }
 
 export async function addStatusImovel(data: {
@@ -1174,43 +1220,13 @@ export async function uploadMarcaDaguaLogo(
 // Motivos de desativação de imóvel
 // ---------------------------------------------------------------------------
 
-async function seedMotivosDesativacao(corretorId: string) {
-  const supabase = await createClient();
-  const rows = MOTIVOS_DESATIVACAO.map((nome, ordem) => ({
-    corretor_id: corretorId,
-    nome,
-    ordem,
-    ativo: true,
-  }));
-  await supabase.from("motivos_desativacao").insert(rows);
-}
-
 export async function getMotivosDesativacao(): Promise<MotivoDesativacao[]> {
   const corretor = await getCorretorForUser();
   if (!corretor) return [];
 
-  const supabase = await createClient();
-  const { count } = await supabase
-    .from("motivos_desativacao")
-    .select("id", { count: "exact", head: true })
-    .eq("corretor_id", corretor.id);
+  await seedMotivosDesativacao(corretor.id);
 
-  if ((count ?? 0) === 0) {
-    await seedMotivosDesativacao(corretor.id);
-  }
-
-  const { data, error } = await supabase
-    .from("motivos_desativacao")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .order("ordem");
-
-  if (error) {
-    console.error("[getMotivosDesativacao] failed", error);
-    return [];
-  }
-
-  return (data ?? []) as MotivoDesativacao[];
+  return fetchConfigRows<MotivoDesativacao>(corretor.id, "motivos_desativacao", "ordem");
 }
 
 export async function saveMotivoDesativacao(input: {

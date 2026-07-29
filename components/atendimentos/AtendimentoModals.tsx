@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -193,10 +194,10 @@ export function AtendimentoModals({
             </div>
             <div className="space-y-2">
               <Label htmlFor="editar-telefone">Telefone *</Label>
-              <Input
+              <TelefoneInput
                 id="editar-telefone"
                 value={telefone}
-                onChange={(e) => setTelefone(formatTelefoneBr(e.target.value))}
+                onChange={setTelefone}
                 required
               />
             </div>

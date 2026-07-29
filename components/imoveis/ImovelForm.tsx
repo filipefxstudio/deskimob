@@ -10,6 +10,7 @@ import { Controller, useForm, type FieldErrors, type Resolver } from "react-hook
 import { CepInput } from "@/components/imoveis/CepInput";
 import { CaptadorSection } from "@/components/imoveis/CaptadorSection";
 import { FotoUpload, type FotoItem } from "@/components/imoveis/FotoUpload";
+import { ImovelRepublicacaoAlerta } from "@/components/imoveis/ImovelRepublicacaoAlerta";
 import { ProprietarioSection } from "@/components/imoveis/ProprietarioSection";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -36,6 +37,7 @@ import { toast } from "@/hooks/use-toast";
 import {
   aprovarImovel,
   checkImovelDuplicado,
+  copyImovelFotosFromImovel,
   createImovel,
   enviarImovelParaAprovacao,
   getProximoCodigoPreview,
@@ -70,6 +72,7 @@ import {
   buildComplementoString,
   buildImovelFormDefaultValues,
   fotosToFotoItems,
+  imovelToDuplicarFormValues,
   imovelToFormValues,
   proprietariosFromImovel,
   resolveStatusEmCadastroId,
@@ -82,15 +85,18 @@ import {
   type CaptadorFormItem,
   type ImovelFormValues,
 } from "@/lib/validations/imovel";
+import type { AlertaRepublicacaoImovel } from "@/lib/imoveis/republicacao-alerta";
 import type { Imovel, Perfil, StatusImovel } from "@/types";
 
 interface ImovelFormProps {
   mode?: "create" | "edit";
   imovel?: Imovel;
+  duplicarSource?: Imovel | null;
   statusList?: StatusImovel[];
   perfis?: Perfil[];
   perfilAtualId?: string | null;
   perfil?: Perfil | null;
+  alertaRepublicacao?: AlertaRepublicacaoImovel | null;
 }
 
 const SELECT_PLACEHOLDER = "__selecione__";
@@ -169,22 +175,32 @@ function getFirstFormErrorMessage(errors: FieldErrors<ImovelFormValues>): string
 export function ImovelForm({
   mode = "create",
   imovel,
+  duplicarSource = null,
   statusList = [],
   perfis = [],
   perfilAtualId = null,
   perfil = null,
+  alertaRepublicacao = null,
 }: ImovelFormProps) {
   const router = useRouter();
   const isEdit = mode === "edit" && imovel;
+  const isDuplicar = !isEdit && Boolean(duplicarSource);
 
-  const [fotos, setFotos] = useState<FotoItem[]>(() =>
-    isEdit ? fotosToFotoItems(imovel.fotos ?? []) : [],
-  );
+  const [fotos, setFotos] = useState<FotoItem[]>(() => {
+    if (isEdit) {
+      return fotosToFotoItems(imovel.fotos ?? []);
+    }
+    if (duplicarSource) {
+      return fotosToFotoItems(duplicarSource.fotos ?? []);
+    }
+    return [];
+  });
   const [avisoDuplicidade, setAvisoDuplicidade] = useState<{
     imovelId: string;
     codigo?: string;
     bairro?: string;
     titulo?: string;
+    mensagem?: string;
   } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [proximoCodigo, setProximoCodigo] = useState<string | null>(
@@ -193,11 +209,16 @@ export function ImovelForm({
   const [isPending, startTransition] = useTransition();
 
   const initialFormValues = useMemo(
-    () =>
-      isEdit && imovel
-        ? imovelToFormValues(imovel)
-        : buildImovelFormDefaultValues(statusList),
-    [isEdit, imovel, statusList],
+    () => {
+      if (isEdit && imovel) {
+        return imovelToFormValues(imovel);
+      }
+      if (duplicarSource) {
+        return imovelToDuplicarFormValues(duplicarSource, statusList);
+      }
+      return buildImovelFormDefaultValues(statusList);
+    },
+    [isEdit, imovel, duplicarSource, statusList],
   );
 
   const {
@@ -238,8 +259,16 @@ export function ImovelForm({
   const localChaves = watch("local_chaves");
   const proprietarioIds = watch("proprietario_ids");
   const proprietariosIniciais = useMemo(
-    () => (isEdit && imovel ? proprietariosFromImovel(imovel) : []),
-    [isEdit, imovel],
+    () => {
+      if (isEdit && imovel) {
+        return proprietariosFromImovel(imovel);
+      }
+      if (duplicarSource) {
+        return proprietariosFromImovel(duplicarSource);
+      }
+      return [];
+    },
+    [isEdit, imovel, duplicarSource],
   );
   const captadores = watch("captadores");
   const publicadoSite = watch("publicado_site");
@@ -433,6 +462,13 @@ export function ImovelForm({
 
     if (result?.error || !result.imovelId) {
       return { error: result?.error ?? "Não foi possível cadastrar o imóvel." };
+    }
+
+    if (duplicarSource) {
+      const copyResult = await copyImovelFotosFromImovel(duplicarSource.id, result.imovelId);
+      if (copyResult.error) {
+        return { error: copyResult.error };
+      }
     }
 
     const uploadResult = await uploadNewFotos(result.imovelId);
@@ -637,6 +673,7 @@ export function ImovelForm({
           codigo: result.codigo,
           bairro: result.bairro,
           titulo: result.titulo,
+          mensagem: result.mensagem,
         });
       } else {
         setAvisoDuplicidade(null);
@@ -684,6 +721,15 @@ export function ImovelForm({
     setSubmitError(null);
     clearErrors();
 
+    if (avisoDuplicidade) {
+      const message =
+        avisoDuplicidade.mensagem ??
+        "Já existe um imóvel cadastrado neste endereço. Verifique o complemento antes de continuar.";
+      setSubmitError(message);
+      toast({ variant: "destructive", title: "Endereço já cadastrado", description: message });
+      return;
+    }
+
     startTransition(async () => {
       try {
         const result = await persistImovel(values);
@@ -695,7 +741,11 @@ export function ImovelForm({
         }
 
         toast({
-          title: isEdit ? "Imóvel atualizado com sucesso." : "Imóvel cadastrado com sucesso.",
+          title: isEdit
+            ? "Imóvel atualizado com sucesso."
+            : isDuplicar
+              ? "Unidade duplicada com sucesso."
+              : "Imóvel cadastrado com sucesso.",
         });
         router.push(
           result.imovelId ? `/dashboard/imoveis/${result.imovelId}` : "/dashboard/imoveis",
@@ -723,6 +773,12 @@ export function ImovelForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+      {isEdit &&
+      imovel?.status_aprovacao === "aguardando_aprovacao" &&
+      alertaRepublicacao ? (
+        <ImovelRepublicacaoAlerta alerta={alertaRepublicacao} />
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Código do imóvel</CardTitle>
@@ -996,12 +1052,10 @@ export function ImovelForm({
 
           {avisoDuplicidade ? (
             <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-medium">⚠️ Atenção: Já existe um imóvel cadastrado neste endereço.</p>
+              <p className="font-medium">⚠️ Atenção: conflito de endereço</p>
               <p className="mt-1">
-                Imóvel #{avisoDuplicidade.codigo ?? "—"} — {avisoDuplicidade.bairro ?? avisoDuplicidade.titulo ?? "Endereço existente"}
-              </p>
-              <p className="mt-1 text-amber-800">
-                Verifique se não é um cadastro duplicado antes de continuar.
+                {avisoDuplicidade.mensagem ??
+                  `Imóvel #${avisoDuplicidade.codigo ?? "—"} — ${avisoDuplicidade.bairro ?? avisoDuplicidade.titulo ?? "Endereço existente"}`}
               </p>
               <Link
                 href={`/dashboard/imoveis/${avisoDuplicidade.imovelId}`}
@@ -1009,6 +1063,16 @@ export function ImovelForm({
               >
                 Ver imóvel existente
               </Link>
+            </div>
+          ) : null}
+
+          {isDuplicar ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              <p className="font-medium">Duplicar imóvel</p>
+              <p className="mt-1">
+                Informe o complemento/identificação da nova unidade antes de salvar. Os demais
+                dados, fotos, proprietários e captadores foram copiados do imóvel original.
+              </p>
             </div>
           ) : null}
 
@@ -1427,7 +1491,7 @@ export function ImovelForm({
           {finalidade === "venda" ? (
             <div className="grid gap-4 grid-cols-12">
               <div className="col-span-12 space-y-2 sm:col-span-5">
-                <Label htmlFor="valor_venda">Valor de venda/locação (R$) *</Label>
+                <Label htmlFor="valor_venda">Valor de venda/locação *</Label>
                 <Controller
                   control={control}
                   name="valor_venda"
@@ -1444,7 +1508,7 @@ export function ImovelForm({
                 <FieldError message={errors.valor_venda?.message} />
               </div>
               <div className="col-span-6 space-y-2 sm:col-span-4">
-                <Label htmlFor="valor_condominio">Condomínio (R$)</Label>
+                <Label htmlFor="valor_condominio">Condomínio</Label>
                 <Controller
                   control={control}
                   name="valor_condominio"
@@ -1461,7 +1525,7 @@ export function ImovelForm({
                 <FieldError message={errors.valor_condominio?.message} />
               </div>
               <div className="col-span-6 space-y-2 sm:col-span-3">
-                <Label htmlFor="valor_iptu">IPTU (R$)</Label>
+                <Label htmlFor="valor_iptu">IPTU</Label>
                 <Controller
                   control={control}
                   name="valor_iptu"
@@ -1481,7 +1545,7 @@ export function ImovelForm({
           ) : (
             <div className="grid gap-4 grid-cols-12">
               <div className="col-span-12 space-y-2 sm:col-span-5">
-                <Label htmlFor="valor_locacao">Valor de venda/locação (R$) *</Label>
+                <Label htmlFor="valor_locacao">Valor de venda/locação *</Label>
                 <Controller
                   control={control}
                   name="valor_locacao"
@@ -1498,7 +1562,7 @@ export function ImovelForm({
                 <FieldError message={errors.valor_locacao?.message} />
               </div>
               <div className="col-span-6 space-y-2 sm:col-span-4">
-                <Label htmlFor="valor_condominio">Condomínio (R$)</Label>
+                <Label htmlFor="valor_condominio">Condomínio</Label>
                 <Controller
                   control={control}
                   name="valor_condominio"
@@ -1515,7 +1579,7 @@ export function ImovelForm({
                 <FieldError message={errors.valor_condominio?.message} />
               </div>
               <div className="col-span-6 space-y-2 sm:col-span-3">
-                <Label htmlFor="valor_iptu">IPTU (R$)</Label>
+                <Label htmlFor="valor_iptu">IPTU</Label>
                 <Controller
                   control={control}
                   name="valor_iptu"

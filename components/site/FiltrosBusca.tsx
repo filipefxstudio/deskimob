@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { CARACTERISTICAS_CHECKLIST } from "@/lib/constants/caracteristicas-checklist";
 import { FINALIDADES_IMOVEL, TIPOS_IMOVEL } from "@/lib/constants/imoveis";
 import { buildImoveisSearchParams } from "@/lib/site/filters";
+import { getSiteCorSecundaria } from "@/lib/site/theme-style";
 import type { ImoveisPublicosFilters } from "@/lib/site/queries";
 import { cn } from "@/lib/utils";
 import type { FinalidadeImovel, TipoImovel } from "@/types";
@@ -131,7 +132,8 @@ export function FiltrosBusca({
   onSearchComplete,
 }: FiltrosBuscaProps) {
   const router = useRouter();
-  const { link } = useSite();
+  const { link, corretor } = useSite();
+  const corSecundaria = getSiteCorSecundaria(corretor);
 
   const initialTipos =
     initialValues.tipos?.length
@@ -417,8 +419,8 @@ export function FiltrosBusca({
       </button>
       <Button
         type="submit"
-        className="px-6 text-white hover:opacity-90"
-        style={{ backgroundColor: "var(--color-secondary)" }}
+        className="border-transparent px-6 text-white hover:opacity-90"
+        style={{ backgroundColor: corSecundaria }}
       >
         <Search className="size-4" />
         Buscar imóveis

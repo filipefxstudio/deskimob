@@ -20,8 +20,10 @@ import {
   LISTING_MOBILE_HEADER_HEIGHT_PX,
   useListingChromeHeader,
 } from "@/lib/site/listing-chrome-header";
-import { cn } from "@/lib/utils";
+import { getSiteThemeStyle } from "@/lib/site/theme-style";
 import type { FinalidadeImovel, Imovel } from "@/types";
+
+import { useSite } from "./SiteProvider";
 
 interface SiteImoveisListingViewProps {
   bairros: string[];
@@ -57,7 +59,9 @@ export function SiteImoveisListingView({
   total,
 }: SiteImoveisListingViewProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const { corretor } = useSite();
   const { enabled: chromeHeaderEnabled, headerVisible } = useListingChromeHeader();
+  const siteThemeStyle = getSiteThemeStyle(corretor);
 
   const resultsLabel =
     subtitle ??
@@ -78,16 +82,12 @@ export function SiteImoveisListingView({
 
       {chromeHeaderEnabled ? (
         <div
-          className={cn(
-            "fixed inset-x-0 z-30 border-b border-border bg-white px-4 py-3 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out sm:px-6 lg:hidden",
-          )}
+          className="-mx-4 sticky z-30 mb-4 border-b border-border bg-white px-4 py-3 sm:-mx-6 sm:px-6 lg:hidden"
           style={{
-            transform: headerVisible
-              ? `translateY(${LISTING_MOBILE_HEADER_HEIGHT_PX}px)`
-              : "translateY(0)",
+            top: headerVisible ? LISTING_MOBILE_HEADER_HEIGHT_PX : 0,
           }}
         >
-          <div className="mx-auto flex max-w-7xl items-center gap-2">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -102,10 +102,11 @@ export function SiteImoveisListingView({
         </div>
       ) : null}
 
-      <div className="mb-4 h-[53px] lg:hidden" aria-hidden="true" />
-
       <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <DialogContent className="flex max-h-[min(92vh,820px)] w-[calc(100%-1rem)] max-w-lg flex-col gap-0 overflow-hidden p-0 sm:w-full">
+        <DialogContent
+          className="flex max-h-[min(92vh,820px)] w-[calc(100%-1rem)] max-w-lg flex-col gap-0 overflow-hidden p-0 sm:w-full"
+          style={siteThemeStyle}
+        >
           <DialogHeader className="border-b border-border px-4 py-4 text-left">
             <DialogTitle>Filtros</DialogTitle>
           </DialogHeader>

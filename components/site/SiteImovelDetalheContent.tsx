@@ -86,7 +86,7 @@ export async function SiteImovelDetalheContent({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="mx-auto min-w-0 max-w-7xl overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto min-w-0 max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <SiteImovelDetalheBackButton />
 
         <div className="mb-6 hidden text-sm text-muted-foreground sm:block">
@@ -96,22 +96,24 @@ export async function SiteImovelDetalheContent({
           <span className="mx-2">/</span>
           <span className="break-words">{imovel.titulo ?? "Detalhes"}</span>
         </div>
+      </div>
 
-        <ImovelGaleriaPublica
-          fotos={imovel.fotos ?? []}
-          titulo={imovel.titulo ?? "Imóvel"}
-          videoUrl={imovel.video_url}
-          mapa={
-            deveExibirMapaPublico(imovel) && imovel.latitude && imovel.longitude
-              ? {
-                  latitude: imovel.latitude,
-                  longitude: imovel.longitude,
-                  endereco,
-                }
-              : null
-          }
-        />
+      <ImovelGaleriaPublica
+        fotos={imovel.fotos ?? []}
+        titulo={imovel.titulo ?? "Imóvel"}
+        videoUrl={imovel.video_url}
+        mapa={
+          deveExibirMapaPublico(imovel) && imovel.latitude && imovel.longitude
+            ? {
+                latitude: imovel.latitude,
+                longitude: imovel.longitude,
+                endereco,
+              }
+            : null
+        }
+      />
 
+      <div className="mx-auto min-w-0 max-w-7xl overflow-x-hidden px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8">
         <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-8">
             <section className="min-w-0">

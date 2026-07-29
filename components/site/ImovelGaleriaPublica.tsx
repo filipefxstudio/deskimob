@@ -42,7 +42,7 @@ export function ImovelGaleriaPublica({
 
   return (
     <>
-      <div className="mb-8 w-full min-w-0">
+      <div className="mx-auto mb-8 w-full min-w-0 max-w-7xl px-4 sm:px-6 md:hidden lg:px-8">
         <ImovelGaleriaMobile
           fotos={ordenadas}
           titulo={titulo}
@@ -51,7 +51,7 @@ export function ImovelGaleriaPublica({
         />
       </div>
 
-      <div className="relative left-1/2 mb-8 hidden w-screen max-w-[100vw] -translate-x-1/2 md:block">
+      <div className="mb-8 hidden w-full md:block">
         <ImovelGaleriaDesktop
           fotos={ordenadas}
           titulo={titulo}

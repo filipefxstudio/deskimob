@@ -92,15 +92,30 @@ const OPTIONAL_LEAD_CREATE_COLUMNS = [
   "imovel_id",
 ] as const;
 
+function createLeadWriteClient(): Awaited<ReturnType<typeof createClient>> {
+  try {
+    return createServiceRoleClient();
+  } catch (error) {
+    console.error("[createLeadWriteClient] service role unavailable", error);
+    throw new Error("Não foi possível salvar o atendimento. Verifique a configuração do servidor.");
+  }
+}
+
 async function persistLeadInsert(
-  supabase: Awaited<ReturnType<typeof createClient>>,
   payload: Record<string, unknown>,
 ): Promise<{ leadId: string | null; error: unknown }> {
   const leadId = typeof payload.id === "string" ? payload.id : randomUUID();
   let currentPayload: Record<string, unknown> = { ...payload, id: leadId };
 
+  let writeClient: Awaited<ReturnType<typeof createClient>>;
+  try {
+    writeClient = createLeadWriteClient();
+  } catch (error) {
+    return { leadId: null, error };
+  }
+
   for (let attempt = 0; attempt <= OPTIONAL_LEAD_CREATE_COLUMNS.length; attempt += 1) {
-    const { error } = await supabase.from("leads").insert(currentPayload);
+    const { error } = await writeClient.from("leads").insert(currentPayload);
 
     if (!error) {
       return { leadId, error: null };
@@ -342,7 +357,8 @@ function mapMidiaToOrigem(midiaNome?: string): string {
   if (normalized.includes("whatsapp")) return "whatsapp";
   if (normalized.includes("site")) return "site";
   if (normalized.includes("indica")) return "indicacao";
-  return midiaNome.trim();
+  if (normalized.includes("portal")) return "portal";
+  return "manual";
 }
 
 async function garantirImovelInteresseSelecionado(
@@ -466,7 +482,13 @@ export async function createAtendimento(
   if (!telefone) return { error: "Informe o telefone." };
 
   const perfil = await getPerfilForUser();
-  const perfilId = input.perfil_id ?? perfil?.id ?? null;
+  const perfilInformado = input.perfil_id?.trim();
+  const perfilId =
+    perfilInformado && isValidUuid(perfilInformado)
+      ? perfilInformado
+      : perfil?.id && isValidUuid(perfil.id)
+        ? perfil.id
+        : null;
 
   const supabase = await createClient();
 
@@ -518,14 +540,14 @@ export async function createAtendimento(
     }
 
     const leadId = randomUUID();
-    const result = await persistLeadInsert(supabase, {
+    const result = await persistLeadInsert({
       id: leadId,
       corretor_id: corretor.id,
       cliente_id: clienteId,
       nome,
       telefone,
       email: input.email?.trim() || null,
-      imovel_id: input.imovel_id ?? null,
+      imovel_id: input.imovel_id && isValidUuid(input.imovel_id) ? input.imovel_id : null,
       perfil_id: perfilId,
       codigo_atendimento: codigo,
       situacao: "em_atendimento",

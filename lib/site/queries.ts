@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getImovelFotoPublicUrl } from "@/lib/imoveis/foto-url";
 import {
   applyImoveisPublicosFilters,
+  applyImoveisPublicosOrdenacao,
   PUBLIC_IMOVEIS_PAGE_SIZE,
   type ImoveisPublicosFilters,
 } from "@/lib/site/imovel-filters";
@@ -149,10 +150,10 @@ export const getImoveisPublicosPaginados = cache(
       .eq("corretor_id", corretorId)
       .eq("publicado_site", true)
       .eq("status", "disponivel")
-      .order("atualizado_em", { ascending: false })
       .range(offset, offset + pageSize - 1);
 
     query = applyImoveisPublicosFilters(query, filters);
+    query = applyImoveisPublicosOrdenacao(query, filters);
 
     if (options?.excludeIds?.length) {
       query = query.not("id", "in", `(${options.excludeIds.join(",")})`);

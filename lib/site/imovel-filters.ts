@@ -3,6 +3,22 @@ import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { PUBLIC_IMOVEIS_PAGE_SIZE } from "@/lib/site/filters";
 import type { FinalidadeImovel, Imovel, TipoImovel } from "@/types";
 
+export type OrdenacaoImoveisPublicos =
+  | "recentes"
+  | "menor_preco"
+  | "maior_preco"
+  | "maior_area";
+
+export const ORDENACAO_IMOVEIS_OPTIONS: {
+  value: OrdenacaoImoveisPublicos;
+  label: string;
+}[] = [
+  { value: "recentes", label: "Mais recentes" },
+  { value: "menor_preco", label: "Menor preço" },
+  { value: "maior_preco", label: "Maior preço" },
+  { value: "maior_area", label: "Maior área" },
+];
+
 export interface ImoveisPublicosFilters {
   tipo?: TipoImovel;
   tipos?: TipoImovel[];
@@ -21,6 +37,7 @@ export interface ImoveisPublicosFilters {
   suitesMin?: number;
   vagasMin?: number;
   caracteristicas?: string[];
+  ordenacao?: OrdenacaoImoveisPublicos;
   pagina?: number;
 }
 
@@ -141,6 +158,36 @@ export function applyImoveisPublicosFilters(
   }
 
   return query;
+}
+
+function resolvePriceColumn(finalidade?: FinalidadeImovel): "valor_venda" | "valor_locacao" {
+  return finalidade === "locacao" ? "valor_locacao" : "valor_venda";
+}
+
+export function applyImoveisPublicosOrdenacao(
+  query: ImoveisQuery,
+  filters: ImoveisPublicosFilters,
+): ImoveisQuery {
+  const ordenacao = filters.ordenacao ?? "recentes";
+  const finalidade = resolveSingleFinalidade(filters);
+
+  switch (ordenacao) {
+    case "menor_preco":
+      return query.order(resolvePriceColumn(finalidade), {
+        ascending: true,
+        nullsFirst: false,
+      });
+    case "maior_preco":
+      return query.order(resolvePriceColumn(finalidade), {
+        ascending: false,
+        nullsFirst: false,
+      });
+    case "maior_area":
+      return query.order("area_total", { ascending: false, nullsFirst: false });
+    case "recentes":
+    default:
+      return query.order("atualizado_em", { ascending: false });
+  }
 }
 
 export { PUBLIC_IMOVEIS_PAGE_SIZE };

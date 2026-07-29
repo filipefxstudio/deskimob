@@ -1,6 +1,9 @@
 import type { FinalidadeImovel, TipoImovel } from "@/types";
 
-import type { ImoveisPublicosFilters } from "@/lib/site/imovel-filters";
+import type {
+  ImoveisPublicosFilters,
+  OrdenacaoImoveisPublicos,
+} from "@/lib/site/imovel-filters";
 
 export const PUBLIC_IMOVEIS_PAGE_SIZE = 30;
 
@@ -14,6 +17,13 @@ const TIPOS: TipoImovel[] = [
 ];
 
 const FINALIDADES: FinalidadeImovel[] = ["venda", "locacao"];
+
+const ORDENACOES: OrdenacaoImoveisPublicos[] = [
+  "recentes",
+  "menor_preco",
+  "maior_preco",
+  "maior_area",
+];
 
 function getParam(
   searchParams: Record<string, string | string[] | undefined>,
@@ -93,6 +103,15 @@ function parseFinalidades(values: string[]): FinalidadeImovel[] {
   );
 }
 
+function parseOrdenacao(value: string | undefined): OrdenacaoImoveisPublicos | undefined {
+  if (!value) {
+    return undefined;
+  }
+  return ORDENACOES.includes(value as OrdenacaoImoveisPublicos)
+    ? (value as OrdenacaoImoveisPublicos)
+    : undefined;
+}
+
 export function parseImoveisSearchParams(
   searchParams: Record<string, string | string[] | undefined>,
 ): ImoveisPublicosFilters {
@@ -128,6 +147,7 @@ export function parseImoveisSearchParams(
     suitesMin: parseMinCount(getParam(searchParams, "suitesMin")),
     vagasMin: parseMinCount(getParam(searchParams, "vagasMin")),
     caracteristicas: getParamList(searchParams, "caracteristicas"),
+    ordenacao: parseOrdenacao(getParam(searchParams, "ordenacao")),
     pagina: parsePage(getParam(searchParams, "pagina")),
   };
 }
@@ -204,6 +224,10 @@ export function buildImoveisSearchParams(
 
   if (filters.caracteristicas?.length) {
     params.set("caracteristicas", filters.caracteristicas.join(","));
+  }
+
+  if (filters.ordenacao && filters.ordenacao !== "recentes") {
+    params.set("ordenacao", filters.ordenacao);
   }
 
   const pagina = options?.pagina ?? filters.pagina ?? 1;

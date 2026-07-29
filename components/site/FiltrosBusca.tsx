@@ -22,8 +22,10 @@ interface FiltrosBuscaProps {
   bairros?: string[];
   cidades?: string[];
   initialValues?: ImoveisPublicosFilters;
-  layout?: "hero" | "sidebar";
+  layout?: "hero" | "sidebar" | "mobile";
   fixedFinalidade?: FinalidadeImovel;
+  hideCaracteristicas?: boolean;
+  onSearchComplete?: () => void;
 }
 
 function createEmptyFilterState(fixedFinalidade?: FinalidadeImovel) {
@@ -125,6 +127,8 @@ export function FiltrosBusca({
   initialValues = {},
   layout = "sidebar",
   fixedFinalidade,
+  hideCaracteristicas = false,
+  onSearchComplete,
 }: FiltrosBuscaProps) {
   const router = useRouter();
   const { link } = useSite();
@@ -231,6 +235,7 @@ export function FiltrosBusca({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     navigateWithFilters(buildFiltersFromState(readFilterState()));
+    onSearchComplete?.();
   }
 
   function handleClear() {
@@ -255,6 +260,8 @@ export function FiltrosBusca({
   }
 
   const isHero = layout === "hero";
+  const isMobile = layout === "mobile";
+  const showCaracteristicas = !isHero && !hideCaracteristicas;
 
   function toggleCategoria(id: string) {
     setOpenCategorias((current) => ({ ...current, [id]: !current[id] }));
@@ -359,36 +366,38 @@ export function FiltrosBusca({
         </div>
       ) : null}
 
-      <div className="space-y-4">
-        <Label>Características</Label>
-        {CARACTERISTICAS_CHECKLIST.map((categoria) => (
-          <div key={categoria.id} className="space-y-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
-            <button
-              type="button"
-              onClick={() => toggleCategoria(categoria.id)}
-              className="flex w-full items-center justify-between text-left"
-            >
-              <span className="text-sm font-medium text-foreground">{categoria.titulo}</span>
+      {showCaracteristicas ? (
+        <div className="space-y-4">
+          <Label>Características</Label>
+          {CARACTERISTICAS_CHECKLIST.map((categoria) => (
+            <div key={categoria.id} className="space-y-2 border-t border-border pt-3 first:border-t-0 first:pt-0">
+              <button
+                type="button"
+                onClick={() => toggleCategoria(categoria.id)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="text-sm font-medium text-foreground">{categoria.titulo}</span>
+                {openCategorias[categoria.id] ? (
+                  <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                )}
+              </button>
               {openCategorias[categoria.id] ? (
-                <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-              )}
-            </button>
-            {openCategorias[categoria.id] ? (
-              <CheckboxList
-                idPrefix={`caracteristica-${categoria.id}`}
-                items={[...categoria.itens]}
-                selected={caracteristicas}
-                onToggle={(item) =>
-                  setCaracteristicas((current) => toggleListItem(current, item))
-                }
-                maxHeightClass="max-h-48"
-              />
-            ) : null}
-          </div>
-        ))}
-      </div>
+                <CheckboxList
+                  idPrefix={`caracteristica-${categoria.id}`}
+                  items={[...categoria.itens]}
+                  selected={caracteristicas}
+                  onToggle={(item) =>
+                    setCaracteristicas((current) => toggleListItem(current, item))
+                  }
+                  maxHeightClass="max-h-48"
+                />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
     </>
   );
 
@@ -423,6 +432,15 @@ export function FiltrosBusca({
         onSubmit={handleSubmit}
         className="grid gap-4 rounded-2xl bg-white p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-3"
       >
+        {filterFields}
+        {filterFooter}
+      </form>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {filterFields}
         {filterFooter}
       </form>

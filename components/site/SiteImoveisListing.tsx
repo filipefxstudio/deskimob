@@ -1,7 +1,4 @@
-import { FiltrosBusca } from "@/components/site/FiltrosBusca";
-import { ImoveisSimilaresSection } from "@/components/site/ImoveisSimilaresSection";
-import { ImovelCardPublico } from "@/components/site/ImovelCardPublico";
-import { SitePagination } from "@/components/site/SitePagination";
+import { SiteImoveisListingView } from "@/components/site/SiteImoveisListingView";
 import type { ImoveisPublicosFilters } from "@/lib/site/queries";
 import {
   getBairrosPublicos,
@@ -51,58 +48,21 @@ export async function SiteImoveisListing({
   const fim = Math.min(pagina * resultado.pageSize, total);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-primary">{title}</h1>
-        {subtitle ? (
-          <p className="mt-2 text-muted-foreground">{subtitle}</p>
-        ) : (
-          <p className="mt-2 text-muted-foreground">
-            {total === 0
-              ? "Nenhum resultado"
-              : `${total} ${total === 1 ? "resultado" : "resultados"} encontrados`}
-            {total > 0 ? ` · exibindo ${inicio}–${fim}` : null}
-          </p>
-        )}
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
-        <aside className="lg:sticky lg:top-24">
-          <FiltrosBusca
-            bairros={bairros}
-            cidades={cidades}
-            initialValues={mergedFilters}
-            layout="sidebar"
-            fixedFinalidade={finalidade}
-          />
-        </aside>
-
-        <div>
-          {imoveis.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                {imoveis.map((imovel) => (
-                  <ImovelCardPublico key={imovel.id} imovel={imovel} />
-                ))}
-              </div>
-
-              <div className="mt-10">
-                <SitePagination
-                  filters={mergedFilters}
-                  pagina={pagina}
-                  totalPaginas={totalPaginas}
-                />
-              </div>
-
-              <ImoveisSimilaresSection imoveis={similares} />
-            </>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border p-10 text-center text-muted-foreground">
-              {emptyMessage}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <SiteImoveisListingView
+      bairros={bairros}
+      cidades={cidades}
+      filters={mergedFilters}
+      fixedFinalidade={finalidade}
+      imoveis={imoveis}
+      similares={similares}
+      pagina={pagina}
+      totalPaginas={totalPaginas}
+      title={title}
+      subtitle={subtitle}
+      emptyMessage={emptyMessage}
+      inicio={inicio}
+      fim={fim}
+      total={total}
+    />
   );
 }

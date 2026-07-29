@@ -30,7 +30,7 @@ export function ImovelStatsRow({
   return (
     <div
       className={cn(
-        "flex flex-nowrap items-center overflow-x-auto",
+        "flex flex-nowrap items-center overflow-hidden",
         rowClass[variant],
         className,
       )}

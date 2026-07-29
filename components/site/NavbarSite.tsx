@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useListingChromeHeader } from "@/lib/site/listing-chrome-header";
 import { cn } from "@/lib/utils";
 
 import { useSite } from "./SiteProvider";
@@ -20,6 +21,7 @@ const BASE_NAV_ITEMS = [
 export function NavbarSite() {
   const { corretor, link, hasImoveisLocacao } = useSite();
   const [open, setOpen] = useState(false);
+  const { enabled: chromeHeaderEnabled, headerVisible } = useListingChromeHeader();
 
   const navItems = BASE_NAV_ITEMS.filter(
     (item) => !("requiresLocacao" in item && item.requiresLocacao) || hasImoveisLocacao,
@@ -27,7 +29,13 @@ export function NavbarSite() {
 
   return (
     <header
-      className="sticky top-0 z-40 border-b border-white/10 bg-primary text-white"
+      className={cn(
+        "z-40 border-b border-white/10 bg-primary text-white transition-transform duration-300",
+        chromeHeaderEnabled
+          ? "fixed inset-x-0 top-0 lg:sticky lg:top-0"
+          : "sticky top-0",
+        chromeHeaderEnabled && !headerVisible && "-translate-y-full lg:translate-y-0",
+      )}
       style={{ backgroundColor: "var(--color-primary)" }}
     >
       <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">

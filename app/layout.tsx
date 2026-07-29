@@ -26,6 +26,12 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${roboto.variable} ${roboto.className} h-full antialiased`}
     >
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=directions_car,king_bed,bathtub,shower,straighten,open_in_full"
+        />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster />

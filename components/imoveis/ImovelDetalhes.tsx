@@ -4,17 +4,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  BedDouble,
-  Car,
   Check,
   MapPin,
-  Maximize2,
   MessageCircle,
   Phone,
-  Ruler,
 } from "lucide-react";
 
-import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
+import {
+  IconAreaTotal,
+  IconAreaUtil,
+  IconBanheiro,
+  IconQuartos,
+  IconSuite,
+  IconVagas,
+} from "@/components/icons/ImovelStatIcons";
 
 import { ImovelAuditoriaTab } from "@/components/imoveis/ImovelAuditoriaTab";
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
@@ -243,30 +246,30 @@ export function ImovelDetalhes({
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <BedDouble className="size-4" />
+            <IconQuartos className="text-muted-foreground" />
             {imovel.quartos} quartos
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <IconSuite className="size-4" />
+            <IconSuite className="text-muted-foreground" />
             {imovel.suites} suítes
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <IconBanheiro className="size-4" />
+            <IconBanheiro className="text-muted-foreground" />
             {imovel.banheiros} banheiros
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <Car className="size-4" />
+            <IconVagas className="text-muted-foreground" />
             {imovel.vagas} vagas
           </span>
           {imovel.area_util ? (
             <span className="inline-flex items-center gap-1.5">
-              <Maximize2 className="size-4" />
+              <IconAreaUtil className="text-muted-foreground" />
               {imovel.area_util} m² útil
             </span>
           ) : null}
           {imovel.area_total ? (
             <span className="inline-flex items-center gap-1.5">
-              <Ruler className="size-4" />
+              <IconAreaTotal className="text-muted-foreground" />
               {imovel.area_total} m² total
             </span>
           ) : null}

@@ -1,9 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { BedDouble, Car, Maximize2, type LucideIcon } from "lucide-react";
 
-import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
+import {
+  IconAreaUtil,
+  IconBanheiro,
+  IconQuartos,
+  IconSuite,
+  IconVagas,
+} from "@/components/icons/ImovelStatIcons";
 
 import {
   getBairroCidadeCardLabel,
@@ -22,21 +28,15 @@ interface ImovelCardPublicoProps {
 }
 
 function StatItem({
-  icon: Icon,
+  icon,
   value,
-  customIcon = false,
 }: {
-  icon: LucideIcon | typeof IconSuite;
+  icon: ReactNode;
   value: string | number;
-  customIcon?: boolean;
 }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-      {customIcon ? (
-        <Icon className="size-4 shrink-0" aria-hidden="true" />
-      ) : (
-        <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
-      )}
+      {icon}
       <span className="text-sm leading-none">{value}</span>
     </span>
   );
@@ -95,16 +95,23 @@ export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
             {imovel.area_util ? (
-              <StatItem icon={Maximize2} value={`${imovel.area_util} m²`} />
+              <StatItem
+                icon={<IconAreaUtil className="text-primary" />}
+                value={`${imovel.area_util} m²`}
+              />
             ) : null}
-            {imovel.quartos > 0 ? <StatItem icon={BedDouble} value={imovel.quartos} /> : null}
+            {imovel.quartos > 0 ? (
+              <StatItem icon={<IconQuartos className="text-primary" />} value={imovel.quartos} />
+            ) : null}
             {imovel.suites > 0 ? (
-              <StatItem icon={IconSuite} value={imovel.suites} customIcon />
+              <StatItem icon={<IconSuite className="text-primary" />} value={imovel.suites} />
             ) : null}
             {imovel.banheiros > 0 ? (
-              <StatItem icon={IconBanheiro} value={imovel.banheiros} customIcon />
+              <StatItem icon={<IconBanheiro className="text-primary" />} value={imovel.banheiros} />
             ) : null}
-            {imovel.vagas > 0 ? <StatItem icon={Car} value={imovel.vagas} /> : null}
+            {imovel.vagas > 0 ? (
+              <StatItem icon={<IconVagas className="text-primary" />} value={imovel.vagas} />
+            ) : null}
           </div>
         </div>
       </Link>

@@ -264,6 +264,7 @@ export function FiltrosBusca({
   const isHero = layout === "hero";
   const isMobile = layout === "mobile";
   const showCaracteristicas = !isHero && !hideCaracteristicas;
+  const dropdownMenuMode = isMobile ? "inline" : "portal";
 
   function toggleCategoria(id: string) {
     setOpenCategorias((current) => ({ ...current, [id]: !current[id] }));
@@ -274,6 +275,7 @@ export function FiltrosBusca({
       {!fixedFinalidade ? (
         <CheckboxFilterDropdown
           label="Finalidade"
+          menuMode={dropdownMenuMode}
           options={FINALIDADES_IMOVEL.map((item) => ({
             value: item.value,
             label: item.label,
@@ -286,6 +288,7 @@ export function FiltrosBusca({
 
       <CheckboxFilterDropdown
         label="Tipo de imóvel"
+        menuMode={dropdownMenuMode}
         options={TIPOS_IMOVEL.map((item) => ({
           value: item.value,
           label: item.label,
@@ -297,6 +300,7 @@ export function FiltrosBusca({
 
       <CheckboxFilterDropdown
         label="Cidade"
+        menuMode={dropdownMenuMode}
         options={cidades.map((cidade) => ({ value: cidade, label: cidade }))}
         selected={selectedCidades}
         onChange={setSelectedCidades}
@@ -305,6 +309,7 @@ export function FiltrosBusca({
 
       <CheckboxFilterDropdown
         label="Bairro"
+        menuMode={dropdownMenuMode}
         options={bairros.map((bairro) => ({ value: bairro, label: bairro }))}
         selected={selectedBairros}
         onChange={setSelectedBairros}

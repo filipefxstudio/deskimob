@@ -21,7 +21,7 @@ const BASE_NAV_ITEMS = [
 export function NavbarSite() {
   const { corretor, link, hasImoveisLocacao } = useSite();
   const [open, setOpen] = useState(false);
-  const { enabled: chromeHeaderEnabled, headerVisible } = useListingChromeHeader();
+  const { enabled: chromeHeaderEnabled, headerOffset } = useListingChromeHeader();
 
   const navItems = BASE_NAV_ITEMS.filter(
     (item) => !("requiresLocacao" in item && item.requiresLocacao) || hasImoveisLocacao,
@@ -30,13 +30,19 @@ export function NavbarSite() {
   return (
     <header
       className={cn(
-        "z-40 border-b border-white/10 bg-primary text-white will-change-transform motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out",
+        "z-40 border-b border-white/10 bg-primary text-white will-change-transform lg:will-change-auto",
         chromeHeaderEnabled
-          ? "fixed inset-x-0 top-0 lg:sticky lg:top-0 lg:will-change-auto lg:transition-none"
+          ? "fixed inset-x-0 top-0 lg:sticky lg:top-0"
           : "sticky top-0",
-        chromeHeaderEnabled && !headerVisible && "-translate-y-full lg:translate-y-0",
       )}
-      style={{ backgroundColor: "var(--color-primary)" }}
+      style={{
+        backgroundColor: "var(--color-primary)",
+        transform:
+          chromeHeaderEnabled && headerOffset > 0
+            ? `translateY(-${headerOffset}px)`
+            : undefined,
+      }}
+      suppressHydrationWarning
     >
       <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href={link("/")} className="flex min-w-0 items-center gap-3">

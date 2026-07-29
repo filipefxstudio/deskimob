@@ -22,6 +22,8 @@ interface CheckboxFilterDropdownProps {
   placeholder?: string;
   showAllOption?: boolean;
   allOptionLabel?: string;
+  /** `inline` mantém o menu no DOM pai (necessário dentro de modais). */
+  menuMode?: "portal" | "inline";
 }
 
 interface MenuPosition {
@@ -38,13 +40,20 @@ export function CheckboxFilterDropdown({
   placeholder = "Todos",
   showAllOption = false,
   allOptionLabel = "Todos",
+  menuMode = "portal",
 }: CheckboxFilterDropdownProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<MenuPosition | null>(null);
+  const usePortal = menuMode === "portal";
 
   const updatePosition = useCallback(() => {
+    if (!usePortal) {
+      return;
+    }
+
     const trigger = triggerRef.current;
     if (!trigger) {
       return;
@@ -61,10 +70,10 @@ export function CheckboxFilterDropdown({
       left: rect.left,
       width: Math.max(rect.width, 220),
     });
-  }, []);
+  }, [usePortal]);
 
   useEffect(() => {
-    if (!open) {
+    if (!open || !usePortal) {
       setPosition(null);
       return;
     }
@@ -76,24 +85,31 @@ export function CheckboxFilterDropdown({
       window.removeEventListener("scroll", updatePosition, true);
       window.removeEventListener("resize", updatePosition);
     };
-  }, [open, updatePosition]);
+  }, [open, updatePosition, usePortal]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    function handleClickOutside(event: MouseEvent) {
+    function handlePointerOutside(event: PointerEvent) {
       const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) {
+      const root = usePortal ? null : rootRef.current;
+
+      if (
+        triggerRef.current?.contains(target) ||
+        menuRef.current?.contains(target) ||
+        root?.contains(target)
+      ) {
         return;
       }
+
       setOpen(false);
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+    document.addEventListener("pointerdown", handlePointerOutside);
+    return () => document.removeEventListener("pointerdown", handlePointerOutside);
+  }, [open, usePortal]);
 
   function toggleValue(value: string, checked: boolean) {
     if (checked) {
@@ -117,16 +133,8 @@ export function CheckboxFilterDropdown({
       ? (options.find((o) => o.value === selected[0])?.label ?? "1 selecionado")
       : `${selected.length} selecionados`;
 
-  const menu = open ? (
-    <div
-      ref={menuRef}
-      className="fixed z-[9999] max-h-64 overflow-y-auto rounded-lg border border-border bg-card py-2 shadow-lg"
-      style={
-        position
-          ? { top: position.top, left: position.left, width: position.width }
-          : { top: -9999, left: -9999, visibility: "hidden" as const }
-      }
-    >
+  const menuItems = (
+    <>
       {showAllOption ? (
         <label className="flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-sm font-medium hover:bg-muted">
           <Checkbox
@@ -152,11 +160,31 @@ export function CheckboxFilterDropdown({
           {option.label}
         </label>
       ))}
+    </>
+  );
+
+  const menu = open ? (
+    <div
+      ref={menuRef}
+      className={cn(
+        "max-h-64 overflow-y-auto rounded-lg border border-border bg-card py-2 shadow-lg",
+        usePortal ? "fixed z-[200]" : "absolute inset-x-0 top-full z-50 mt-1",
+      )}
+      style={
+        usePortal
+          ? position
+            ? { top: position.top, left: position.left, width: position.width }
+            : { top: -9999, left: -9999, visibility: "hidden" as const }
+          : undefined
+      }
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      {menuItems}
     </div>
   ) : null;
 
   return (
-    <div className="space-y-2">
+    <div ref={rootRef} className={cn("space-y-2", !usePortal && "relative")}>
       <Label>{label}</Label>
       <Button
         ref={triggerRef}
@@ -171,7 +199,11 @@ export function CheckboxFilterDropdown({
         </span>
         <ChevronDown className={cn("size-4 shrink-0 opacity-60", open && "rotate-180")} />
       </Button>
-      {typeof document !== "undefined" && menu ? createPortal(menu, document.body) : null}
+      {usePortal
+        ? typeof document !== "undefined" && menu
+          ? createPortal(menu, document.body)
+          : null
+        : menu}
     </div>
   );
 }

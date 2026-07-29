@@ -60,7 +60,7 @@ export function SiteImoveisListingView({
 }: SiteImoveisListingViewProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { corretor } = useSite();
-  const { enabled: chromeHeaderEnabled, headerVisible } = useListingChromeHeader();
+  const { enabled: chromeHeaderEnabled, headerOffset } = useListingChromeHeader();
   const siteThemeStyle = getSiteThemeStyle(corretor);
 
   const resultsLabel =
@@ -84,7 +84,7 @@ export function SiteImoveisListingView({
         <div
           className="-mx-4 sticky z-30 mb-4 border-b border-border bg-white px-4 py-3 sm:-mx-6 sm:px-6 lg:hidden"
           style={{
-            top: headerVisible ? LISTING_MOBILE_HEADER_HEIGHT_PX : 0,
+            top: LISTING_MOBILE_HEADER_HEIGHT_PX - headerOffset,
           }}
         >
           <div className="flex items-center gap-2">

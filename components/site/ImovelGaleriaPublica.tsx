@@ -29,7 +29,7 @@ export function ImovelGaleriaPublica({
 
   if (ordenadas.length === 0) {
     return (
-      <div className="mb-8 flex aspect-[4/3] w-full max-w-full items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted text-muted-foreground">
         Nenhuma foto disponível
       </div>
     );
@@ -42,7 +42,7 @@ export function ImovelGaleriaPublica({
 
   return (
     <>
-      <div className="mx-auto mb-8 w-full min-w-0 max-w-7xl px-4 sm:px-6 md:hidden lg:px-8">
+      <div className="w-full min-w-0 px-4 md:hidden">
         <ImovelGaleriaMobile
           fotos={ordenadas}
           titulo={titulo}
@@ -51,7 +51,7 @@ export function ImovelGaleriaPublica({
         />
       </div>
 
-      <div className="mb-8 hidden w-full md:block">
+      <div className="hidden w-full md:block">
         <ImovelGaleriaDesktop
           fotos={ordenadas}
           titulo={titulo}

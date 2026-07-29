@@ -152,7 +152,23 @@ export function ImovelDetalhes({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col">
+      <ImovelGaleriaDetalhes
+        fotos={fotos}
+        titulo={titulo}
+        videoUrl={imovel.video_url}
+        mapa={
+          imovel.latitude && imovel.longitude
+            ? {
+                latitude: imovel.latitude,
+                longitude: imovel.longitude,
+                endereco,
+              }
+            : null
+        }
+      />
+
+      <div className="space-y-6 p-4 md:p-6">
       {imovel.status_aprovacao === "aguardando_aprovacao" && alertaRepublicacao ? (
         <ImovelRepublicacaoAlerta alerta={alertaRepublicacao} />
       ) : null}
@@ -229,21 +245,6 @@ export function ImovelDetalhes({
         />
         </div>
       </div>
-
-      <ImovelGaleriaDetalhes
-        fotos={fotos}
-        titulo={titulo}
-        videoUrl={imovel.video_url}
-        mapa={
-          imovel.latitude && imovel.longitude
-            ? {
-                latitude: imovel.latitude,
-                longitude: imovel.longitude,
-                endereco,
-              }
-            : null
-        }
-      />
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -522,6 +523,7 @@ export function ImovelDetalhes({
           <ImovelAuditoriaTab registros={auditoria} />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

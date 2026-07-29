@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type ImovelStatsVariant = "card" | "detail" | "site-detail";
+export type ImovelStatsVariant = "card" | "detail" | "site-detail";
 
 const rowClass: Record<ImovelStatsVariant, string> = {
   card: "gap-x-2 text-xs text-muted-foreground",

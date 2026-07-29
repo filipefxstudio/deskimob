@@ -8,9 +8,7 @@ import {
   IconSuite,
   IconVagas,
 } from "@/components/icons/ImovelStatIcons";
-import { ImovelStatItem, ImovelStatsRow } from "@/components/imoveis/ImovelStatsRow";
-
-type ImovelStatsVariant = "card" | "detail";
+import { ImovelStatItem, ImovelStatsRow, type ImovelStatsVariant } from "@/components/imoveis/ImovelStatsRow";
 
 interface ImovelStatsProps {
   imovel: Imovel;

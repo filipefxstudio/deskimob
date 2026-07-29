@@ -5,7 +5,10 @@ import Link from "next/link";
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
 import { ImovelCardFotoCarousel } from "@/components/imoveis/ImovelCardFotoCarousel";
 
-import { saveListingReturnState } from "@/lib/site/listing-return";
+import {
+  getListingScrollPosition,
+  saveListingReturnState,
+} from "@/lib/site/listing-return";
 import {
   getBairroCidadeCardLabel,
   getEnderecoCardSecundario,
@@ -30,7 +33,7 @@ export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
   function handleOpenDetalhe() {
     saveListingReturnState(
       `${window.location.pathname}${window.location.search}`,
-      window.scrollY,
+      getListingScrollPosition(),
     );
   }
 

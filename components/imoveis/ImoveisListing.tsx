@@ -8,6 +8,7 @@ import { ImovelCardGrid } from "@/components/imoveis/ImovelCardGrid";
 import { ImovelPhotoBadge } from "@/components/atendimentos/ImovelPhotoBadge";
 import type { ImovelListingBadge } from "@/lib/actions/imoveis";
 import { ImovelCardList } from "@/components/imoveis/ImovelCardList";
+import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import {
   buildInitialImoveisFilters,
   buildImoveisFilterTags,
@@ -284,6 +285,7 @@ export function ImoveisListing({
 
   return (
     <div className="space-y-4">
+      <ListingScrollRestore />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-primary">Imóveis</h2>

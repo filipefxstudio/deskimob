@@ -96,7 +96,9 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
               collapsed ? "md:ml-[52px]" : "md:ml-60",
             )}
           >
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            <main className="flex-1 overflow-y-auto" data-dashboard-scroll>
+              {children}
+            </main>
           </div>
         </div>
       </TooltipProvider>

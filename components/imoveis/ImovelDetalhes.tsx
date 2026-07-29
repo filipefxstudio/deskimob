@@ -15,6 +15,7 @@ import { ImovelStats } from "@/components/imoveis/ImovelStats";
 import { ImovelAuditoriaTab } from "@/components/imoveis/ImovelAuditoriaTab";
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
 import { ImovelDesempenhoTab } from "@/components/imoveis/ImovelDesempenhoTab";
+import { ImovelDetalheBackButton } from "@/components/imoveis/ImovelDetalheBackButton";
 import { ImovelGaleriaDetalhes } from "@/components/imoveis/ImovelGaleriaDetalhes";
 import { ImovelRepublicacaoAlerta } from "@/components/imoveis/ImovelRepublicacaoAlerta";
 import { StatusBadge } from "@/components/imoveis/StatusBadge";
@@ -169,6 +170,8 @@ export function ImovelDetalhes({
       />
 
       <div className="space-y-6 p-4 md:p-6">
+      <ImovelDetalheBackButton />
+
       {imovel.status_aprovacao === "aguardando_aprovacao" && alertaRepublicacao ? (
         <ImovelRepublicacaoAlerta alerta={alertaRepublicacao} />
       ) : null}

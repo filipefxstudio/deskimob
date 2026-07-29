@@ -18,6 +18,10 @@ import {
   getTipoLabel,
 } from "@/lib/site/format";
 import { getCaptadorPrincipalNome } from "@/lib/imoveis/captador";
+import {
+  getListingScrollPosition,
+  saveListingReturnState,
+} from "@/lib/site/listing-return";
 import type { Imovel, StatusImovel } from "@/types";
 
 function formatCaptadorLinha(imovel: Imovel, codigo: string): string {
@@ -52,6 +56,17 @@ function ImovelCardItem({
       ? formatCurrency(valor)
       : `${formatCurrency(valor)}/mês`;
 
+  function handleOpenDetalhe() {
+    if (linkTarget === "_blank") {
+      return;
+    }
+
+    saveListingReturnState(
+      `${window.location.pathname}${window.location.search}`,
+      getListingScrollPosition(),
+    );
+  }
+
   return (
     <article className="group overflow-hidden rounded-xl bg-card shadow-sm transition-shadow hover:shadow-md">
       <Link
@@ -59,6 +74,7 @@ function ImovelCardItem({
         className="block"
         target={linkTarget}
         rel={linkTarget === "_blank" ? "noopener noreferrer" : undefined}
+        onClick={handleOpenDetalhe}
       >
         <ImovelCardFotoCarousel
           fotos={imovel.fotos ?? []}

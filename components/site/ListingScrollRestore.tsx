@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { consumeListingScrollRestore } from "@/lib/site/listing-return";
+import { consumeListingScrollRestore, restoreListingScrollPosition } from "@/lib/site/listing-return";
 
 export function ListingScrollRestore() {
   useEffect(() => {
@@ -12,7 +12,7 @@ export function ListingScrollRestore() {
     }
 
     const restore = () => {
-      window.scrollTo({ top: scrollY, left: 0 });
+      restoreListingScrollPosition(scrollY);
     };
 
     requestAnimationFrame(() => {

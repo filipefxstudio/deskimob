@@ -51,11 +51,26 @@ function calcTotalWidth(widths: number[]): number {
   return widths.reduce((acc, width) => acc + width, 0) + GAP_PX * (widths.length - 1);
 }
 
+function findLeadingIndex(widths: number[], scrollPx: number): number {
+  let offset = 0;
+
+  for (let i = 0; i < widths.length; i += 1) {
+    const nextOffset = offset + widths[i] + GAP_PX;
+    if (scrollPx < nextOffset - GAP_PX / 2 || i === widths.length - 1) {
+      return i;
+    }
+    offset = nextOffset;
+  }
+
+  return 0;
+}
+
 function FotoSlot({
   foto,
   titulo,
   indice,
   width,
+  isPortrait,
   onOpenLightbox,
   onAspect,
 }: {
@@ -63,21 +78,27 @@ function FotoSlot({
   titulo: string;
   indice: number;
   width: number;
+  isPortrait: boolean | null;
   onOpenLightbox: (indice: number) => void;
   onAspect: (fotoId: string, aspect: number) => void;
 }) {
+  const imgClassName =
+    isPortrait === false
+      ? "size-full object-cover"
+      : "max-h-full max-w-full object-contain";
+
   return (
     <button
       type="button"
       onClick={() => onOpenLightbox(indice)}
       style={{ width, height: GALLERY_HEIGHT, flexShrink: 0 }}
-      className="overflow-hidden bg-neutral-200"
+      className="flex items-center justify-center overflow-hidden bg-neutral-200"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={foto.url}
         alt={foto.legenda ?? `${titulo} ${indice + 1}`}
-        className="size-full object-cover"
+        className={imgClassName}
         onLoad={(event) => {
           const img = event.currentTarget;
           if (img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -100,7 +121,7 @@ export function ImovelGaleriaDesktop({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("fotos");
-  const [indiceInicio, setIndiceInicio] = useState(0);
+  const [scrollPx, setScrollPx] = useState(0);
   const [aspects, setAspects] = useState<Record<string, number>>({});
 
   const videoEmbedUrl = useMemo(() => getVideoEmbedUrl(videoUrl), [videoUrl]);
@@ -149,31 +170,47 @@ export function ImovelGaleriaDesktop({
     });
   }, [aspects, containerWidth, fotos]);
 
-  const scrollOffset = useMemo(
-    () => calcScrollOffset(widths, indiceInicio),
-    [widths, indiceInicio],
-  );
-
   const totalWidth = useMemo(() => calcTotalWidth(widths), [widths]);
 
-  const podeAnterior = indiceInicio > 0;
-  const podeProximo =
-    fotos.length > 1 &&
-    containerWidth > 0 &&
-    scrollOffset + containerWidth < totalWidth - 2;
+  const maxScrollPx = useMemo(
+    () => Math.max(0, totalWidth - containerWidth),
+    [totalWidth, containerWidth],
+  );
+
+  useEffect(() => {
+    setScrollPx((atual) => Math.min(atual, maxScrollPx));
+  }, [maxScrollPx]);
+
+  const indiceVisivel = useMemo(
+    () => findLeadingIndex(widths, scrollPx),
+    [widths, scrollPx],
+  );
+
+  const podeAnterior = scrollPx > 1;
+  const podeProximo = fotos.length > 1 && containerWidth > 0 && scrollPx < maxScrollPx - 1;
 
   function irAnterior() {
-    setIndiceInicio((atual) => Math.max(0, atual - 1));
+    setScrollPx((atual) => {
+      const indiceAtual = findLeadingIndex(widths, atual);
+      const indiceAlvo = Math.max(0, indiceAtual - 1);
+      return calcScrollOffset(widths, indiceAlvo);
+    });
   }
 
   function irProximo() {
-    setIndiceInicio((atual) => {
-      const proximo = atual + 1;
-      const offset = calcScrollOffset(widths, proximo);
-      if (offset + containerWidth >= totalWidth) {
+    setScrollPx((atual) => {
+      if (atual >= maxScrollPx - 1) {
         return atual;
       }
-      return proximo;
+
+      const indiceAtual = findLeadingIndex(widths, atual);
+      const nextByIndex = calcScrollOffset(widths, indiceAtual + 1);
+
+      if (nextByIndex > atual + 1) {
+        return Math.min(nextByIndex, maxScrollPx);
+      }
+
+      return maxScrollPx;
     });
   }
 
@@ -190,20 +227,26 @@ export function ImovelGaleriaDesktop({
               className="flex h-full transition-transform duration-300 ease-out"
               style={{
                 gap: GAP_PX,
-                transform: `translateX(-${scrollOffset}px)`,
+                transform: `translateX(-${scrollPx}px)`,
               }}
             >
-              {fotos.map((foto, indice) => (
-                <FotoSlot
-                  key={foto.id}
-                  foto={foto}
-                  titulo={titulo}
-                  indice={indice}
-                  width={widths[indice]}
-                  onOpenLightbox={onOpenLightbox}
-                  onAspect={handleAspect}
-                />
-              ))}
+              {fotos.map((foto, indice) => {
+                const aspect = aspects[foto.id];
+                const isPortrait = aspect !== undefined ? aspect < 1 : null;
+
+                return (
+                  <FotoSlot
+                    key={foto.id}
+                    foto={foto}
+                    titulo={titulo}
+                    indice={indice}
+                    width={widths[indice]}
+                    isPortrait={isPortrait}
+                    onOpenLightbox={onOpenLightbox}
+                    onAspect={handleAspect}
+                  />
+                );
+              })}
             </div>
 
             {fotos.length > 1 && podeAnterior ? (
@@ -233,7 +276,7 @@ export function ImovelGaleriaDesktop({
             <div className="absolute bottom-4 left-4 z-30 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => onOpenLightbox(indiceInicio)}
+                onClick={() => onOpenLightbox(indiceVisivel)}
                 className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-neutral-800 shadow-md transition hover:bg-white"
               >
                 <Camera className="size-4" />

@@ -1,5 +1,6 @@
 export const LISTING_RETURN_STORAGE_KEY = "deskimob:listing-return";
 export const LISTING_SCROLL_RESTORE_KEY = "deskimob:listing-scroll-restore";
+export const DASHBOARD_SCROLL_SELECTOR = "[data-dashboard-scroll]";
 
 export type ListingReturnState = {
   url: string;
@@ -59,4 +60,33 @@ export function consumeListingScrollRestore(): number | null {
 
   const value = Number.parseInt(raw, 10);
   return Number.isFinite(value) ? value : null;
+}
+
+export function getListingScrollPosition(): number {
+  if (typeof window === "undefined") {
+    return 0;
+  }
+
+  const main = document.querySelector(DASHBOARD_SCROLL_SELECTOR);
+  if (main instanceof HTMLElement) {
+    return main.scrollTop;
+  }
+
+  return window.scrollY;
+}
+
+export function restoreListingScrollPosition(scrollY: number): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const top = Math.max(0, Math.round(scrollY));
+  const main = document.querySelector(DASHBOARD_SCROLL_SELECTOR);
+
+  if (main instanceof HTMLElement) {
+    main.scrollTo({ top, left: 0 });
+    return;
+  }
+
+  window.scrollTo({ top, left: 0 });
 }

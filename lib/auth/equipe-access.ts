@@ -23,6 +23,40 @@ export type EquipeAccessContext = {
   canManageEquipe: boolean;
 };
 
+/** Dados pessoais do usuário logado (dono da conta ou membro da equipe). */
+export type UsuarioLogadoDisplay = {
+  nome: string;
+  email: string;
+  telefone: string | null;
+  fotoUrl: string | null;
+  isAccountOwner: boolean;
+};
+
+export function getUsuarioLogadoDisplay(
+  ctx: EquipeAccessContext,
+  authEmail?: string | null,
+): UsuarioLogadoDisplay {
+  const { corretor, perfil, isAccountOwner } = ctx;
+
+  if (isAccountOwner || !perfil) {
+    return {
+      nome: corretor.nome,
+      email: corretor.email,
+      telefone: corretor.telefone ?? null,
+      fotoUrl: corretor.foto_url ?? null,
+      isAccountOwner: true,
+    };
+  }
+
+  return {
+    nome: perfil.nome,
+    email: perfil.email || authEmail || corretor.email,
+    telefone: perfil.telefone ?? null,
+    fotoUrl: perfil.foto_url ?? null,
+    isAccountOwner: false,
+  };
+}
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function isValidEmail(email: string): boolean {
   return EMAIL_REGEX.test(email.trim());

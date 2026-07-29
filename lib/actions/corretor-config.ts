@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { STORAGE_BUCKET_SITE_ASSETS } from "@/lib/constants/site";
+import { getEquipeAccessContext } from "@/lib/auth/equipe-access";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createClient } from "@/lib/supabase/server";
@@ -80,29 +81,41 @@ async function uploadCorretorAsset(
 }
 
 export async function savePerfilCorretor(data: SavePerfilInput): Promise<ActionResult> {
-  const corretor = await getCorretorForUser();
+  const ctx = await getEquipeAccessContext();
 
-  if (!corretor) {
+  if (!ctx) {
     return { error: "Sessão expirada. Faça login novamente." };
   }
 
+  const { corretor, perfil, isAccountOwner } = ctx;
   const nome = data.nome.trim();
 
   if (!nome) {
     return { error: "Informe seu nome." };
   }
 
+  const telefone = data.telefone.trim() || null;
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({
-      nome,
-      telefone: data.telefone.trim() || null,
-    })
-    .eq("id", corretor.id);
 
-  if (error) {
-    return { error: "Não foi possível salvar seu perfil." };
+  if (isAccountOwner || !perfil) {
+    const { error } = await supabase
+      .from("corretores")
+      .update({ nome, telefone })
+      .eq("id", corretor.id);
+
+    if (error) {
+      return { error: "Não foi possível salvar seu perfil." };
+    }
+  } else {
+    const { error } = await supabase
+      .from("perfis")
+      .update({ nome, telefone })
+      .eq("id", perfil.id)
+      .eq("corretor_id", corretor.id);
+
+    if (error) {
+      return { error: "Não foi possível salvar seu perfil." };
+    }
   }
 
   revalidatePath("/dashboard/configuracoes");
@@ -112,35 +125,56 @@ export async function savePerfilCorretor(data: SavePerfilInput): Promise<ActionR
 }
 
 export async function uploadFotoPerfil(formData: FormData): Promise<ActionResult> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) {
+  const ctx = await getEquipeAccessContext();
+  if (!ctx) {
     return { error: "Sessão expirada. Faça login novamente." };
   }
 
+  const { corretor, perfil, isAccountOwner } = ctx;
   const uploadResult = await uploadCorretorAsset(formData, "foto", "perfil");
   if (uploadResult.error || !uploadResult.url) {
     return uploadResult;
   }
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({ foto_url: uploadResult.url })
-    .eq("id", corretor.id);
 
-  if (error) {
-    return { error: "Não foi possível salvar a foto." };
+  if (isAccountOwner || !perfil) {
+    const { error } = await supabase
+      .from("corretores")
+      .update({ foto_url: uploadResult.url })
+      .eq("id", corretor.id);
+
+    if (error) {
+      return { error: "Não foi possível salvar a foto." };
+    }
+  } else {
+    const { error } = await supabase
+      .from("perfis")
+      .update({ foto_url: uploadResult.url })
+      .eq("id", perfil.id)
+      .eq("corretor_id", corretor.id);
+
+    if (error) {
+      return { error: "Não foi possível salvar a foto." };
+    }
   }
 
   revalidatePath("/dashboard/configuracoes");
+  revalidatePath("/dashboard");
   return { success: true, url: uploadResult.url, message: "Foto atualizada." };
 }
 
 export async function uploadLogoCrm(formData: FormData): Promise<ActionResult> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) {
+  const ctx = await getEquipeAccessContext();
+  if (!ctx) {
     return { error: "Sessão expirada. Faça login novamente." };
   }
+
+  if (!ctx.isAccountOwner) {
+    return { error: "Somente o administrador principal pode alterar a logo do CRM." };
+  }
+
+  const { corretor } = ctx;
 
   const uploadResult = await uploadCorretorAsset(formData, "logo", "logo-crm");
   if (uploadResult.error || !uploadResult.url) {

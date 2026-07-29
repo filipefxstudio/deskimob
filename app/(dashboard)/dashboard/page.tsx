@@ -8,6 +8,8 @@ import { getDashboardDataBothTabs } from "@/lib/actions/dashboard";
 import { countImoveisAguardandoAprovacao } from "@/lib/actions/imovel-desempenho";
 import { getOnboardingItems } from "@/lib/mock/dashboard";
 import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
+import { getEquipeAccessContext, getUsuarioLogadoDisplay } from "@/lib/auth/equipe-access";
+import { createClient } from "@/lib/supabase/server";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { podeAprovarImovel } from "@/lib/imoveis/aprovacao";
@@ -30,7 +32,15 @@ export default async function DashboardPage() {
     return <CorretorUnavailableMessage />;
   }
 
-  const nome = corretor.nome;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const ctx = await getEquipeAccessContext();
+  const nome =
+    ctx != null
+      ? getUsuarioLogadoDisplay(ctx, user?.email).nome
+      : corretor.nome;
   const perfilCompleto = Boolean(corretor.telefone && corretor.creci);
   const onboardingItems = getOnboardingItems({ perfilCompleto });
   const siteHref = corretor.slug ? `/${corretor.slug}` : undefined;

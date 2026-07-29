@@ -1,3 +1,4 @@
+import { abbreviateComplementoTipo } from "@/lib/constants/imoveis";
 import type { Imovel } from "@/types";
 
 type ImovelComplementoFields = Pick<
@@ -9,16 +10,19 @@ type ImovelComplementoFields = Pick<
   | "complemento_torre"
 >;
 
-/** Texto de complemento para exibição (campos estruturados ou legado). */
+/** Texto de complemento para exibição em cards e detalhes (tipo abreviado). */
 export function formatComplementoImovel(imovel: ImovelComplementoFields): string | null {
   const parts: string[] = [];
+  const tipoExibicao = imovel.complemento_tipo?.trim()
+    ? abbreviateComplementoTipo(imovel.complemento_tipo)
+    : null;
 
-  if (imovel.complemento_tipo && imovel.complemento_numero) {
-    parts.push(`${imovel.complemento_tipo} ${imovel.complemento_numero}`);
+  if (tipoExibicao && imovel.complemento_numero) {
+    parts.push(`${tipoExibicao} ${imovel.complemento_numero}`);
   } else if (imovel.complemento_numero?.trim()) {
     parts.push(imovel.complemento_numero.trim());
-  } else if (imovel.complemento_tipo?.trim()) {
-    parts.push(imovel.complemento_tipo.trim());
+  } else if (tipoExibicao) {
+    parts.push(tipoExibicao);
   }
 
   if (imovel.complemento_torre?.trim()) {

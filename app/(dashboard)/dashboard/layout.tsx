@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/dashboard/Sidebar";
+import { getEquipeAccessContext, getUsuarioLogadoDisplay } from "@/lib/auth/equipe-access";
 import { createClient } from "@/lib/supabase/server";
-import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 
 export default async function DashboardLayout({
   children,
@@ -18,10 +18,17 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const corretor = await getCorretorForUser();
-  const nome = corretor?.nome ?? user.email?.split("@")[0] ?? "Corretor";
-  const slug = corretor?.slug ?? "";
-  const logoUrl = corretor?.logo_crm_url ?? corretor?.logo_url ?? null;
+  const ctx = await getEquipeAccessContext();
+
+  if (!ctx) {
+    redirect("/login");
+  }
+
+  const { corretor } = ctx;
+  const usuario = getUsuarioLogadoDisplay(ctx, user.email);
+  const nome = usuario.nome || user.email?.split("@")[0] || "Corretor";
+  const slug = corretor.slug ?? "";
+  const logoUrl = corretor.logo_crm_url ?? corretor.logo_url ?? null;
 
   return (
     <DashboardShell nome={nome} slug={slug} logoUrl={logoUrl}>

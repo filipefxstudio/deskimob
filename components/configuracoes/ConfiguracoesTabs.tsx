@@ -9,6 +9,7 @@ import { AbaSite } from "@/components/configuracoes/AbaSite";
 import { AbaWhatsApp } from "@/components/configuracoes/AbaWhatsApp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AgenteConfigPublic } from "@/lib/actions/agente-config";
+import type { UsuarioLogadoDisplay } from "@/lib/auth/equipe-access";
 import type {
   AtendimentoConfig,
   ConfigFichaVisita,
@@ -26,6 +27,8 @@ import type {
 
 interface ConfiguracoesTabsProps {
   corretor: Corretor;
+  isAccountOwner: boolean;
+  usuarioLogado: UsuarioLogadoDisplay;
   plano: PlanoAssinatura;
   agenteConfig: AgenteConfigPublic;
   tiposImovel: TipoImovelCustom[];
@@ -45,6 +48,8 @@ interface ConfiguracoesTabsProps {
 
 export function ConfiguracoesTabs({
   corretor,
+  isAccountOwner,
+  usuarioLogado,
   plano,
   agenteConfig,
   tiposImovel,
@@ -86,7 +91,14 @@ export function ConfiguracoesTabs({
       </TabsList>
 
       <TabsContent value="perfil">
-        <AbaPerfil corretor={corretor} />
+        <AbaPerfil
+          corretor={corretor}
+          isAccountOwner={isAccountOwner}
+          nome={usuarioLogado.nome}
+          email={usuarioLogado.email}
+          telefone={usuarioLogado.telefone}
+          fotoUrl={usuarioLogado.fotoUrl}
+        />
       </TabsContent>
 
       <TabsContent value="whatsapp">

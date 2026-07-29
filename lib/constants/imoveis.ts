@@ -123,6 +123,25 @@ export const COMPLEMENTO_TIPOS = [
   { value: "outro", label: "Outro" },
 ] as const;
 
+/** Abreviações para exibição em cards e detalhes (cadastro mantém label completo). */
+export const COMPLEMENTO_TIPO_ABREV: Record<string, string> = {
+  apartamento: "Ap",
+  casa: "Cs",
+  loja: "Lj",
+  sala: "Sl",
+  conjunto: "Cj",
+  galpao: "Gp",
+};
+
+export function abbreviateComplementoTipo(tipo: string): string {
+  const normalized = tipo
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  return COMPLEMENTO_TIPO_ABREV[normalized] ?? tipo;
+}
+
 export const LOCAL_CHAVES_OPCOES = [
   { value: "imobiliaria", label: "Imobiliária" },
   { value: "proprietario", label: "Proprietário" },

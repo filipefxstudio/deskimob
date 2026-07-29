@@ -17,15 +17,27 @@ import type { Corretor } from "@/types";
 
 interface AbaPerfilProps {
   corretor: Corretor;
+  isAccountOwner: boolean;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  fotoUrl: string | null;
 }
 
-export function AbaPerfil({ corretor }: AbaPerfilProps) {
+export function AbaPerfil({
+  corretor,
+  isAccountOwner,
+  nome: initialNome,
+  email,
+  telefone: initialTelefone,
+  fotoUrl: initialFotoUrl,
+}: AbaPerfilProps) {
   const fotoInputRef = useRef<HTMLInputElement>(null);
   const logoCrmInputRef = useRef<HTMLInputElement>(null);
 
-  const [nome, setNome] = useState(corretor.nome);
-  const [telefone, setTelefone] = useState(corretor.telefone ?? "");
-  const [fotoUrl, setFotoUrl] = useState(corretor.foto_url ?? "");
+  const [nome, setNome] = useState(initialNome);
+  const [telefone, setTelefone] = useState(initialTelefone ?? "");
+  const [fotoUrl, setFotoUrl] = useState(initialFotoUrl ?? "");
   const [logoCrmUrl, setLogoCrmUrl] = useState(corretor.logo_crm_url ?? "");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
@@ -149,36 +161,38 @@ export function AbaPerfil({ corretor }: AbaPerfilProps) {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Logo do CRM</Label>
-                <p className="text-xs text-muted-foreground">Exibida no cabeçalho do painel.</p>
-                <div className="flex items-center gap-3">
-                  {logoCrmUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoCrmUrl} alt="Logo CRM" className="max-h-10 max-w-[120px] object-contain" />
-                  ) : (
-                    <div className="flex h-10 w-24 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
-                      Sem logo
-                    </div>
-                  )}
-                  <input
-                    ref={logoCrmInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoCrmUpload}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() => logoCrmInputRef.current?.click()}
-                  >
-                    Enviar logo CRM
-                  </Button>
+              {isAccountOwner ? (
+                <div className="space-y-2">
+                  <Label>Logo do CRM</Label>
+                  <p className="text-xs text-muted-foreground">Exibida no cabeçalho do painel.</p>
+                  <div className="flex items-center gap-3">
+                    {logoCrmUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logoCrmUrl} alt="Logo CRM" className="max-h-10 max-w-[120px] object-contain" />
+                    ) : (
+                      <div className="flex h-10 w-24 items-center justify-center rounded border border-dashed text-xs text-muted-foreground">
+                        Sem logo
+                      </div>
+                    )}
+                    <input
+                      ref={logoCrmInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoCrmUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => logoCrmInputRef.current?.click()}
+                    >
+                      Enviar logo CRM
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -193,7 +207,7 @@ export function AbaPerfil({ corretor }: AbaPerfilProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input id="email" value={corretor.email} readOnly disabled />
+                <Input id="email" value={email} readOnly disabled />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone</Label>

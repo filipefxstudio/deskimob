@@ -14,7 +14,7 @@ import {
   getStatusImovelConfig,
   getTiposImovelCustom,
 } from "@/lib/actions/configuracoes";
-import { getEquipeAccessContext } from "@/lib/auth/equipe-access";
+import { getEquipeAccessContext, getUsuarioLogadoDisplay } from "@/lib/auth/equipe-access";
 import type { PlanoAssinatura } from "@/types";
 
 export const metadata: Metadata = {
@@ -33,7 +33,8 @@ export default async function ConfiguracoesPage({
     redirect("/login");
   }
 
-  const { corretor, canManageEquipe, isAdmin } = ctx;
+  const { corretor, canManageEquipe, isAdmin, isAccountOwner } = ctx;
+  const usuario = getUsuarioLogadoDisplay(ctx);
 
   const params = await searchParams;
   const initialTab = typeof params.aba === "string" ? params.aba : "perfil";
@@ -76,6 +77,8 @@ export default async function ConfiguracoesPage({
 
         <ConfiguracoesTabs
           corretor={corretor}
+          isAccountOwner={isAccountOwner}
+          usuarioLogado={usuario}
           plano={plano}
           agenteConfig={agenteConfig}
           tiposImovel={tiposImovel}

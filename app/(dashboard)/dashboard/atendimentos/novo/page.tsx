@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
 import { NovoAtendimentoForm } from "@/components/atendimentos/NovoAtendimentoForm";
-import { getAtendimentoConfig } from "@/lib/actions/atendimentos";
+import { getAtendimentoConfig, getBairrosImoveisCadastrados } from "@/lib/actions/atendimentos";
 import { getTiposImovelCustom } from "@/lib/actions/configuracoes";
 import { getMidiasOrigem, getPerfisForLeads } from "@/lib/actions/leads";
 import { parseNovoAtendimentoPrefill } from "@/lib/atendimentos/novo-prefill";
@@ -30,12 +30,13 @@ export default async function NovoAtendimentoPage({
   const params = await searchParams;
   const prefill = parseNovoAtendimentoPrefill(params);
 
-  const [midias, perfis, config, tiposImovel, perfilAtual] = await Promise.all([
+  const [midias, perfis, config, tiposImovel, perfilAtual, bairrosCadastrados] = await Promise.all([
     getMidiasOrigem(),
     getPerfisForLeads(),
     getAtendimentoConfig(),
     getTiposImovelCustom(),
     getPerfilForUser(),
+    getBairrosImoveisCadastrados(),
   ]);
 
   return (
@@ -53,6 +54,7 @@ export default async function NovoAtendimentoPage({
         perfilAtualId={perfilAtual?.id ?? null}
         tiposImovel={tiposImovel}
         faixaValorPercent={config?.faixa_valor_percent ?? 20}
+        bairrosCadastrados={bairrosCadastrados}
         prefill={prefill}
       />
     </div>

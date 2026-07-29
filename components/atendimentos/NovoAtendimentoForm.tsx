@@ -40,6 +40,7 @@ interface NovoAtendimentoFormProps {
   perfilAtualId?: string | null;
   tiposImovel: TipoImovelCustom[];
   faixaValorPercent: number;
+  bairrosCadastrados?: string[];
   prefill?: NovoAtendimentoPrefill;
 }
 
@@ -49,6 +50,7 @@ export function NovoAtendimentoForm({
   perfilAtualId = null,
   tiposImovel,
   faixaValorPercent,
+  bairrosCadastrados = [],
   prefill,
 }: NovoAtendimentoFormProps) {
   const router = useRouter();
@@ -281,6 +283,7 @@ export function NovoAtendimentoForm({
                   value={bairros}
                   onChange={setBairros}
                   disabled={isPending}
+                  options={bairrosCadastrados}
                 />
               </div>
               <div className="space-y-2">

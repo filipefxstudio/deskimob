@@ -36,8 +36,15 @@ import { normalizar } from "@/lib/utils/normalizar";
 import { isValidUuid } from "@/lib/utils/uuid";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
-import { logPostgrestError, extractMissingColumn, isSchemaMismatchError } from "@/lib/supabase/postgrest-error";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
+import {
+  extractMissingColumn,
+  isSchemaMismatchError,
+  isUniqueViolationError,
+  logPostgrestError,
+} from "@/lib/supabase/postgrest-error";
 import { createClient } from "@/lib/supabase/server";
+import type { PostgrestError } from "@supabase/supabase-js";
 import type {
   AtendimentoConfig,
   AuditoriaAtendimento,
@@ -137,26 +144,64 @@ async function getLeadPerfilId(lead: { perfil_id?: string | null; observacoes?: 
   return meta.perfil_id ?? null;
 }
 
-export async function gerarCodigoAtendimento(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  corretorId: string,
-): Promise<string> {
-  const { data } = await supabase
+function isLeadCodigoConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const postgrestError = error as PostgrestError;
+  if (!isUniqueViolationError(postgrestError)) {
+    return false;
+  }
+
+  const text = `${postgrestError.message ?? ""} ${postgrestError.details ?? ""}`.toLowerCase();
+  return text.includes("codigo_atendimento") || text.includes("leads_corretor_codigo");
+}
+
+function parseCodigoAtendimentoNumero(codigo?: string | null): number | null {
+  if (!codigo) {
+    return null;
+  }
+
+  const match = codigo.match(/ATD-(\d+)/i);
+  if (!match) {
+    return null;
+  }
+
+  const numero = parseInt(match[1], 10);
+  return Number.isNaN(numero) ? null : numero;
+}
+
+export async function gerarCodigoAtendimento(corretorId: string): Promise<string> {
+  let admin;
+
+  try {
+    admin = createServiceRoleClient();
+  } catch (error) {
+    console.error("[gerarCodigoAtendimento] service role unavailable", error);
+    throw new Error("Não foi possível gerar o código do atendimento.");
+  }
+
+  const { data, error } = await admin
     .from("leads")
     .select("codigo_atendimento")
     .eq("corretor_id", corretorId)
-    .not("codigo_atendimento", "is", null)
-    .order("codigo_atendimento", { ascending: false })
-    .limit(1);
+    .not("codigo_atendimento", "is", null);
 
-  let next = 1;
-  const ultimo = data?.[0]?.codigo_atendimento as string | undefined;
-  if (ultimo) {
-    const match = ultimo.match(/ATD-(\d+)/);
-    if (match) next = parseInt(match[1], 10) + 1;
+  if (error) {
+    logPostgrestError("gerarCodigoAtendimento", error);
+    throw new Error("Não foi possível gerar o código do atendimento.");
   }
 
-  return `ATD-${String(next).padStart(4, "0")}`;
+  let max = 0;
+  for (const row of data ?? []) {
+    const numero = parseCodigoAtendimentoNumero(row.codigo_atendimento as string | undefined);
+    if (numero != null && numero > max) {
+      max = numero;
+    }
+  }
+
+  return `ATD-${String(max + 1).padStart(4, "0")}`;
 }
 
 export async function registrarInteracao(
@@ -459,39 +504,63 @@ export async function createAtendimento(
     }
   }
 
-  const codigo = await gerarCodigoAtendimento(supabase, corretor.id);
   const agora = new Date().toISOString();
-  const leadId = randomUUID();
+  let insertedLeadId: string | null = null;
+  let codigo = "";
+  let lastError: unknown = null;
 
-  const { leadId: insertedLeadId, error } = await persistLeadInsert(supabase, {
-    id: leadId,
-    corretor_id: corretor.id,
-    cliente_id: clienteId,
-    nome,
-    telefone,
-    email: input.email?.trim() || null,
-    imovel_id: input.imovel_id ?? null,
-    perfil_id: perfilId,
-    codigo_atendimento: codigo,
-    situacao: "em_atendimento",
-    finalidade_busca: input.finalidade_busca || null,
-    tipo_imovel_busca: input.tipo_imovel_busca?.trim() || null,
-    bairros_interesse: input.bairros_interesse?.length ? input.bairros_interesse : null,
-    quartos_minimo: input.quartos_minimo ?? null,
-    suites_minimas: input.suites_minimas ?? null,
-    banheiros_minimos: input.banheiros_minimos ?? null,
-    vagas_minimas: input.vagas_minimas ?? null,
-    valor_minimo: input.valor_minimo ?? null,
-    valor_maximo: input.valor_maximo ?? null,
-    origem: mapMidiaToOrigem(input.midia_nome),
-    etapa: "novo",
-    temperatura: "indefinido",
-    atendido_por: "corretor",
-    data_entrada: agora,
-    observacoes: input.observacoes?.trim() || null,
-  });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      codigo = await gerarCodigoAtendimento(corretor.id);
+    } catch (error) {
+      console.error("[createAtendimento] codigo generation failed", error);
+      return { error: "Não foi possível gerar o código do atendimento." };
+    }
 
-  if (error || !insertedLeadId) {
+    const leadId = randomUUID();
+    const result = await persistLeadInsert(supabase, {
+      id: leadId,
+      corretor_id: corretor.id,
+      cliente_id: clienteId,
+      nome,
+      telefone,
+      email: input.email?.trim() || null,
+      imovel_id: input.imovel_id ?? null,
+      perfil_id: perfilId,
+      codigo_atendimento: codigo,
+      situacao: "em_atendimento",
+      finalidade_busca: input.finalidade_busca || null,
+      tipo_imovel_busca: input.tipo_imovel_busca?.trim() || null,
+      bairros_interesse: input.bairros_interesse?.length ? input.bairros_interesse : null,
+      quartos_minimo: input.quartos_minimo ?? null,
+      suites_minimas: input.suites_minimas ?? null,
+      banheiros_minimos: input.banheiros_minimos ?? null,
+      vagas_minimas: input.vagas_minimas ?? null,
+      valor_minimo: input.valor_minimo ?? null,
+      valor_maximo: input.valor_maximo ?? null,
+      origem: mapMidiaToOrigem(input.midia_nome),
+      etapa: "novo",
+      temperatura: "indefinido",
+      atendido_por: "corretor",
+      data_entrada: agora,
+      observacoes: input.observacoes?.trim() || null,
+    });
+
+    if (!result.error && result.leadId) {
+      insertedLeadId = result.leadId;
+      break;
+    }
+
+    lastError = result.error;
+    if (!isLeadCodigoConflict(result.error)) {
+      break;
+    }
+  }
+
+  if (!insertedLeadId) {
+    if (lastError && typeof lastError === "object" && "message" in lastError) {
+      console.error("[createAtendimento] insert failed", lastError);
+    }
     return { error: "Não foi possível criar o atendimento." };
   }
 
@@ -861,30 +930,94 @@ export async function transferirAtendimento(
   return { success: true, message: `Transferido para ${destino.nome}.` };
 }
 
+const BAIRROS_EXCLUIDOS = new Set(["vendido", "desativado", "desativado_temporariamente"]);
+
+function extrairBairrosImoveis(
+  rows: Array<{
+    bairro?: string | null;
+    status?: string | null;
+    status_imovel?: { nome?: string | null } | { nome?: string | null }[] | null;
+  }>,
+): string[] {
+  const bairros = new Set<string>();
+
+  for (const row of rows) {
+    const bairro = row.bairro?.trim();
+    if (!bairro) {
+      continue;
+    }
+
+    const statusEmbed = Array.isArray(row.status_imovel)
+      ? row.status_imovel[0]
+      : row.status_imovel;
+    const statusNome = statusEmbed?.nome?.trim().toLowerCase() ?? "";
+    const statusSlug = row.status?.trim().toLowerCase() ?? "";
+
+    if (
+      BAIRROS_EXCLUIDOS.has(statusSlug) ||
+      statusNome.includes("vendido") ||
+      statusNome.includes("desativado")
+    ) {
+      continue;
+    }
+
+    bairros.add(bairro);
+  }
+
+  return Array.from(bairros).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+async function loadBairrosImoveis(
+  client: Awaited<ReturnType<typeof createClient>>,
+  corretorId: string,
+): Promise<string[]> {
+  const embedResult = await client
+    .from("imoveis")
+    .select("bairro, status, status_imovel:status_imovel(nome)")
+    .eq("corretor_id", corretorId)
+    .not("bairro", "is", null);
+
+  if (!embedResult.error) {
+    return extrairBairrosImoveis(embedResult.data ?? []);
+  }
+
+  if (isSchemaMismatchError(embedResult.error)) {
+    logPostgrestError("getBairrosImoveisCadastrados:retry_without_status_embed", embedResult.error);
+    const basicResult = await client
+      .from("imoveis")
+      .select("bairro, status")
+      .eq("corretor_id", corretorId)
+      .not("bairro", "is", null);
+
+    if (!basicResult.error) {
+      return extrairBairrosImoveis(basicResult.data ?? []);
+    }
+
+    logPostgrestError("getBairrosImoveisCadastrados", basicResult.error);
+    return [];
+  }
+
+  logPostgrestError("getBairrosImoveisCadastrados", embedResult.error);
+  return [];
+}
+
 export async function getBairrosImoveisCadastrados(): Promise<string[]> {
   const corretor = await getCorretorForUser();
   if (!corretor) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("imoveis")
-    .select("bairro")
-    .eq("corretor_id", corretor.id)
-    .eq("status", "disponivel")
-    .not("bairro", "is", null);
+  const bairros = await loadBairrosImoveis(supabase, corretor.id);
+  if (bairros.length > 0) {
+    return bairros;
+  }
 
-  if (error) {
-    logPostgrestError("Radar.bairros", error);
+  try {
+    const admin = createServiceRoleClient();
+    return await loadBairrosImoveis(admin, corretor.id);
+  } catch (fallbackError) {
+    console.error("[getBairrosImoveisCadastrados] service role unavailable", fallbackError);
     return [];
   }
-
-  const bairros = new Set<string>();
-  for (const row of data ?? []) {
-    const bairro = row.bairro?.trim();
-    if (bairro) bairros.add(bairro);
-  }
-
-  return Array.from(bairros).sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
 export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {

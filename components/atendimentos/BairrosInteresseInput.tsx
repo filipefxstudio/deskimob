@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -11,23 +11,46 @@ interface BairrosInteresseInputProps {
   value: string[];
   onChange: (bairros: string[]) => void;
   disabled?: boolean;
+  /** Lista pré-carregada no servidor; evita fetch vazio no cliente. */
+  options?: string[];
 }
 
 export function BairrosInteresseInput({
   value,
   onChange,
   disabled,
+  options,
 }: BairrosInteresseInputProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(!options?.length);
   const [bairroInput, setBairroInput] = useState("");
-  const [bairrosCadastrados, setBairrosCadastrados] = useState<string[]>([]);
+  const [bairrosCadastrados, setBairrosCadastrados] = useState<string[]>(options ?? []);
 
   useEffect(() => {
-    startTransition(async () => {
-      const bairros = await getBairrosImoveisCadastrados();
-      setBairrosCadastrados(bairros);
-    });
-  }, []);
+    if (options?.length) {
+      setBairrosCadastrados(options);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    getBairrosImoveisCadastrados()
+      .then((bairros) => {
+        if (!cancelled) {
+          setBairrosCadastrados(bairros);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [options]);
 
   function bairroJaSelecionado(bairro: string): boolean {
     const alvo = normalizar(bairro);
@@ -67,17 +90,19 @@ export function BairrosInteresseInput({
           }}
           placeholder="Digite para buscar bairros cadastrados"
           disabled={disabled}
+          autoComplete="off"
         />
-        {isPending ? (
+        {isLoading ? (
           <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         ) : null}
         {sugestoes.length > 0 ? (
-          <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
+          <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
             {sugestoes.map((bairro) => (
               <li key={bairro}>
                 <button
                   type="button"
                   className="block w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => adicionarBairro(bairro)}
                 >
                   {bairro}

@@ -40,6 +40,10 @@ export function isSchemaMismatchError(error: PostgrestError): boolean {
   );
 }
 
+export function isUniqueViolationError(error: PostgrestError | null | undefined): boolean {
+  return error?.code === "23505";
+}
+
 /** Extracts a missing column name from PostgREST/Postgres schema errors. */
 export function extractMissingColumn(error: PostgrestError): string | null {
   const message = error.message ?? "";

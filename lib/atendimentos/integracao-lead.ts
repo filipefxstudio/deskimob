@@ -8,6 +8,7 @@ import {
   normalizeEmail,
   telefonesEquivalentes,
 } from "@/lib/pessoas/duplicate";
+import { gerarCodigoAtendimento } from "@/lib/actions/atendimentos";
 import type { OrigemLead } from "@/types";
 
 export type IntegracaoLeadInput = {
@@ -43,28 +44,6 @@ function leadEstaAtivo(lead: { situacao?: string | null; etapa?: string | null }
     return false;
   }
   return true;
-}
-
-async function gerarCodigoAtendimento(
-  supabase: SupabaseClient,
-  corretorId: string,
-): Promise<string> {
-  const { data } = await supabase
-    .from("leads")
-    .select("codigo_atendimento")
-    .eq("corretor_id", corretorId)
-    .not("codigo_atendimento", "is", null)
-    .order("codigo_atendimento", { ascending: false })
-    .limit(1);
-
-  let next = 1;
-  const ultimo = data?.[0]?.codigo_atendimento as string | undefined;
-  if (ultimo) {
-    const match = ultimo.match(/ATD-(\d+)/);
-    if (match) next = parseInt(match[1], 10) + 1;
-  }
-
-  return `ATD-${String(next).padStart(4, "0")}`;
 }
 
 async function buscarLeadAtivoPorContato(
@@ -262,7 +241,7 @@ export async function processarLeadIntegracao(
     };
   }
 
-  const codigo = await gerarCodigoAtendimento(supabase, input.corretorId);
+  const codigo = await gerarCodigoAtendimento(input.corretorId);
   const agora = new Date().toISOString();
 
   const { data: novoLead, error } = await supabase

@@ -30,9 +30,9 @@ export function NavbarSite() {
   return (
     <header
       className={cn(
-        "z-40 border-b border-white/10 bg-primary text-white transition-transform duration-300",
+        "z-40 border-b border-white/10 bg-primary text-white will-change-transform motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out",
         chromeHeaderEnabled
-          ? "fixed inset-x-0 top-0 lg:sticky lg:top-0"
+          ? "fixed inset-x-0 top-0 lg:sticky lg:top-0 lg:will-change-auto lg:transition-none"
           : "sticky top-0",
         chromeHeaderEnabled && !headerVisible && "-translate-y-full lg:translate-y-0",
       )}

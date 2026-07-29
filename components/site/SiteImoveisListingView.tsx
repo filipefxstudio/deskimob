@@ -16,7 +16,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ImoveisPublicosFilters } from "@/lib/site/imovel-filters";
-import { useListingChromeHeader } from "@/lib/site/listing-chrome-header";
+import {
+  LISTING_MOBILE_HEADER_HEIGHT_PX,
+  useListingChromeHeader,
+} from "@/lib/site/listing-chrome-header";
 import { cn } from "@/lib/utils";
 import type { FinalidadeImovel, Imovel } from "@/types";
 
@@ -65,13 +68,7 @@ export function SiteImoveisListingView({
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       {chromeHeaderEnabled ? (
-        <div
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none transition-[height] duration-300 lg:hidden",
-            headerVisible ? "h-24" : "h-0",
-          )}
-        />
+        <div aria-hidden="true" className="pointer-events-none h-24 lg:hidden" />
       ) : null}
 
       <div className="mb-4 lg:mb-8">
@@ -79,25 +76,33 @@ export function SiteImoveisListingView({
         <p className="mt-2 text-sm text-muted-foreground sm:text-base">{resultsLabel}</p>
       </div>
 
-      <div
-        className={cn(
-          "sticky z-30 -mx-4 mb-4 border-b border-border bg-white px-4 py-3 transition-[top] duration-300 sm:-mx-6 sm:px-6 lg:hidden",
-          chromeHeaderEnabled && headerVisible ? "top-24" : "top-0",
-        )}
-      >
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 shrink-0 gap-2 px-4"
-            onClick={() => setFiltersOpen(true)}
-          >
-            <SlidersHorizontal className="size-4" />
-            Filtrar
-          </Button>
-          <SiteImoveisOrdenacaoSelect filters={filters} />
+      {chromeHeaderEnabled ? (
+        <div
+          className={cn(
+            "fixed inset-x-0 z-30 border-b border-border bg-white px-4 py-3 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out sm:px-6 lg:hidden",
+          )}
+          style={{
+            transform: headerVisible
+              ? `translateY(${LISTING_MOBILE_HEADER_HEIGHT_PX}px)`
+              : "translateY(0)",
+          }}
+        >
+          <div className="mx-auto flex max-w-7xl items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 shrink-0 gap-2 px-4"
+              onClick={() => setFiltersOpen(true)}
+            >
+              <SlidersHorizontal className="size-4" />
+              Filtrar
+            </Button>
+            <SiteImoveisOrdenacaoSelect filters={filters} />
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      <div className="mb-4 h-[53px] lg:hidden" aria-hidden="true" />
 
       <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
         <DialogContent className="flex max-h-[min(92vh,820px)] w-[calc(100%-1rem)] max-w-lg flex-col gap-0 overflow-hidden p-0 sm:w-full">

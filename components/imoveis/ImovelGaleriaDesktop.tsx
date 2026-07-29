@@ -15,9 +15,11 @@ import { getVideoEmbedUrl } from "@/lib/imoveis/video-embed";
 import type { ImovelFoto } from "@/types";
 
 const GALLERY_HEIGHT = 480;
-const GAP_PX = 8;
+const GAP_PX = 4;
 /** ~2,5 fotos paisagem visíveis por vez (40% da largura cada). */
 const LANDSCAPE_WIDTH_FRACTION = 0.4;
+/** Largura inicial estreita até carregar proporção (evita faixas largas em retratos). */
+const PORTRAIT_FALLBACK_ASPECT = 2 / 3;
 
 export type ImovelGaleriaMapaProps = {
   latitude: number;
@@ -65,12 +67,26 @@ function findLeadingIndex(widths: number[], scrollPx: number): number {
   return 0;
 }
 
+function getSlotWidth(
+  aspect: number | undefined,
+  containerWidth: number,
+): number {
+  if (!aspect || containerWidth === 0) {
+    return GALLERY_HEIGHT * PORTRAIT_FALLBACK_ASPECT;
+  }
+
+  if (aspect < 1) {
+    return GALLERY_HEIGHT * aspect;
+  }
+
+  return containerWidth * LANDSCAPE_WIDTH_FRACTION;
+}
+
 function FotoSlot({
   foto,
   titulo,
   indice,
   width,
-  isPortrait,
   onOpenLightbox,
   onAspect,
 }: {
@@ -78,27 +94,21 @@ function FotoSlot({
   titulo: string;
   indice: number;
   width: number;
-  isPortrait: boolean | null;
   onOpenLightbox: (indice: number) => void;
   onAspect: (fotoId: string, aspect: number) => void;
 }) {
-  const imgClassName =
-    isPortrait === false
-      ? "size-full object-cover"
-      : "max-h-full max-w-full object-contain";
-
   return (
     <button
       type="button"
       onClick={() => onOpenLightbox(indice)}
       style={{ width, height: GALLERY_HEIGHT, flexShrink: 0 }}
-      className="flex items-center justify-center overflow-hidden bg-neutral-200"
+      className="block overflow-hidden bg-neutral-100"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={foto.url}
         alt={foto.legenda ?? `${titulo} ${indice + 1}`}
-        className={imgClassName}
+        className="size-full object-cover"
         onLoad={(event) => {
           const img = event.currentTarget;
           if (img.naturalWidth > 0 && img.naturalHeight > 0) {
@@ -153,22 +163,23 @@ export function ImovelGaleriaDesktop({
     });
   }, []);
 
-  const widths = useMemo(() => {
-    const fallback = containerWidth > 0 ? containerWidth * LANDSCAPE_WIDTH_FRACTION : 320;
-
-    return fotos.map((foto) => {
-      const aspect = aspects[foto.id];
-      if (!aspect || containerWidth === 0) {
-        return fallback;
-      }
-
-      if (aspect < 1) {
-        return GALLERY_HEIGHT * aspect;
-      }
-
-      return containerWidth * LANDSCAPE_WIDTH_FRACTION;
+  useEffect(() => {
+    fotos.forEach((foto) => {
+      const img = new window.Image();
+      img.onload = () => {
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          handleAspect(foto.id, img.naturalWidth / img.naturalHeight);
+        }
+      };
+      img.src = foto.url;
     });
-  }, [aspects, containerWidth, fotos]);
+  }, [fotos, handleAspect]);
+
+  const widths = useMemo(
+    () =>
+      fotos.map((foto) => getSlotWidth(aspects[foto.id], containerWidth)),
+    [aspects, containerWidth, fotos],
+  );
 
   const totalWidth = useMemo(() => calcTotalWidth(widths), [widths]);
 
@@ -224,29 +235,23 @@ export function ImovelGaleriaDesktop({
         {viewMode === "fotos" ? (
           <>
             <div
-              className="flex h-full transition-transform duration-300 ease-out"
+              className="flex h-full items-stretch transition-transform duration-300 ease-out"
               style={{
                 gap: GAP_PX,
                 transform: `translateX(-${scrollPx}px)`,
               }}
             >
-              {fotos.map((foto, indice) => {
-                const aspect = aspects[foto.id];
-                const isPortrait = aspect !== undefined ? aspect < 1 : null;
-
-                return (
-                  <FotoSlot
-                    key={foto.id}
-                    foto={foto}
-                    titulo={titulo}
-                    indice={indice}
-                    width={widths[indice]}
-                    isPortrait={isPortrait}
-                    onOpenLightbox={onOpenLightbox}
-                    onAspect={handleAspect}
-                  />
-                );
-              })}
+              {fotos.map((foto, indice) => (
+                <FotoSlot
+                  key={foto.id}
+                  foto={foto}
+                  titulo={titulo}
+                  indice={indice}
+                  width={widths[indice]}
+                  onOpenLightbox={onOpenLightbox}
+                  onAspect={handleAspect}
+                />
+              ))}
             </div>
 
             {fotos.length > 1 && podeAnterior ? (

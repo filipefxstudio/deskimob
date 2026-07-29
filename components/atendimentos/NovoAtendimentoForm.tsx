@@ -61,7 +61,7 @@ export function NovoAtendimentoForm({
   const [email, setEmail] = useState(prefill?.email ?? "");
   const [clienteId, setClienteId] = useState<string | undefined>(prefill?.clienteId);
   const [midiaNome, setMidiaNome] = useState("");
-  const [perfilId, setPerfilId] = useState(prefill?.perfilId ?? perfilAtualId ?? "");
+  const [perfilId, setPerfilId] = useState(perfilAtualId ?? "");
   const [observacoes, setObservacoes] = useState("");
 
   const [imovelSelecionado, setImovelSelecionado] = useState<ImovelSearchResult | null>(null);

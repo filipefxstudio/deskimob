@@ -971,7 +971,7 @@ async function fetchImoveisByIds(
 
   const { data, error } = await supabase
     .from("imoveis")
-    .select(select)
+    .select(select as "*")
     .eq("corretor_id", corretorId)
     .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
     .in("id", ids.slice(0, 50))
@@ -1000,7 +1000,7 @@ async function fetchImoveisSearchRowsWithFilter(
 
   const { data, error } = await supabase
     .from("imoveis")
-    .select(select)
+    .select(select as "*")
     .eq("corretor_id", corretorId)
     .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
     .or(buildImovelSearchOrFilter(trimmed))
@@ -1029,7 +1029,7 @@ async function fetchImoveisSearchRowsForScan(
 
   const { data, error } = await supabase
     .from("imoveis")
-    .select(select)
+    .select(select as "*")
     .eq("corretor_id", corretorId)
     .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
     .order("atualizado_em", { ascending: false })

@@ -4,7 +4,7 @@ import type { FinalidadeImovel, Imovel, TipoImovel } from "@/types";
 
 export { formatCurrency };
 
-export function getTipoLabel(tipo: TipoImovel): string {
+export function getTipoLabel(tipo: TipoImovel | string): string {
   return TIPOS_IMOVEL.find((item) => item.value === tipo)?.label ?? tipo;
 }
 

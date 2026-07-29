@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import {
-  Bath,
   BedDouble,
   Car,
   MapPin,
   Maximize2,
 } from "lucide-react";
+
+import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
 
 import { FaleComCorretorCard } from "@/components/site/FaleComCorretorCard";
 import { ImovelGaleriaPublica } from "@/components/site/ImovelGaleriaPublica";
@@ -133,9 +134,16 @@ export async function SiteImovelDetalheContent({
                   <p className="text-xs text-muted-foreground">Quartos</p>
                 </div>
               ) : null}
+              {imovel.suites > 0 ? (
+                <div className="rounded-xl border border-border p-4 text-center">
+                  <IconSuite className="mx-auto size-5 text-primary" />
+                  <p className="mt-2 text-lg font-semibold">{imovel.suites}</p>
+                  <p className="text-xs text-muted-foreground">Suítes</p>
+                </div>
+              ) : null}
               {imovel.banheiros > 0 ? (
                 <div className="rounded-xl border border-border p-4 text-center">
-                  <Bath className="mx-auto size-5 text-primary" />
+                  <IconBanheiro className="mx-auto size-5 text-primary" />
                   <p className="mt-2 text-lg font-semibold">{imovel.banheiros}</p>
                   <p className="text-xs text-muted-foreground">Banheiros</p>
                 </div>

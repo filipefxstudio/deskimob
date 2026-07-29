@@ -26,6 +26,25 @@ interface FiltrosBuscaProps {
   fixedFinalidade?: FinalidadeImovel;
 }
 
+function createEmptyFilterState(fixedFinalidade?: FinalidadeImovel) {
+  return {
+    finalidades: fixedFinalidade ? [fixedFinalidade] : ([] as FinalidadeImovel[]),
+    tipos: [] as TipoImovel[],
+    selectedCidades: [] as string[],
+    selectedBairros: [] as string[],
+    codigo: "",
+    valorMin: "",
+    valorMax: "",
+    areaMin: "",
+    areaMax: "",
+    quartosMin: undefined as number | undefined,
+    banheirosMin: undefined as number | undefined,
+    suitesMin: undefined as number | undefined,
+    vagasMin: undefined as number | undefined,
+    caracteristicas: [] as string[],
+  };
+}
+
 function toggleListItem<T extends string>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter((value) => value !== item) : [...list, item];
 }
@@ -159,33 +178,80 @@ export function FiltrosBusca({
     Object.fromEntries(CARACTERISTICAS_CHECKLIST.map((categoria) => [categoria.id, true])),
   );
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function buildFiltersFromState(
+    state: ReturnType<typeof readFilterState>,
+  ): ImoveisPublicosFilters {
+    const resolvedFinalidades = fixedFinalidade ? [fixedFinalidade] : state.finalidades;
 
-    const resolvedFinalidades = fixedFinalidade ? [fixedFinalidade] : finalidades;
-
-    const filters: ImoveisPublicosFilters = {
+    return {
       finalidade: resolvedFinalidades.length === 1 ? resolvedFinalidades[0] : undefined,
       finalidades: resolvedFinalidades.length > 1 ? resolvedFinalidades : undefined,
-      tipos: tipos.length > 0 ? tipos : undefined,
-      cidades: selectedCidades.length > 0 ? selectedCidades : undefined,
-      bairros: selectedBairros.length > 0 ? selectedBairros : undefined,
-      codigo: codigo.trim() || undefined,
-      valorMin: valorMin ? Number(valorMin.replace(/\D/g, "")) : undefined,
-      valorMax: valorMax ? Number(valorMax.replace(/\D/g, "")) : undefined,
-      areaMin: areaMin ? Number(areaMin.replace(/\D/g, "")) : undefined,
-      areaMax: areaMax ? Number(areaMax.replace(/\D/g, "")) : undefined,
+      tipos: state.tipos.length > 0 ? state.tipos : undefined,
+      cidades: state.selectedCidades.length > 0 ? state.selectedCidades : undefined,
+      bairros: state.selectedBairros.length > 0 ? state.selectedBairros : undefined,
+      codigo: state.codigo.trim() || undefined,
+      valorMin: state.valorMin ? Number(state.valorMin.replace(/\D/g, "")) : undefined,
+      valorMax: state.valorMax ? Number(state.valorMax.replace(/\D/g, "")) : undefined,
+      areaMin: state.areaMin ? Number(state.areaMin.replace(/\D/g, "")) : undefined,
+      areaMax: state.areaMax ? Number(state.areaMax.replace(/\D/g, "")) : undefined,
+      quartosMin: state.quartosMin,
+      banheirosMin: state.banheirosMin,
+      suitesMin: state.suitesMin,
+      vagasMin: state.vagasMin,
+      caracteristicas: state.caracteristicas.length > 0 ? state.caracteristicas : undefined,
+      pagina: 1,
+    };
+  }
+
+  function readFilterState() {
+    return {
+      finalidades,
+      tipos,
+      selectedCidades,
+      selectedBairros,
+      codigo,
+      valorMin,
+      valorMax,
+      areaMin,
+      areaMax,
       quartosMin,
       banheirosMin,
       suitesMin,
       vagasMin,
-      caracteristicas: caracteristicas.length > 0 ? caracteristicas : undefined,
-      pagina: 1,
+      caracteristicas,
     };
+  }
 
+  function navigateWithFilters(filters: ImoveisPublicosFilters) {
     const params = buildImoveisSearchParams(filters);
     const query = params.toString();
     router.push(`${link("/imoveis")}${query ? `?${query}` : ""}`);
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    navigateWithFilters(buildFiltersFromState(readFilterState()));
+  }
+
+  function handleClear() {
+    const empty = createEmptyFilterState(fixedFinalidade);
+
+    setFinalidades(empty.finalidades);
+    setTipos(empty.tipos);
+    setSelectedCidades(empty.selectedCidades);
+    setSelectedBairros(empty.selectedBairros);
+    setCodigo(empty.codigo);
+    setValorMin(empty.valorMin);
+    setValorMax(empty.valorMax);
+    setAreaMin(empty.areaMin);
+    setAreaMax(empty.areaMax);
+    setQuartosMin(empty.quartosMin);
+    setBanheirosMin(empty.banheirosMin);
+    setSuitesMin(empty.suitesMin);
+    setVagasMin(empty.vagasMin);
+    setCaracteristicas(empty.caracteristicas);
+
+    navigateWithFilters(buildFiltersFromState(empty));
   }
 
   const isHero = layout === "hero";
@@ -194,15 +260,8 @@ export function FiltrosBusca({
     setOpenCategorias((current) => ({ ...current, [id]: !current[id] }));
   }
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className={
-        isHero
-          ? "grid gap-4 rounded-2xl bg-white p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-3"
-          : "space-y-5 rounded-xl border border-border bg-white p-4 shadow-sm"
-      }
-    >
+  const filterFields = (
+    <>
       {!fixedFinalidade ? (
         <CheckboxFilterDropdown
           label="Finalidade"
@@ -330,17 +389,53 @@ export function FiltrosBusca({
           </div>
         ))}
       </div>
+    </>
+  );
 
-      <div className={isHero ? "sm:col-span-2 lg:col-span-3" : ""}>
-        <Button
-          type="submit"
-          className="w-full text-white hover:opacity-90"
-          style={{ backgroundColor: "var(--color-secondary)" }}
-        >
-          <Search className="size-4" />
-          Buscar imóveis
-        </Button>
-      </div>
+  const filterFooter = (
+    <div
+      className={cn(
+        "flex shrink-0 items-center justify-between gap-3 border-t border-border bg-white pt-4",
+        isHero ? "sm:col-span-2 lg:col-span-3" : "",
+      )}
+    >
+      <button
+        type="button"
+        onClick={handleClear}
+        className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+      >
+        Limpar
+      </button>
+      <Button
+        type="submit"
+        className="px-6 text-white hover:opacity-90"
+        style={{ backgroundColor: "var(--color-secondary)" }}
+      >
+        <Search className="size-4" />
+        Buscar imóveis
+      </Button>
+    </div>
+  );
+
+  if (isHero) {
+    return (
+      <form
+        onSubmit={handleSubmit}
+        className="grid gap-4 rounded-2xl bg-white p-4 shadow-lg sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {filterFields}
+        {filterFooter}
+      </form>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-xl border border-border bg-white shadow-sm"
+    >
+      <div className="flex-1 space-y-5 overflow-y-auto p-4">{filterFields}</div>
+      <div className="px-4 pb-4">{filterFooter}</div>
     </form>
   );
 }

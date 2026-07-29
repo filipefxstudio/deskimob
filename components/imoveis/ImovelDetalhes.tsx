@@ -4,9 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  Bath,
   BedDouble,
-  BedSingle,
   Car,
   Check,
   MapPin,
@@ -15,6 +13,8 @@ import {
   Phone,
   Ruler,
 } from "lucide-react";
+
+import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
 
 import { ImovelAuditoriaTab } from "@/components/imoveis/ImovelAuditoriaTab";
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
@@ -247,11 +247,11 @@ export function ImovelDetalhes({
             {imovel.quartos} quartos
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <BedSingle className="size-4" />
+            <IconSuite className="size-4" />
             {imovel.suites} suítes
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <Bath className="size-4" />
+            <IconBanheiro className="size-4" />
             {imovel.banheiros} banheiros
           </span>
           <span className="inline-flex items-center gap-1.5">

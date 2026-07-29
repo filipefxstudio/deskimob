@@ -2,32 +2,55 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
-/** Banheira — representa suítes nos cards. */
+/** Banheira com chuveiro — representa suítes. */
 export function IconSuite(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M4 14h16v2.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5V14z" />
-      <path d="M6 14V9a2 2 0 0 1 2-2h1.5" />
-      <path d="M18 14V9a2 2 0 0 0-2-2h-1" />
-      <path d="M8 7c0-1.5 1.2-2.5 2.5-2.5" />
-      <path d="M3 17.5c1 .8 2.2 1.2 3.5 1.2" />
-      <path d="M21 17.5c-1 .8-2.2 1.2-3.5 1.2" />
-      <path d="M10 9.5c.5-.5 1.2-.8 2-.8s1.5.3 2 .8" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M3 15h10.5" />
+      <path d="M3 15c0 0 0 3.75 5.25 3.75S13.5 18.75 13.5 15" />
+      <path d="M5.5 18.75v1.5" />
+      <path d="M10 18.75v1.5" />
+      <path d="M5 16.25c1.25.75 2.75.75 4 0" />
+      <path d="M13.5 15V8.25" />
+      <path d="M13.5 8.25H9.75" />
+      <path d="M9.75 8.25v1.1c0 .55.45 1 1 1h.75" />
+      <path d="M9 11.5l-.55 1.1" />
+      <path d="M10.15 11.5l-.55 1.1" />
+      <path d="M11.3 11.5l-.55 1.1" />
     </svg>
   );
 }
 
-/** Chuveiro — representa banheiros nos cards. */
+/** Chuveiro — representa banheiros. */
 export function IconBanheiro(props: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
-      <path d="M8 4h8v3a4 4 0 0 1-4 4 4 4 0 0 1-4-4V4z" />
-      <path d="M12 11v2" />
-      <path d="M9.5 13.5c-2 1.5-3 3.5-3 6" />
-      <path d="M14.5 13.5c2 1.5 3 3.5 3 6" />
-      <path d="M10 19.5h4" />
-      <path d="M11 21.5h2" />
-      <path d="M10.5 16.5h.01M13.5 16.5h.01M10.5 18.5h.01M13.5 18.5h.01" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M17.5 3v7.75" />
+      <path d="M17.5 10.75H11.75" />
+      <path d="M11.75 10.75v1.25" />
+      <path d="M10 12h3.5l-1.75 3.75H8.25L10 12z" />
+      <path d="M8.35 16.5l-.9 1.6" />
+      <path d="M9.55 16.5l-.9 1.6" />
+      <path d="M10.75 16.5l-.9 1.6" />
+      <path d="M11.95 16.5l-.9 1.6" />
     </svg>
   );
 }

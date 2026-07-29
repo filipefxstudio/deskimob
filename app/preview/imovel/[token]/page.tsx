@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
-  Bath,
   BedDouble,
   Car,
   MapPin,
   Maximize2,
   MessageCircle,
 } from "lucide-react";
+
+import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
 
 import { ImovelGaleria } from "@/components/site/ImovelGaleria";
 import { Button } from "@/components/ui/button";
@@ -90,9 +91,15 @@ export default async function PreviewImovelPage({ params }: PreviewPageProps) {
               {imovel.quartos} quartos
             </span>
           ) : null}
+          {imovel.suites ? (
+            <span className="inline-flex items-center gap-1">
+              <IconSuite className="size-4" />
+              {imovel.suites} suítes
+            </span>
+          ) : null}
           {imovel.banheiros ? (
             <span className="inline-flex items-center gap-1">
-              <Bath className="size-4" />
+              <IconBanheiro className="size-4" />
               {imovel.banheiros} banheiros
             </span>
           ) : null}

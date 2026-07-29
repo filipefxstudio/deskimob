@@ -67,7 +67,7 @@ export async function SiteImoveisListing({
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
-        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
+        <aside className="lg:sticky lg:top-24">
           <FiltrosBusca
             bairros={bairros}
             cidades={cidades}

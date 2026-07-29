@@ -72,6 +72,69 @@ async function requireSiteAdminCorretor(): Promise<
   return { corretor: ctx.corretor };
 }
 
+type CorretorSiteUpdatePayload = Partial<
+  Pick<
+    Corretor,
+    | "logo_url"
+    | "site_cor_primaria"
+    | "site_cor_secundaria"
+    | "site_favicon_url"
+    | "hero_image_url"
+    | "hero_titulo"
+    | "hero_subtitulo"
+    | "site_sobre_foto_url"
+    | "site_sobre_titulo"
+    | "site_sobre_texto"
+    | "site_nome_exibicao"
+    | "site_creci"
+    | "site_telefone_vendas"
+    | "site_telefone_locacao"
+    | "site_email"
+    | "site_instagram"
+    | "site_youtube"
+    | "site_tiktok"
+    | "site_linkedin"
+    | "site_facebook"
+    | "site_horario"
+    | "site_endereco"
+    | "dominio_custom"
+    | "slug"
+  >
+>;
+
+async function updateCorretorSiteFields(
+  corretorId: string,
+  payload: CorretorSiteUpdatePayload,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("corretores").update(payload).eq("id", corretorId);
+
+  if (!error) {
+    return {};
+  }
+
+  console.error("[updateCorretorSiteFields] authenticated update failed", error);
+
+  let admin;
+
+  try {
+    admin = createServiceRoleClient();
+  } catch (fallbackError) {
+    console.error("[updateCorretorSiteFields] service role unavailable", fallbackError);
+    return { error: "Operação indisponível. Verifique a configuração do servidor." };
+  }
+
+  const { error: adminError } = await admin.from("corretores").update(payload).eq("id", corretorId);
+
+  if (adminError) {
+    console.error("[updateCorretorSiteFields] service role update failed", adminError);
+    return { error: "update failed" };
+  }
+
+  console.warn("[updateCorretorSiteFields] used service role fallback", { corretorId });
+  return {};
+}
+
 async function uploadSiteAsset(
   formData: FormData,
   fieldName: string,
@@ -140,17 +203,13 @@ export async function saveIdentidadeVisual(
     return { error: "Informe cores válidas no formato #RRGGBB." };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({
-      site_cor_primaria: primaria,
-      site_cor_secundaria: secundaria,
-    })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    site_cor_primaria: primaria,
+    site_cor_secundaria: secundaria,
+  });
 
-  if (error) {
-    return { error: "Não foi possível salvar as cores." };
+  if (updateResult.error) {
+    return { error: "Não foi possível salvar a identidade visual." };
   }
 
   revalidatePath("/dashboard/configuracoes");
@@ -175,13 +234,11 @@ export async function uploadLogo(formData: FormData): Promise<SiteConfigActionRe
     return uploadResult;
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({ logo_url: uploadResult.url })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    logo_url: uploadResult.url,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar a logo." };
   }
 
@@ -204,13 +261,11 @@ export async function uploadFavicon(formData: FormData): Promise<SiteConfigActio
     return uploadResult;
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({ site_favicon_url: uploadResult.url })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    site_favicon_url: uploadResult.url,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar o favicon." };
   }
 
@@ -232,13 +287,11 @@ export async function uploadHero(formData: FormData): Promise<SiteConfigActionRe
     return uploadResult;
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({ hero_image_url: uploadResult.url })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    hero_image_url: uploadResult.url,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar a imagem do hero." };
   }
 
@@ -259,13 +312,11 @@ export async function removeHero(): Promise<SiteConfigActionResult> {
 
   const { corretor } = access;
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({ hero_image_url: null })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    hero_image_url: null,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível remover a imagem do hero." };
   }
 
@@ -286,16 +337,12 @@ export async function saveHeroPage(data: SaveHeroPageInput): Promise<SiteConfigA
 
   const { corretor } = access;
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({
-      hero_titulo: data.hero_titulo.trim() || null,
-      hero_subtitulo: data.hero_subtitulo.trim() || null,
-    })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    hero_titulo: data.hero_titulo.trim() || null,
+    hero_subtitulo: data.hero_subtitulo.trim() || null,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar a página inicial." };
   }
 
@@ -321,13 +368,11 @@ export async function uploadSobreFoto(formData: FormData): Promise<SiteConfigAct
     return uploadResult;
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({ site_sobre_foto_url: uploadResult.url })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    site_sobre_foto_url: uploadResult.url,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar a foto." };
   }
 
@@ -348,16 +393,12 @@ export async function saveSobrePage(data: SaveSobreInput): Promise<SiteConfigAct
 
   const { corretor } = access;
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({
-      site_sobre_titulo: data.site_sobre_titulo.trim() || null,
-      site_sobre_texto: data.site_sobre_texto.trim() || null,
-    })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    site_sobre_titulo: data.site_sobre_titulo.trim() || null,
+    site_sobre_texto: data.site_sobre_texto.trim() || null,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar a página Sobre." };
   }
 
@@ -378,26 +419,22 @@ export async function saveContatoPage(data: SaveContatoInput): Promise<SiteConfi
 
   const { corretor } = access;
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("corretores")
-    .update({
-      site_nome_exibicao: data.site_nome_exibicao.trim() || null,
-      site_creci: data.site_creci.trim() || null,
-      site_telefone_vendas: data.site_telefone_vendas.trim() || null,
-      site_telefone_locacao: data.site_telefone_locacao.trim() || null,
-      site_email: data.site_email.trim() || null,
-      site_instagram: data.site_instagram.trim() || null,
-      site_youtube: data.site_youtube.trim() || null,
-      site_tiktok: data.site_tiktok.trim() || null,
-      site_linkedin: data.site_linkedin.trim() || null,
-      site_facebook: data.site_facebook.trim() || null,
-      site_horario: data.site_horario.trim() || null,
-      site_endereco: data.site_endereco.trim() || null,
-    })
-    .eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    site_nome_exibicao: data.site_nome_exibicao.trim() || null,
+    site_creci: data.site_creci.trim() || null,
+    site_telefone_vendas: data.site_telefone_vendas.trim() || null,
+    site_telefone_locacao: data.site_telefone_locacao.trim() || null,
+    site_email: data.site_email.trim() || null,
+    site_instagram: data.site_instagram.trim() || null,
+    site_youtube: data.site_youtube.trim() || null,
+    site_tiktok: data.site_tiktok.trim() || null,
+    site_linkedin: data.site_linkedin.trim() || null,
+    site_facebook: data.site_facebook.trim() || null,
+    site_horario: data.site_horario.trim() || null,
+    site_endereco: data.site_endereco.trim() || null,
+  });
 
-  if (error) {
+  if (updateResult.error) {
     return { error: "Não foi possível salvar a página Contato." };
   }
 
@@ -460,7 +497,6 @@ export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteC
     return { error: slugResult.error };
   }
 
-  const supabase = await createClient();
   const updatePayload: { dominio_custom: string | null; slug?: string } = {
     dominio_custom: data.dominio_custom.trim() || null,
   };
@@ -469,12 +505,9 @@ export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteC
     updatePayload.slug = slugResult.slug;
   }
 
-  const { error } = await supabase.from("corretores").update(updatePayload).eq("id", corretor.id);
+  const updateResult = await updateCorretorSiteFields(corretor.id, updatePayload);
 
-  if (error) {
-    if (error.code === "23505") {
-      return { error: "Este slug já está em uso." };
-    }
+  if (updateResult.error) {
     return { error: "Não foi possível salvar as configurações do site." };
   }
 

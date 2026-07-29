@@ -101,6 +101,9 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
     <div className="space-y-6">
       <div className="space-y-3">
         <Label>Logo do site</Label>
+        <p className="text-xs text-muted-foreground">
+          A logo é salva automaticamente ao enviar a imagem.
+        </p>
         <div className="flex flex-wrap items-center gap-4">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -147,7 +150,7 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
           ))}
         </div>
         <FeedbackMessage error={error} message={feedback} />
-        <Button type="submit" disabled={isPending}>Salvar identidade visual</Button>
+        <Button type="submit" disabled={isPending}>Salvar cores</Button>
       </form>
     </div>
   );

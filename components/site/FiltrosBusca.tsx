@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { useState } from "react";
 
+import { CheckboxFilterDropdown } from "@/components/imoveis/CheckboxFilterDropdown";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -116,9 +117,15 @@ export function FiltrosBusca({
         ? [initialValues.tipo]
         : [];
 
-  const [finalidade, setFinalidade] = useState<FinalidadeImovel | undefined>(
-    fixedFinalidade ?? initialValues.finalidade ?? undefined,
-  );
+  const initialFinalidades = fixedFinalidade
+    ? [fixedFinalidade]
+    : initialValues.finalidades?.length
+      ? initialValues.finalidades
+      : initialValues.finalidade
+        ? [initialValues.finalidade]
+        : [];
+
+  const [finalidades, setFinalidades] = useState<FinalidadeImovel[]>(initialFinalidades);
   const [tipos, setTipos] = useState<TipoImovel[]>(initialTipos);
   const [selectedCidades, setSelectedCidades] = useState<string[]>(initialValues.cidades ?? []);
   const [selectedBairros, setSelectedBairros] = useState<string[]>(
@@ -155,8 +162,11 @@ export function FiltrosBusca({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const resolvedFinalidades = fixedFinalidade ? [fixedFinalidade] : finalidades;
+
     const filters: ImoveisPublicosFilters = {
-      finalidade: fixedFinalidade ?? finalidade,
+      finalidade: resolvedFinalidades.length === 1 ? resolvedFinalidades[0] : undefined,
+      finalidades: resolvedFinalidades.length > 1 ? resolvedFinalidades : undefined,
       tipos: tipos.length > 0 ? tipos : undefined,
       cidades: selectedCidades.length > 0 ? selectedCidades : undefined,
       bairros: selectedBairros.length > 0 ? selectedBairros : undefined,
@@ -194,70 +204,44 @@ export function FiltrosBusca({
       }
     >
       {!fixedFinalidade ? (
-        <div className="space-y-2">
-          <Label>Finalidade</Label>
-          <div className="grid grid-cols-2 gap-1 rounded-lg border border-border p-1">
-            {FINALIDADES_IMOVEL.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() =>
-                  setFinalidade(finalidade === item.value ? undefined : item.value)
-                }
-                className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  finalidade === item.value
-                    ? "bg-primary text-white"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <CheckboxFilterDropdown
+          label="Finalidade"
+          options={FINALIDADES_IMOVEL.map((item) => ({
+            value: item.value,
+            label: item.label,
+          }))}
+          selected={finalidades}
+          onChange={(selected) => setFinalidades(selected as FinalidadeImovel[])}
+          placeholder="Todas"
+        />
       ) : null}
 
-      <div className="space-y-2">
-        <Label>Tipo de imóvel</Label>
-        <div className="space-y-2">
-          {TIPOS_IMOVEL.map((item) => {
-            const id = `tipo-${item.value}`;
-            return (
-              <label key={item.value} htmlFor={id} className="flex cursor-pointer items-center gap-2 text-sm">
-                <Checkbox
-                  id={id}
-                  checked={tipos.includes(item.value)}
-                  onCheckedChange={() =>
-                    setTipos((current) => toggleListItem(current, item.value))
-                  }
-                />
-                <span>{item.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
+      <CheckboxFilterDropdown
+        label="Tipo de imóvel"
+        options={TIPOS_IMOVEL.map((item) => ({
+          value: item.value,
+          label: item.label,
+        }))}
+        selected={tipos}
+        onChange={(selected) => setTipos(selected as TipoImovel[])}
+        placeholder="Todos"
+      />
 
-      <div className="space-y-2">
-        <Label>Cidade</Label>
-        <CheckboxList
-          idPrefix="cidade"
-          items={cidades}
-          selected={selectedCidades}
-          onToggle={(item) => setSelectedCidades((current) => toggleListItem(current, item))}
-        />
-      </div>
+      <CheckboxFilterDropdown
+        label="Cidade"
+        options={cidades.map((cidade) => ({ value: cidade, label: cidade }))}
+        selected={selectedCidades}
+        onChange={setSelectedCidades}
+        placeholder="Todas"
+      />
 
-      <div className="space-y-2">
-        <Label>Bairro</Label>
-        <CheckboxList
-          idPrefix="bairro"
-          items={bairros}
-          selected={selectedBairros}
-          onToggle={(item) => setSelectedBairros((current) => toggleListItem(current, item))}
-        />
-      </div>
+      <CheckboxFilterDropdown
+        label="Bairro"
+        options={bairros.map((bairro) => ({ value: bairro, label: bairro }))}
+        selected={selectedBairros}
+        onChange={setSelectedBairros}
+        placeholder="Todos"
+      />
 
       <CountFilterButtons label="Quartos" value={quartosMin} onChange={setQuartosMin} />
       <CountFilterButtons label="Banheiros" value={banheirosMin} onChange={setBanheirosMin} />

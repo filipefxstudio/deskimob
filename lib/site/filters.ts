@@ -87,16 +87,30 @@ function parseFinalidade(value: string | undefined): FinalidadeImovel | undefine
     : undefined;
 }
 
+function parseFinalidades(values: string[]): FinalidadeImovel[] {
+  return values.filter((value): value is FinalidadeImovel =>
+    FINALIDADES.includes(value as FinalidadeImovel),
+  );
+}
+
 export function parseImoveisSearchParams(
   searchParams: Record<string, string | string[] | undefined>,
 ): ImoveisPublicosFilters {
   const tiposFromList = parseTipos(getParamList(searchParams, "tipos"));
   const legacyTipo = parseTipo(getParam(searchParams, "tipo"));
+  const finalidadesFromList = parseFinalidades(getParamList(searchParams, "finalidades"));
+  const legacyFinalidade = parseFinalidade(getParam(searchParams, "finalidade"));
 
   return {
     tipo: legacyTipo,
     tipos: tiposFromList.length > 0 ? tiposFromList : legacyTipo ? [legacyTipo] : undefined,
-    finalidade: parseFinalidade(getParam(searchParams, "finalidade")),
+    finalidade: legacyFinalidade,
+    finalidades:
+      finalidadesFromList.length > 0
+        ? finalidadesFromList
+        : legacyFinalidade
+          ? [legacyFinalidade]
+          : undefined,
     bairro: getParam(searchParams, "bairro"),
     bairros: getParamList(searchParams, "bairros").length
       ? getParamList(searchParams, "bairros")
@@ -124,8 +138,17 @@ export function buildImoveisSearchParams(
 ): URLSearchParams {
   const params = new URLSearchParams();
 
-  if (filters.finalidade) {
-    params.set("finalidade", filters.finalidade);
+  const finalidades =
+    filters.finalidades?.length
+      ? filters.finalidades
+      : filters.finalidade
+        ? [filters.finalidade]
+        : [];
+
+  if (finalidades.length === 1) {
+    params.set("finalidade", finalidades[0]);
+  } else if (finalidades.length > 1) {
+    params.set("finalidades", finalidades.join(","));
   }
 
   const tipos = filters.tipos?.length ? filters.tipos : filters.tipo ? [filters.tipo] : [];

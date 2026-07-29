@@ -7,6 +7,7 @@ export interface ImoveisPublicosFilters {
   tipo?: TipoImovel;
   tipos?: TipoImovel[];
   finalidade?: FinalidadeImovel;
+  finalidades?: FinalidadeImovel[];
   bairro?: string;
   bairros?: string[];
   cidades?: string[];
@@ -26,6 +27,19 @@ export interface ImoveisPublicosFilters {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ImoveisQuery = PostgrestFilterBuilder<any, any, any, any[], "imoveis", unknown, "GET">;
 
+function resolveFinalidades(filters: ImoveisPublicosFilters): FinalidadeImovel[] {
+  if (filters.finalidades?.length) {
+    return filters.finalidades;
+  }
+
+  return filters.finalidade ? [filters.finalidade] : [];
+}
+
+function resolveSingleFinalidade(filters: ImoveisPublicosFilters): FinalidadeImovel | undefined {
+  const finalidades = resolveFinalidades(filters);
+  return finalidades.length === 1 ? finalidades[0] : undefined;
+}
+
 export function applyImoveisPublicosFilters(
   query: ImoveisQuery,
   filters: ImoveisPublicosFilters,
@@ -39,8 +53,12 @@ export function applyImoveisPublicosFilters(
     query = query.in("tipo", tipos);
   }
 
-  if (filters.finalidade) {
-    query = query.eq("finalidade", filters.finalidade);
+  const finalidades = resolveFinalidades(filters);
+
+  if (finalidades.length === 1) {
+    query = query.eq("finalidade", finalidades[0]);
+  } else if (finalidades.length > 1) {
+    query = query.in("finalidade", finalidades);
   }
 
   if (!options?.skipBairros) {
@@ -96,10 +114,12 @@ export function applyImoveisPublicosFilters(
     query = query.contains("diferenciais", filters.caracteristicas);
   }
 
+  const finalidadeUnica = resolveSingleFinalidade(filters);
+
   if (filters.valorMin !== undefined) {
-    if (filters.finalidade === "locacao") {
+    if (finalidadeUnica === "locacao") {
       query = query.gte("valor_locacao", filters.valorMin);
-    } else if (filters.finalidade === "venda") {
+    } else if (finalidadeUnica === "venda") {
       query = query.gte("valor_venda", filters.valorMin);
     } else {
       query = query.or(
@@ -109,9 +129,9 @@ export function applyImoveisPublicosFilters(
   }
 
   if (filters.valorMax !== undefined) {
-    if (filters.finalidade === "locacao") {
+    if (finalidadeUnica === "locacao") {
       query = query.lte("valor_locacao", filters.valorMax);
-    } else if (filters.finalidade === "venda") {
+    } else if (finalidadeUnica === "venda") {
       query = query.lte("valor_venda", filters.valorMax);
     } else {
       query = query.or(

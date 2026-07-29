@@ -38,6 +38,12 @@ import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import {
+  createTenantDataClient,
+  leadVisivelParaUsuario,
+  resolveTenantAccess,
+  type TenantDbClient,
+} from "@/lib/supabase/tenant-access";
+import {
   extractMissingColumn,
   isSchemaMismatchError,
   isUniqueViolationError,
@@ -481,7 +487,7 @@ export async function createAtendimento(
   if (!nome) return { error: "Informe o nome." };
   if (!telefone) return { error: "Informe o telefone." };
 
-  const perfil = await getPerfilForUser();
+  const perfil = await getPerfilForUser(corretor.id);
   const perfilInformado = input.perfil_id?.trim();
   const perfilId =
     perfilInformado && isValidUuid(perfilInformado)
@@ -612,55 +618,32 @@ export async function getAtendimentoCompleto(leadId: string) {
   const corretor = await getCorretorForUser();
   if (!corretor) return null;
 
+  const access = await resolveTenantAccess(corretor);
   const supabase = await createClient();
+  let dataClient: TenantDbClient = supabase;
 
-  const [leadRes, visitasRes, propostasRes, negociosRes, selecionadosRes, auditoriaRes] =
-    await Promise.all([
-      supabase
-        .from("leads")
-        .select("*, imovel:imoveis!leads_imovel_id_fkey(*, fotos:imovel_fotos(*)), perfil:perfis(id, nome, email, papel), interacoes:lead_interacoes(*)")
-        .eq("id", leadId)
-        .eq("corretor_id", corretor.id)
-        .maybeSingle(),
-      supabase
-        .from("visitas")
-        .select("*, imovel:imoveis(*, fotos:imovel_fotos(*))")
-        .eq("lead_id", leadId)
-        .eq("corretor_id", corretor.id)
-        .order("data_visita", { ascending: false }),
-      supabase
-        .from("propostas")
-        .select(
-          "*, imovel:imoveis(*, fotos:imovel_fotos(*), captador:perfis!captador_id(id, nome))",
-        )
-        .eq("lead_id", leadId)
-        .eq("corretor_id", corretor.id)
-        .order("data_proposta", { ascending: false }),
-      supabase
-        .from("negocios")
-        .select(
-          "*, imovel:imoveis(*, fotos:imovel_fotos(*), captador:perfis!captador_id(id, nome)), perfil:perfis(id, nome)",
-        )
-        .eq("lead_id", leadId)
-        .eq("corretor_id", corretor.id)
-        .order("data_fechamento", { ascending: false }),
-      supabase
-        .from("lead_imoveis_selecionados")
-        .select("*, imovel:imoveis(*, fotos:imovel_fotos(*))")
-        .eq("lead_id", leadId)
-        .eq("corretor_id", corretor.id)
-        .order("criado_em", { ascending: false }),
-      supabase
-        .from("auditoria_atendimento")
-        .select("*, perfil:perfis(id, nome)")
-        .eq("lead_id", leadId)
-        .eq("corretor_id", corretor.id)
-        .order("criado_em", { ascending: false }),
-    ]);
+  let bundle = await fetchAtendimentoBundle(dataClient, corretor.id, leadId);
 
-  if (leadRes.error || !leadRes.data) return null;
+  if (!bundle.lead) {
+    const admin = await createTenantDataClient();
+    if (!admin) return null;
+    dataClient = admin;
+    bundle = await fetchAtendimentoBundle(admin, corretor.id, leadId);
+    if (bundle.lead) {
+      console.warn("[getAtendimentoCompleto] used service role fallback", {
+        corretorId: corretor.id,
+        leadId,
+      });
+    }
+  }
 
-  const lead = leadRes.data as Lead;
+  if (!bundle.lead) return null;
+
+  if (!access.verTodos && !leadVisivelParaUsuario(bundle.lead, access)) {
+    return null;
+  }
+
+  const lead = bundle.lead;
   if (lead.interacoes) {
     lead.interacoes.sort(
       (a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime(),
@@ -672,9 +655,9 @@ export async function getAtendimentoCompleto(leadId: string) {
       leadId,
       lead.imovel_id,
       corretor.id,
-      supabase,
+      dataClient,
     );
-    const { data: refreshed } = await supabase
+    const { data: refreshed } = await dataClient
       .from("lead_imoveis_selecionados")
       .select("*, imovel:imoveis(*, fotos:imovel_fotos(*))")
       .eq("lead_id", leadId)
@@ -683,14 +666,129 @@ export async function getAtendimentoCompleto(leadId: string) {
     if (refreshed) {
       return {
         lead,
-        visitas: (visitasRes.data ?? []) as Visita[],
-        propostas: (propostasRes.data ?? []) as Proposta[],
-        negocios: (negociosRes.data ?? []) as Negocio[],
+        visitas: bundle.visitas,
+        propostas: bundle.propostas,
+        negocios: bundle.negocios,
         imoveisSelecionados: refreshed as LeadImovelSelecionado[],
-        auditoria: (auditoriaRes.data ?? []) as AuditoriaAtendimento[],
+        auditoria: bundle.auditoria,
       };
     }
   }
+
+  return {
+    lead,
+    visitas: bundle.visitas,
+    propostas: bundle.propostas,
+    negocios: bundle.negocios,
+    imoveisSelecionados: bundle.imoveisSelecionados,
+    auditoria: bundle.auditoria,
+  };
+}
+
+const LEAD_ATENDIMENTO_SELECT_TIERS = [
+  "*, imovel:imoveis!leads_imovel_id_fkey(*, fotos:imovel_fotos(*)), perfil:perfis(id, nome, email, papel), interacoes:lead_interacoes(*)",
+  "*, imovel:imoveis!leads_imovel_id_fkey(*, fotos:imovel_fotos(*)), perfil:perfis(id, nome, email, papel)",
+  "*, imovel:imoveis!leads_imovel_id_fkey(*, fotos:imovel_fotos(*))",
+  "*",
+] as const;
+
+async function fetchAtendimentoLeadRow(
+  client: TenantDbClient,
+  corretorId: string,
+  leadId: string,
+): Promise<Lead | null> {
+  for (let tier = 0; tier < LEAD_ATENDIMENTO_SELECT_TIERS.length; tier += 1) {
+    const { data, error } = await client
+      .from("leads")
+      .select(LEAD_ATENDIMENTO_SELECT_TIERS[tier] as "*")
+      .eq("id", leadId)
+      .eq("corretor_id", corretorId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const lead = data as Lead;
+      if (!lead.interacoes) {
+        const { data: interacoes } = await client
+          .from("lead_interacoes")
+          .select("*")
+          .eq("lead_id", leadId)
+          .eq("corretor_id", corretorId)
+          .order("criado_em", { ascending: false });
+        lead.interacoes = interacoes ?? [];
+      }
+      return lead;
+    }
+
+    const hasFallback = tier < LEAD_ATENDIMENTO_SELECT_TIERS.length - 1;
+    if (hasFallback && error && isSchemaMismatchError(error)) {
+      logPostgrestError(`getAtendimentoCompleto.lead.tier${tier}`, error);
+      continue;
+    }
+
+    if (error) {
+      logPostgrestError("getAtendimentoCompleto.lead", error);
+    }
+
+    break;
+  }
+
+  return null;
+}
+
+async function fetchAtendimentoBundle(
+  client: TenantDbClient,
+  corretorId: string,
+  leadId: string,
+) {
+  const lead = await fetchAtendimentoLeadRow(client, corretorId, leadId);
+  if (!lead) {
+    return {
+      lead: null,
+      visitas: [] as Visita[],
+      propostas: [] as Proposta[],
+      negocios: [] as Negocio[],
+      imoveisSelecionados: [] as LeadImovelSelecionado[],
+      auditoria: [] as AuditoriaAtendimento[],
+    };
+  }
+
+  const [visitasRes, propostasRes, negociosRes, selecionadosRes, auditoriaRes] =
+    await Promise.all([
+      client
+        .from("visitas")
+        .select("*, imovel:imoveis(*, fotos:imovel_fotos(*))")
+        .eq("lead_id", leadId)
+        .eq("corretor_id", corretorId)
+        .order("data_visita", { ascending: false }),
+      client
+        .from("propostas")
+        .select(
+          "*, imovel:imoveis(*, fotos:imovel_fotos(*), captador:perfis!captador_id(id, nome))",
+        )
+        .eq("lead_id", leadId)
+        .eq("corretor_id", corretorId)
+        .order("data_proposta", { ascending: false }),
+      client
+        .from("negocios")
+        .select(
+          "*, imovel:imoveis(*, fotos:imovel_fotos(*), captador:perfis!captador_id(id, nome)), perfil:perfis(id, nome)",
+        )
+        .eq("lead_id", leadId)
+        .eq("corretor_id", corretorId)
+        .order("data_fechamento", { ascending: false }),
+      client
+        .from("lead_imoveis_selecionados")
+        .select("*, imovel:imoveis(*, fotos:imovel_fotos(*))")
+        .eq("lead_id", leadId)
+        .eq("corretor_id", corretorId)
+        .order("criado_em", { ascending: false }),
+      client
+        .from("auditoria_atendimento")
+        .select("*, perfil:perfis(id, nome)")
+        .eq("lead_id", leadId)
+        .eq("corretor_id", corretorId)
+        .order("criado_em", { ascending: false }),
+    ]);
 
   return {
     lead,

@@ -46,6 +46,10 @@ export function registroVisivelPorPerfil(
     return true;
   }
 
+  if (!perfilId) {
+    return true;
+  }
+
   if (!access.perfilAtualId) {
     return false;
   }

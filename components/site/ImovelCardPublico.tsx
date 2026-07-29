@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Bath, BedDouble, BedSingle, Car, Maximize2, type LucideIcon } from "lucide-react";
+import { BedDouble, Car, Maximize2, type LucideIcon } from "lucide-react";
+
+import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
 
 import {
   getBairroCidadeCardLabel,
@@ -19,10 +21,22 @@ interface ImovelCardPublicoProps {
   imovel: Imovel;
 }
 
-function StatItem({ icon: Icon, value }: { icon: LucideIcon; value: string | number }) {
+function StatItem({
+  icon: Icon,
+  value,
+  customIcon = false,
+}: {
+  icon: LucideIcon | typeof IconSuite;
+  value: string | number;
+  customIcon?: boolean;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-      <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+      {customIcon ? (
+        <Icon className="size-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+      )}
       <span className="text-sm leading-none">{value}</span>
     </span>
   );
@@ -84,8 +98,12 @@ export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
               <StatItem icon={Maximize2} value={`${imovel.area_util} m²`} />
             ) : null}
             {imovel.quartos > 0 ? <StatItem icon={BedDouble} value={imovel.quartos} /> : null}
-            {imovel.suites > 0 ? <StatItem icon={BedSingle} value={imovel.suites} /> : null}
-            {imovel.banheiros > 0 ? <StatItem icon={Bath} value={imovel.banheiros} /> : null}
+            {imovel.suites > 0 ? (
+              <StatItem icon={IconSuite} value={imovel.suites} customIcon />
+            ) : null}
+            {imovel.banheiros > 0 ? (
+              <StatItem icon={IconBanheiro} value={imovel.banheiros} customIcon />
+            ) : null}
             {imovel.vagas > 0 ? <StatItem icon={Car} value={imovel.vagas} /> : null}
           </div>
         </div>

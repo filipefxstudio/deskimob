@@ -1,0 +1,126 @@
+import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+
+import { PUBLIC_IMOVEIS_PAGE_SIZE } from "@/lib/site/filters";
+import type { FinalidadeImovel, Imovel, TipoImovel } from "@/types";
+
+export interface ImoveisPublicosFilters {
+  tipo?: TipoImovel;
+  tipos?: TipoImovel[];
+  finalidade?: FinalidadeImovel;
+  bairro?: string;
+  bairros?: string[];
+  cidades?: string[];
+  codigo?: string;
+  valorMin?: number;
+  valorMax?: number;
+  areaMin?: number;
+  areaMax?: number;
+  quartosMin?: number;
+  banheirosMin?: number;
+  suitesMin?: number;
+  vagasMin?: number;
+  caracteristicas?: string[];
+  pagina?: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ImoveisQuery = PostgrestFilterBuilder<any, any, any, any[], "imoveis", unknown, "GET">;
+
+export function applyImoveisPublicosFilters(
+  query: ImoveisQuery,
+  filters: ImoveisPublicosFilters,
+  options?: { skipBairros?: boolean },
+): ImoveisQuery {
+  const tipos = filters.tipos?.length ? filters.tipos : filters.tipo ? [filters.tipo] : [];
+
+  if (tipos.length === 1) {
+    query = query.eq("tipo", tipos[0]);
+  } else if (tipos.length > 1) {
+    query = query.in("tipo", tipos);
+  }
+
+  if (filters.finalidade) {
+    query = query.eq("finalidade", filters.finalidade);
+  }
+
+  if (!options?.skipBairros) {
+    const bairros = filters.bairros?.length
+      ? filters.bairros
+      : filters.bairro
+        ? [filters.bairro]
+        : [];
+
+    if (bairros.length === 1) {
+      query = query.ilike("bairro", `%${bairros[0]}%`);
+    } else if (bairros.length > 1) {
+      query = query.in("bairro", bairros);
+    }
+  }
+
+  if (filters.cidades?.length === 1) {
+    query = query.ilike("cidade", `%${filters.cidades[0]}%`);
+  } else if (filters.cidades && filters.cidades.length > 1) {
+    query = query.in("cidade", filters.cidades);
+  }
+
+  if (filters.codigo) {
+    const codigo = filters.codigo.trim();
+    query = query.or(`codigo.ilike.%${codigo}%,codigo_personalizado.ilike.%${codigo}%`);
+  }
+
+  if (filters.quartosMin != null) {
+    query = query.gte("quartos", filters.quartosMin);
+  }
+
+  if (filters.banheirosMin != null) {
+    query = query.gte("banheiros", filters.banheirosMin);
+  }
+
+  if (filters.suitesMin != null) {
+    query = query.gte("suites", filters.suitesMin);
+  }
+
+  if (filters.vagasMin != null) {
+    query = query.gte("vagas", filters.vagasMin);
+  }
+
+  if (filters.areaMin != null) {
+    query = query.gte("area_total", filters.areaMin);
+  }
+
+  if (filters.areaMax != null) {
+    query = query.lte("area_total", filters.areaMax);
+  }
+
+  if (filters.caracteristicas?.length) {
+    query = query.contains("diferenciais", filters.caracteristicas);
+  }
+
+  if (filters.valorMin !== undefined) {
+    if (filters.finalidade === "locacao") {
+      query = query.gte("valor_locacao", filters.valorMin);
+    } else if (filters.finalidade === "venda") {
+      query = query.gte("valor_venda", filters.valorMin);
+    } else {
+      query = query.or(
+        `valor_venda.gte.${filters.valorMin},valor_locacao.gte.${filters.valorMin}`,
+      );
+    }
+  }
+
+  if (filters.valorMax !== undefined) {
+    if (filters.finalidade === "locacao") {
+      query = query.lte("valor_locacao", filters.valorMax);
+    } else if (filters.finalidade === "venda") {
+      query = query.lte("valor_venda", filters.valorMax);
+    } else {
+      query = query.or(
+        `valor_venda.lte.${filters.valorMax},valor_locacao.lte.${filters.valorMax}`,
+      );
+    }
+  }
+
+  return query;
+}
+
+export { PUBLIC_IMOVEIS_PAGE_SIZE };

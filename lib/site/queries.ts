@@ -3,13 +3,19 @@ import { cache } from "react";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getImovelFotoPublicUrl } from "@/lib/imoveis/foto-url";
+import {
+  applyImoveisPublicosFilters,
+  PUBLIC_IMOVEIS_PAGE_SIZE,
+  type ImoveisPublicosFilters,
+} from "@/lib/site/imovel-filters";
 import type {
   Corretor,
-  FinalidadeImovel,
   Imovel,
   ImovelFoto,
-  TipoImovel,
 } from "@/types";
+
+export type { ImoveisPublicosFilters } from "@/lib/site/imovel-filters";
+export { PUBLIC_IMOVEIS_PAGE_SIZE } from "@/lib/site/imovel-filters";
 
 const CORRETOR_PUBLIC_COLUMNS =
   "id, user_id, nome, email, telefone, creci, slug, dominio_custom, foto_url, logo_url, site_cor_primaria, site_cor_secundaria, site_favicon_url, site_tarja_cor, site_nome_exibicao, hero_image_url, hero_titulo, hero_subtitulo, sobre, sobre_titulo, sobre_texto, sobre_foto_url, site_sobre_titulo, site_sobre_texto, site_sobre_foto_url, site_creci, site_telefone_vendas, site_telefone_locacao, site_email, site_instagram, site_youtube, site_tiktok, site_linkedin, site_facebook, site_horario, site_endereco, contato_email, contato_telefone, contato_endereco, contato_horario, whatsapp, criado_em, atualizado_em";
@@ -22,18 +28,17 @@ async function createSiteReadClient() {
   }
 }
 
-export interface ImoveisPublicosFilters {
-  tipo?: TipoImovel;
-  finalidade?: FinalidadeImovel;
-  bairro?: string;
-  codigo?: string;
-  valorMin?: number;
-  valorMax?: number;
-}
-
 type ImovelRow = Imovel & {
   imovel_fotos: ImovelFoto[] | null;
 };
+
+export interface ImoveisPublicosPaginatedResult {
+  imoveis: Imovel[];
+  total: number;
+  pagina: number;
+  pageSize: number;
+  totalPaginas: number;
+}
 
 function mapImovelRow(row: ImovelRow): Imovel {
   const { imovel_fotos, ...rest } = row;
@@ -96,6 +101,86 @@ export const getImoveisPublicos = cache(
     corretorId: string,
     filters: ImoveisPublicosFilters = {},
   ): Promise<Imovel[]> => {
+    const result = await getImoveisPublicosPaginados(corretorId, {
+      ...filters,
+      pagina: 1,
+    }, { pageSize: 10_000 });
+
+    return result.imoveis;
+  },
+);
+
+export const getImoveisPublicosPaginados = cache(
+  async (
+    corretorId: string,
+    filters: ImoveisPublicosFilters = {},
+    options?: { pageSize?: number; excludeIds?: string[] },
+  ): Promise<ImoveisPublicosPaginatedResult> => {
+    const supabase = await createSiteReadClient();
+    const pageSize = options?.pageSize ?? PUBLIC_IMOVEIS_PAGE_SIZE;
+    const pagina = filters.pagina && filters.pagina > 0 ? filters.pagina : 1;
+    const offset = (pagina - 1) * pageSize;
+
+    let countQuery = supabase
+      .from("imoveis")
+      .select("id", { count: "exact", head: true })
+      .eq("corretor_id", corretorId)
+      .eq("publicado_site", true)
+      .eq("status", "disponivel");
+
+    countQuery = applyImoveisPublicosFilters(countQuery, filters);
+
+    if (options?.excludeIds?.length) {
+      countQuery = countQuery.not("id", "in", `(${options.excludeIds.join(",")})`);
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) {
+      return { imoveis: [], total: 0, pagina, pageSize, totalPaginas: 0 };
+    }
+
+    const total = count ?? 0;
+    const totalPaginas = total > 0 ? Math.ceil(total / pageSize) : 0;
+
+    let query = supabase
+      .from("imoveis")
+      .select("*, imovel_fotos(*)")
+      .eq("corretor_id", corretorId)
+      .eq("publicado_site", true)
+      .eq("status", "disponivel")
+      .order("atualizado_em", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+
+    query = applyImoveisPublicosFilters(query, filters);
+
+    if (options?.excludeIds?.length) {
+      query = query.not("id", "in", `(${options.excludeIds.join(",")})`);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data) {
+      return { imoveis: [], total, pagina, pageSize, totalPaginas };
+    }
+
+    return {
+      imoveis: (data as ImovelRow[]).map(mapImovelRow),
+      total,
+      pagina,
+      pageSize,
+      totalPaginas,
+    };
+  },
+);
+
+export const getImoveisSimilaresPublicos = cache(
+  async (
+    corretorId: string,
+    filters: ImoveisPublicosFilters,
+    excludeIds: string[],
+    limit = 6,
+  ): Promise<Imovel[]> => {
     const supabase = await createSiteReadClient();
 
     let query = supabase
@@ -104,49 +189,14 @@ export const getImoveisPublicos = cache(
       .eq("corretor_id", corretorId)
       .eq("publicado_site", true)
       .eq("status", "disponivel")
-      .order("atualizado_em", { ascending: false });
+      .order("destaque_site", { ascending: false })
+      .order("atualizado_em", { ascending: false })
+      .limit(limit);
 
-    if (filters.tipo) {
-      query = query.eq("tipo", filters.tipo);
-    }
+    query = applyImoveisPublicosFilters(query, filters, { skipBairros: true });
 
-    if (filters.finalidade) {
-      query = query.eq("finalidade", filters.finalidade);
-    }
-
-    if (filters.bairro) {
-      query = query.ilike("bairro", `%${filters.bairro}%`);
-    }
-
-    if (filters.codigo) {
-      const codigo = filters.codigo.trim();
-      query = query.or(
-        `codigo.ilike.%${codigo}%,codigo_personalizado.ilike.%${codigo}%`,
-      );
-    }
-
-    if (filters.valorMin !== undefined) {
-      if (filters.finalidade === "locacao") {
-        query = query.gte("valor_locacao", filters.valorMin);
-      } else if (filters.finalidade === "venda") {
-        query = query.gte("valor_venda", filters.valorMin);
-      } else {
-        query = query.or(
-          `valor_venda.gte.${filters.valorMin},valor_locacao.gte.${filters.valorMin}`,
-        );
-      }
-    }
-
-    if (filters.valorMax !== undefined) {
-      if (filters.finalidade === "locacao") {
-        query = query.lte("valor_locacao", filters.valorMax);
-      } else if (filters.finalidade === "venda") {
-        query = query.lte("valor_venda", filters.valorMax);
-      } else {
-        query = query.or(
-          `valor_venda.lte.${filters.valorMax},valor_locacao.lte.${filters.valorMax}`,
-        );
-      }
+    if (excludeIds.length > 0) {
+      query = query.not("id", "in", `(${excludeIds.join(",")})`);
     }
 
     const { data, error } = await query;
@@ -201,6 +251,32 @@ export const getImovelPublico = cache(
     return mapImovelRow(data as ImovelRow);
   },
 );
+
+export const getCidadesPublicos = cache(async (corretorId: string): Promise<string[]> => {
+  const supabase = await createSiteReadClient();
+
+  const { data, error } = await supabase
+    .from("imoveis")
+    .select("cidade")
+    .eq("corretor_id", corretorId)
+    .eq("publicado_site", true)
+    .eq("status", "disponivel")
+    .not("cidade", "is", null);
+
+  if (error || !data) {
+    return [];
+  }
+
+  const cidades = new Set<string>();
+
+  for (const row of data) {
+    if (row.cidade?.trim()) {
+      cidades.add(row.cidade.trim());
+    }
+  }
+
+  return [...cidades].sort((a, b) => a.localeCompare(b, "pt-BR"));
+});
 
 export const getBairrosPublicos = cache(async (corretorId: string): Promise<string[]> => {
   const supabase = await createSiteReadClient();

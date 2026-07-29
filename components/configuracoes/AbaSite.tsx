@@ -25,7 +25,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   DEFAULT_SITE_COR_PRIMARIA,
   DEFAULT_SITE_COR_SECUNDARIA,
-  DEFAULT_SITE_TARJA_COR,
 } from "@/lib/constants/site";
 import type { Corretor } from "@/types";
 
@@ -50,7 +49,6 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
   const [faviconUrl, setFaviconUrl] = useState(corretor.site_favicon_url ?? "");
   const [corPrimaria, setCorPrimaria] = useState(corretor.site_cor_primaria ?? DEFAULT_SITE_COR_PRIMARIA);
   const [corSecundaria, setCorSecundaria] = useState(corretor.site_cor_secundaria ?? DEFAULT_SITE_COR_SECUNDARIA);
-  const [corTarja, setCorTarja] = useState(corretor.site_tarja_cor ?? DEFAULT_SITE_TARJA_COR);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -93,7 +91,6 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
       const result = await saveIdentidadeVisual({
         site_cor_primaria: corPrimaria,
         site_cor_secundaria: corSecundaria,
-        site_tarja_cor: corTarja,
       });
       if (result.error) { setError(result.error); return; }
       setFeedback(result.message ?? "Cores salvas.");
@@ -135,11 +132,10 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
       </div>
 
       <form onSubmit={handleSaveCores} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {[
             { id: "cor-primaria", label: "Cor primária", value: corPrimaria, set: setCorPrimaria },
             { id: "cor-secundaria", label: "Cor secundária", value: corSecundaria, set: setCorSecundaria },
-            { id: "cor-tarja", label: "Cor da tarja", value: corTarja, set: setCorTarja },
           ].map((item) => (
             <div key={item.id} className="space-y-2">
               <Label htmlFor={item.id}>{item.label}</Label>

@@ -20,6 +20,7 @@ export function FooterSite({ corretor, basePath }: FooterSiteProps) {
   const whatsappUrl = buildWhatsAppUrl(corretor, buildContatoWhatsAppMessage());
   const socialLinks = getSocialLinks(corretor);
   const currentYear = new Date().getFullYear();
+  const endereco = corretor.site_endereco?.trim();
 
   return (
     <footer className="mt-auto border-t border-border bg-primary text-white">
@@ -29,7 +30,7 @@ export function FooterSite({ corretor, basePath }: FooterSiteProps) {
           {creci ? (
             <p className="mt-2 text-sm text-white/80">CRECI {creci}</p>
           ) : null}
-          <SocialIcons links={socialLinks} className="mt-4" iconClassName="size-4 text-white" />
+          <SocialIcons links={socialLinks} className="mt-4" iconClassName="size-5 text-white" />
         </div>
 
         <div>
@@ -57,6 +58,17 @@ export function FooterSite({ corretor, basePath }: FooterSiteProps) {
                 </a>
               </li>
             ) : null}
+            {endereco ? (
+              <li className="flex items-start gap-2 pt-1 text-white/70">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <span>{endereco}</span>
+              </li>
+            ) : (
+              <li className="flex items-start gap-2 pt-1 text-xs text-white/60">
+                <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                Atendimento imobiliário em todo o Brasil
+              </li>
+            )}
           </ul>
         </div>
 
@@ -79,17 +91,6 @@ export function FooterSite({ corretor, basePath }: FooterSiteProps) {
               </Link>
             </li>
           </ul>
-          {corretor.site_endereco ? (
-            <p className="mt-6 flex items-start gap-2 text-xs text-white/60">
-              <MapPin className="mt-0.5 size-3.5 shrink-0" />
-              {corretor.site_endereco}
-            </p>
-          ) : (
-            <p className="mt-6 flex items-start gap-2 text-xs text-white/60">
-              <MapPin className="mt-0.5 size-3.5 shrink-0" />
-              Atendimento imobiliário em todo o Brasil
-            </p>
-          )}
         </div>
       </div>
 

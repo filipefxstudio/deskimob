@@ -18,7 +18,7 @@ const BASE_NAV_ITEMS = [
 ] as const;
 
 export function NavbarSite() {
-  const { corretor, link, hasImoveisLocacao, hasTarja } = useSite();
+  const { corretor, link, hasImoveisLocacao } = useSite();
   const [open, setOpen] = useState(false);
 
   const navItems = BASE_NAV_ITEMS.filter(
@@ -27,31 +27,28 @@ export function NavbarSite() {
 
   return (
     <header
-      className="sticky z-40 border-b border-white/10 bg-primary text-white"
-      style={{
-        backgroundColor: "var(--color-primary)",
-        top: hasTarja ? "2rem" : "0",
-      }}
+      className="sticky top-0 z-40 border-b border-white/10 bg-primary text-white"
+      style={{ backgroundColor: "var(--color-primary)" }}
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href={link("/")} className="flex min-w-0 items-center gap-3">
           {corretor.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={corretor.logo_url}
               alt={corretor.nome}
-              className="max-h-10 max-w-[140px] object-contain"
+              className="max-h-14 max-w-[180px] object-contain"
             />
           ) : corretor.foto_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={corretor.foto_url}
               alt={corretor.nome}
-              className="size-10 rounded-full object-cover"
+              className="size-14 rounded-full object-cover"
             />
           ) : (
             <div
-              className="flex size-10 items-center justify-center rounded-full text-sm font-semibold text-white"
+              className="flex size-14 items-center justify-center rounded-full text-lg font-semibold text-white"
               style={{ backgroundColor: "var(--color-secondary)" }}
             >
               {corretor.nome.charAt(0).toUpperCase()}

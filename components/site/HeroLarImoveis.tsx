@@ -46,10 +46,10 @@ export function HeroLarImoveis({ corretor, bairros }: HeroLarImoveisProps) {
     params.set("finalidade", finalidade);
 
     if (tipo) {
-      params.set("tipo", tipo);
+      params.set("tipos", tipo);
     }
     if (bairro) {
-      params.set("bairro", bairro);
+      params.set("bairros", bairro);
     }
     if (codigo.trim()) {
       params.set("codigo", codigo.trim());

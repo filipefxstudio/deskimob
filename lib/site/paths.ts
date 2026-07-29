@@ -1,68 +1,11 @@
-import type { FinalidadeImovel, TipoImovel } from "@/types";
-
-import type { ImoveisPublicosFilters } from "@/lib/site/queries";
 import { resolveSiteHostContext } from "@/lib/site/host";
 
-function getParam(
-  searchParams: Record<string, string | string[] | undefined>,
-  key: string,
-): string | undefined {
-  const value = searchParams[key];
-  if (Array.isArray(value)) {
-    return value[0];
-  }
-  return value;
-}
-
-function parseNumber(value: string | undefined): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = Number(value.replace(/\D/g, ""));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-const TIPOS: TipoImovel[] = [
-  "apartamento",
-  "casa",
-  "terreno",
-  "comercial",
-  "cobertura",
-  "studio",
-];
-
-const FINALIDADES: FinalidadeImovel[] = ["venda", "locacao"];
-
-function parseTipo(value: string | undefined): TipoImovel | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return TIPOS.includes(value as TipoImovel) ? (value as TipoImovel) : undefined;
-}
-
-function parseFinalidade(value: string | undefined): FinalidadeImovel | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return FINALIDADES.includes(value as FinalidadeImovel)
-    ? (value as FinalidadeImovel)
-    : undefined;
-}
-
-export function parseImoveisSearchParams(
-  searchParams: Record<string, string | string[] | undefined>,
-): ImoveisPublicosFilters {
-  return {
-    tipo: parseTipo(getParam(searchParams, "tipo")),
-    finalidade: parseFinalidade(getParam(searchParams, "finalidade")),
-    bairro: getParam(searchParams, "bairro"),
-    codigo: getParam(searchParams, "codigo")?.trim() || undefined,
-    valorMin: parseNumber(getParam(searchParams, "valorMin")),
-    valorMax: parseNumber(getParam(searchParams, "valorMax")),
-  };
-}
-
+export type { ImoveisPublicosFilters } from "@/lib/site/imovel-filters";
+export {
+  buildImoveisSearchParams,
+  parseImoveisSearchParams,
+  PUBLIC_IMOVEIS_PAGE_SIZE,
+} from "@/lib/site/filters";
 export async function resolveSiteBasePath(options: {
   tenantSlug: string;
   routeKind: "slug" | "custom";

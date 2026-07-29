@@ -3,12 +3,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  Bath,
   BedDouble,
-  BedSingle,
   Car,
   Maximize2,
 } from "lucide-react";
+
+import { IconBanheiro, IconSuite } from "@/components/icons/ImovelStatIcons";
 
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
 import { StatusBadge } from "@/components/imoveis/StatusBadge";
@@ -120,12 +120,12 @@ function ImovelListItem({
             </span>
             {imovel.suites > 0 ? (
               <span className="inline-flex items-center gap-1">
-                <BedSingle className="size-3.5" />
+                <IconSuite className="size-3.5" />
                 {imovel.suites} suítes
               </span>
             ) : null}
             <span className="inline-flex items-center gap-1">
-              <Bath className="size-3.5" />
+              <IconBanheiro className="size-3.5" />
               {imovel.banheiros} banh.
             </span>
             <span className="inline-flex items-center gap-1">

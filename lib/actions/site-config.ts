@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import {
   DEFAULT_SITE_COR_PRIMARIA,
   DEFAULT_SITE_COR_SECUNDARIA,
-  DEFAULT_SITE_TARJA_COR,
   STORAGE_BUCKET_SITE_ASSETS,
 } from "@/lib/constants/site";
 import { requireSiteAdmin } from "@/lib/auth/equipe-access";
@@ -25,7 +24,6 @@ export type SiteConfigActionResult = {
 export type SaveIdentidadeVisualInput = {
   site_cor_primaria: string;
   site_cor_secundaria: string;
-  site_tarja_cor: string;
 };
 
 export type SaveHeroPageInput = {
@@ -137,9 +135,8 @@ export async function saveIdentidadeVisual(
 
   const primaria = data.site_cor_primaria.trim() || DEFAULT_SITE_COR_PRIMARIA;
   const secundaria = data.site_cor_secundaria.trim() || DEFAULT_SITE_COR_SECUNDARIA;
-  const tarja = data.site_tarja_cor.trim() || DEFAULT_SITE_TARJA_COR;
 
-  if (!isValidHexColor(primaria) || !isValidHexColor(secundaria) || !isValidHexColor(tarja)) {
+  if (!isValidHexColor(primaria) || !isValidHexColor(secundaria)) {
     return { error: "Informe cores válidas no formato #RRGGBB." };
   }
 
@@ -149,7 +146,6 @@ export async function saveIdentidadeVisual(
     .update({
       site_cor_primaria: primaria,
       site_cor_secundaria: secundaria,
-      site_tarja_cor: tarja,
     })
     .eq("id", corretor.id);
 

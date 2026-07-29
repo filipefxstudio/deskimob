@@ -70,7 +70,7 @@ export async function SiteLayoutShell({ corretor, basePath, children }: SiteLayo
       >
         <div className="flex min-h-full flex-1 flex-col">
           <NavbarSite />
-          <main className="flex-1">{children}</main>
+          <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
           <FooterSite corretor={corretor} basePath={basePath} />
           <WhatsAppWidget />
         </div>

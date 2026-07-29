@@ -1,6 +1,7 @@
 "use client";
 
 import { formatCurrency, getValorExibicao } from "@/lib/site/format";
+import { cn } from "@/lib/utils";
 import type { Corretor, Imovel } from "@/types";
 
 import { FormularioLeadSite } from "./FormularioLeadSite";
@@ -8,11 +9,17 @@ import { FormularioLeadSite } from "./FormularioLeadSite";
 interface FaleComCorretorCardProps {
   corretor: Corretor;
   imovel: Imovel;
+  className?: string;
 }
 
-export function FaleComCorretorCard({ corretor, imovel }: FaleComCorretorCardProps) {
+export function FaleComCorretorCard({ corretor, imovel, className }: FaleComCorretorCardProps) {
   return (
-    <aside className="h-fit rounded-2xl border border-border bg-white p-6 shadow-sm lg:sticky lg:top-24 lg:w-[320px]">
+    <aside
+      className={cn(
+        "h-fit min-w-0 rounded-2xl border border-border bg-white p-6 shadow-sm lg:sticky lg:top-24 lg:w-[320px]",
+        className,
+      )}
+    >
       <h2 className="text-lg font-semibold text-primary">Fale com o corretor</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         {corretor.nome}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
+import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import { FiltrosBusca } from "@/components/site/FiltrosBusca";
 import { ImoveisSimilaresSection } from "@/components/site/ImoveisSimilaresSection";
 import { ImovelCardPublico } from "@/components/site/ImovelCardPublico";
@@ -71,6 +72,7 @@ export function SiteImoveisListingView({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+      <ListingScrollRestore />
       {chromeHeaderEnabled ? (
         <div aria-hidden="true" className="pointer-events-none h-24 lg:hidden" />
       ) : null}

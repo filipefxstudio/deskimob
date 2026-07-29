@@ -22,7 +22,7 @@ export function ImovelGaleriaPublica({ fotos, titulo }: ImovelGaleriaPublicaProp
 
   if (ordenadas.length === 0) {
     return (
-      <div className="mx-auto mb-10 flex aspect-[4/3] max-w-3xl items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <div className="mb-8 flex aspect-[4/3] w-full max-w-full items-center justify-center rounded-xl bg-muted text-muted-foreground">
         Nenhuma foto disponível
       </div>
     );
@@ -68,18 +68,18 @@ export function ImovelGaleriaPublica({ fotos, titulo }: ImovelGaleriaPublicaProp
 
   return (
     <>
-      <div className="mx-auto mb-10 max-w-3xl">
+      <div className="mb-8 w-full max-w-full min-w-0">
         <div className="flex flex-col gap-2 md:hidden">
           <button
             type="button"
             onClick={() => abrirLightbox(0)}
-            className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted"
+            className="relative aspect-[4/3] w-full max-w-full overflow-hidden rounded-xl bg-muted"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={principal.url}
               alt={principal.legenda ?? titulo}
-              className="h-full w-full object-cover"
+              className="size-full object-contain"
             />
           </button>
 
@@ -101,7 +101,7 @@ export function ImovelGaleriaPublica({ fotos, titulo }: ImovelGaleriaPublicaProp
         </div>
 
         <div
-          className={`box-border hidden w-full aspect-[4/3] max-h-[420px] items-stretch gap-2 md:grid ${
+          className={`box-border hidden w-full max-w-full min-w-0 aspect-[4/3] max-h-[420px] items-stretch gap-2 md:grid ${
             miniaturas.length > 0 ? "grid-cols-[2fr_1fr]" : "grid-cols-1"
           }`}
         >

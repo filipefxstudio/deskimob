@@ -56,8 +56,9 @@ function onScroll() {
   window.requestAnimationFrame(onScrollFrame);
 }
 
+/** Somente páginas de listagem — não inclui /imoveis/[slug]. */
 export function isListingChromeHeaderPath(pathname: string): boolean {
-  return /\/(imoveis|comprar|alugar)(\/|$)/.test(pathname);
+  return /\/(imoveis|comprar|alugar)\/?$/.test(pathname);
 }
 
 export function subscribeListingHeaderOffset(listener: () => void) {

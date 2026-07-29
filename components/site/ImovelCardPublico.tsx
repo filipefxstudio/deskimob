@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
+import { saveListingReturnState } from "@/lib/site/listing-return";
 import {
   getBairroCidadeCardLabel,
   getCapaUrl,
@@ -27,9 +28,16 @@ export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
   const bairroCidade = getBairroCidadeCardLabel(imovel);
   const linhaSecundaria = getEnderecoCardSecundario(imovel);
 
+  function handleOpenDetalhe() {
+    saveListingReturnState(
+      `${window.location.pathname}${window.location.search}`,
+      window.scrollY,
+    );
+  }
+
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-white shadow-sm transition-shadow hover:shadow-md">
-      <Link href={href} className="block">
+      <Link href={href} className="block" onClick={handleOpenDetalhe}>
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {capa ? (
             // eslint-disable-next-line @next/next/no-img-element

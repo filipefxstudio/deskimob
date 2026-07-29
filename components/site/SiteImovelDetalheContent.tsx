@@ -7,6 +7,7 @@ import { ImovelStats } from "@/components/imoveis/ImovelStats";
 import { FaleComCorretorCard } from "@/components/site/FaleComCorretorCard";
 import { ImovelGaleriaPublica } from "@/components/site/ImovelGaleriaPublica";
 import { ImovelMapa } from "@/components/site/ImovelMapa";
+import { SiteImovelDetalheBackButton } from "@/components/site/SiteImovelDetalheBackButton";
 import {
   deveExibirMapaPublico,
   formatEndereco,
@@ -85,39 +86,43 @@ export async function SiteImovelDetalheContent({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 text-sm text-muted-foreground">
+      <div className="mx-auto min-w-0 max-w-7xl overflow-x-hidden px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <SiteImovelDetalheBackButton />
+
+        <div className="mb-6 hidden text-sm text-muted-foreground sm:block">
           <Link href={sitePath(basePath, "/imoveis")} className="hover:text-primary">
             Imóveis
           </Link>
           <span className="mx-2">/</span>
-          <span>{imovel.titulo ?? "Detalhes"}</span>
+          <span className="break-words">{imovel.titulo ?? "Detalhes"}</span>
         </div>
 
         <ImovelGaleriaPublica fotos={imovel.fotos ?? []} titulo={imovel.titulo ?? "Imóvel"} />
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-8">
-            <section>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
+        <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-8">
+            <section className="min-w-0">
+              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <p
                     className="text-sm font-medium uppercase tracking-wide"
                     style={{ color: "var(--color-secondary)" }}
                   >
                     {getFinalidadeLabel(imovel.finalidade)} · {getTipoLabel(imovel.tipo)}
                   </p>
-                  <h1 className="mt-2 text-3xl font-bold text-primary">
+                  <h1 className="mt-2 break-words text-2xl font-bold text-primary sm:text-3xl">
                     {imovel.titulo ?? "Imóvel disponível"}
                   </h1>
                   {endereco ? (
-                    <p className="mt-3 inline-flex items-start gap-2 text-muted-foreground">
+                    <p className="mt-3 inline-flex max-w-full items-start gap-2 break-words text-muted-foreground">
                       <MapPin className="mt-0.5 size-4 shrink-0" />
-                      {endereco}
+                      <span>{endereco}</span>
                     </p>
                   ) : null}
                 </div>
-                <p className="text-2xl font-bold text-primary">{getValorExibicao(imovel)}</p>
+                <p className="shrink-0 text-xl font-bold text-primary sm:text-2xl">
+                  {getValorExibicao(imovel)}
+                </p>
               </div>
             </section>
 
@@ -129,9 +134,9 @@ export async function SiteImovelDetalheContent({
             />
 
             {imovel.descricao ? (
-              <section>
+              <section className="min-w-0">
                 <h2 className="text-xl font-semibold text-primary">Descrição</h2>
-                <p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">
+                <p className="mt-3 break-words whitespace-pre-line leading-relaxed text-muted-foreground">
                   {imovel.descricao}
                 </p>
               </section>
@@ -165,7 +170,7 @@ export async function SiteImovelDetalheContent({
             ) : null}
           </div>
 
-          <FaleComCorretorCard corretor={corretor} imovel={imovel} />
+          <FaleComCorretorCard corretor={corretor} imovel={imovel} className="min-w-0" />
         </div>
       </div>
     </>

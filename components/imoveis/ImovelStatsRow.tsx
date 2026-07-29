@@ -7,7 +7,7 @@ export type ImovelStatsVariant = "card" | "detail" | "site-detail";
 const rowClass: Record<ImovelStatsVariant, string> = {
   card: "gap-x-2 text-xs text-muted-foreground",
   detail: "gap-x-3 text-sm text-muted-foreground",
-  "site-detail": "gap-x-4 text-base text-muted-foreground",
+  "site-detail": "gap-x-4 gap-y-2 text-base text-muted-foreground",
 };
 
 const itemClass: Record<ImovelStatsVariant, string> = {
@@ -30,7 +30,8 @@ export function ImovelStatsRow({
   return (
     <div
       className={cn(
-        "flex flex-nowrap items-center overflow-hidden",
+        "flex items-center",
+        variant === "site-detail" ? "flex-wrap" : "flex-nowrap overflow-hidden",
         rowClass[variant],
         className,
       )}

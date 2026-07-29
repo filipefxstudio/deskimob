@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
+import { ImovelCardFotoCarousel } from "@/components/imoveis/ImovelCardFotoCarousel";
 
 import { saveListingReturnState } from "@/lib/site/listing-return";
 import {
   getBairroCidadeCardLabel,
-  getCapaUrl,
   getEnderecoCardSecundario,
   getImovelCodigoSite,
   getTipoFinalidadeCardLabel,
@@ -23,7 +23,6 @@ interface ImovelCardPublicoProps {
 
 export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
   const { link } = useSite();
-  const capa = getCapaUrl(imovel);
   const href = link(`/imoveis/${imovel.slug ?? imovel.id}`);
   const bairroCidade = getBairroCidadeCardLabel(imovel);
   const linhaSecundaria = getEnderecoCardSecundario(imovel);
@@ -38,26 +37,17 @@ export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {
   return (
     <article className="group overflow-hidden rounded-xl border border-border bg-white shadow-sm transition-shadow hover:shadow-md">
       <Link href={href} className="block" onClick={handleOpenDetalhe}>
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {capa ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={capa}
-              alt={imovel.titulo ?? "Imóvel"}
-              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-              Sem foto
-            </div>
-          )}
-
-          {imovel.destaque_site ? (
-            <span className="absolute left-3 top-3 rounded-full bg-[#F4B400] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
-              Destaque
-            </span>
-          ) : null}
-        </div>
+        <ImovelCardFotoCarousel
+          fotos={imovel.fotos ?? []}
+          alt={imovel.titulo ?? "Imóvel"}
+          badges={
+            imovel.destaque_site ? (
+              <span className="absolute left-3 top-3 rounded-full bg-[#F4B400] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                Destaque
+              </span>
+            ) : null
+          }
+        />
 
         <div className="space-y-2 p-4">
           <div className="flex items-start justify-between gap-3">

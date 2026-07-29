@@ -230,7 +230,20 @@ export function ImovelDetalhes({
         </div>
       </div>
 
-      <ImovelGaleriaDetalhes fotos={fotos} titulo={titulo} />
+      <ImovelGaleriaDetalhes
+        fotos={fotos}
+        titulo={titulo}
+        videoUrl={imovel.video_url}
+        mapa={
+          imovel.latitude && imovel.longitude
+            ? {
+                latitude: imovel.latitude,
+                longitude: imovel.longitude,
+                endereco,
+              }
+            : null
+        }
+      />
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">

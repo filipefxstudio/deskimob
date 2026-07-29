@@ -97,7 +97,20 @@ export async function SiteImovelDetalheContent({
           <span className="break-words">{imovel.titulo ?? "Detalhes"}</span>
         </div>
 
-        <ImovelGaleriaPublica fotos={imovel.fotos ?? []} titulo={imovel.titulo ?? "Imóvel"} />
+        <ImovelGaleriaPublica
+          fotos={imovel.fotos ?? []}
+          titulo={imovel.titulo ?? "Imóvel"}
+          videoUrl={imovel.video_url}
+          mapa={
+            deveExibirMapaPublico(imovel) && imovel.latitude && imovel.longitude
+              ? {
+                  latitude: imovel.latitude,
+                  longitude: imovel.longitude,
+                  endereco,
+                }
+              : null
+          }
+        />
 
         <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-8">

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
+import { ImovelCardFotoCarousel } from "@/components/imoveis/ImovelCardFotoCarousel";
 import { StatusBadge } from "@/components/imoveis/StatusBadge";
 import {
   formatCurrency,
@@ -13,7 +14,6 @@ import {
   getValorNumerico,
 } from "@/lib/imoveis/format";
 import {
-  getCapaUrl,
   getFinalidadeLabel,
   getTipoLabel,
 } from "@/lib/site/format";
@@ -45,7 +45,6 @@ function ImovelCardItem({
   renderCardActions,
   cardBadge,
 }: ImovelCardItemProps) {
-  const capa = getCapaUrl(imovel);
   const codigo = getImovelCodigo(imovel);
   const valor = getValorNumerico(imovel);
   const valorFormatado =
@@ -61,24 +60,19 @@ function ImovelCardItem({
         target={linkTarget}
         rel={linkTarget === "_blank" ? "noopener noreferrer" : undefined}
       >
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {capa ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={capa}
-              alt=""
-              className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-              Sem foto
-            </div>
-          )}
-          <div className="absolute left-3 top-3">
-            <StatusBadge status={imovel.status} statusImovel={imovel.status_imovel} />
-          </div>
-          {cardBadge ? <div className="absolute right-3 top-3">{cardBadge}</div> : null}
-        </div>
+        <ImovelCardFotoCarousel
+          fotos={imovel.fotos ?? []}
+          alt={imovel.titulo ?? "Imóvel"}
+          imageClassName="size-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          badges={
+            <>
+              <div className="absolute left-3 top-3">
+                <StatusBadge status={imovel.status} statusImovel={imovel.status_imovel} />
+              </div>
+              {cardBadge ? <div className="absolute right-3 top-3">{cardBadge}</div> : null}
+            </>
+          }
+        />
 
         <div className="space-y-2.5 p-4">
           <p className="text-xs text-muted-foreground">

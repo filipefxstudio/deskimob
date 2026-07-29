@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
 import { ImovelAcoesDropdown } from "@/components/imoveis/ImovelAcoesDropdown";
+import { ImovelCardFotoCarousel } from "@/components/imoveis/ImovelCardFotoCarousel";
 import { StatusBadge } from "@/components/imoveis/StatusBadge";
 import {
   formatCurrency,
@@ -13,7 +14,6 @@ import {
   getValorNumerico,
 } from "@/lib/imoveis/format";
 import {
-  getCapaUrl,
   getFinalidadeLabel,
   getTipoLabel,
 } from "@/lib/site/format";
@@ -45,7 +45,6 @@ function ImovelListItem({
   renderCardActions,
   cardBadge,
 }: ImovelListItemProps) {
-  const capa = getCapaUrl(imovel);
   const codigo = getImovelCodigo(imovel);
   const valor = getValorNumerico(imovel);
   const valorFormatado =
@@ -61,24 +60,20 @@ function ImovelListItem({
         target={linkTarget}
         rel={linkTarget === "_blank" ? "noopener noreferrer" : undefined}
       >
-        <div className="relative size-full shrink-0 overflow-hidden rounded-lg bg-muted sm:size-32">
-          {capa ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={capa}
-              alt=""
-              className="aspect-[4/3] size-full object-cover sm:aspect-square"
-            />
-          ) : (
-            <div className="flex aspect-[4/3] size-full items-center justify-center text-sm text-muted-foreground sm:aspect-square">
-              Sem foto
-            </div>
-          )}
-          <div className="absolute left-2 top-2 sm:hidden">
-            <StatusBadge status={imovel.status} statusImovel={imovel.status_imovel} />
-          </div>
-          {cardBadge ? <div className="absolute right-2 top-2">{cardBadge}</div> : null}
-        </div>
+        <ImovelCardFotoCarousel
+          fotos={imovel.fotos ?? []}
+          alt={imovel.titulo ?? "Imóvel"}
+          className="relative size-full shrink-0 overflow-hidden rounded-lg bg-muted sm:size-32"
+          imageClassName="aspect-[4/3] size-full object-cover sm:aspect-square"
+          badges={
+            <>
+              <div className="absolute left-2 top-2 sm:hidden">
+                <StatusBadge status={imovel.status} statusImovel={imovel.status_imovel} />
+              </div>
+              {cardBadge ? <div className="absolute right-2 top-2">{cardBadge}</div> : null}
+            </>
+          }
+        />
 
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">

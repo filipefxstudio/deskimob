@@ -5,6 +5,7 @@ import {
   requireImoviewImportAccess,
 } from "@/lib/auth/imoview-import-access";
 import { summarizeRowsForImport } from "@/lib/imoview/analyze-spreadsheet";
+import { buildImobeeImportTarget } from "@/lib/imoview/import-target";
 import { importSpreadsheetRows } from "@/lib/imoview/import-single-imovel";
 import { filterMigratableRows, parseXlsBuffer } from "@/lib/imoview/parse-xls";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -41,22 +42,30 @@ export async function POST(request: Request) {
 
   try {
     const admin = createServiceRoleClient();
+    const target = await buildImobeeImportTarget(admin);
     const buffer = Buffer.from(await file.arrayBuffer());
     const parsed = parseXlsBuffer(buffer, {
       filename: file.name,
       exportYear: Number.isFinite(exportYear) ? exportYear : undefined,
     });
 
-    const excludedDesativado = parsed.rows.length - filterMigratableRows(parsed.rows).length;
+    const filterOptions = {
+      excludedCodigos: target.excludedCodigos,
+      rowFilter: target.rowFilter,
+    };
+    const excludedDesativado =
+      parsed.rows.length - filterMigratableRows(parsed.rows, filterOptions).length;
     const rowsToImport = summarizeRowsForImport(
       parsed.rows,
       Number.isFinite(limit) && limit! > 0 ? limit : undefined,
+      target,
     );
 
     const summary = await importSpreadsheetRows(
       admin,
       rowsToImport,
       parsed.exportYear,
+      target,
       undefined,
       { skipPhotos },
     );

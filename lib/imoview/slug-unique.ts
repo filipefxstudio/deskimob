@@ -1,9 +1,9 @@
-import { IMOVIEW_IMPORT_CORRETOR_ID } from "@/lib/imoview/constants";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function ensureUniqueImovelSlug(
   admin: SupabaseClient,
   baseSlug: string,
+  corretorId: string,
 ): Promise<string> {
   const normalizedBase = baseSlug || "imovel";
   let slug = normalizedBase;
@@ -13,7 +13,7 @@ export async function ensureUniqueImovelSlug(
     const { data } = await admin
       .from("imoveis")
       .select("id")
-      .eq("corretor_id", IMOVIEW_IMPORT_CORRETOR_ID)
+      .eq("corretor_id", corretorId)
       .eq("slug", slug)
       .maybeSingle();
 
@@ -26,11 +26,12 @@ export async function ensureUniqueImovelSlug(
 export async function imovelExistsByCodigo(
   admin: SupabaseClient,
   codigo: string,
+  corretorId: string,
 ): Promise<string | null> {
   const { data } = await admin
     .from("imoveis")
     .select("id")
-    .eq("corretor_id", IMOVIEW_IMPORT_CORRETOR_ID)
+    .eq("corretor_id", corretorId)
     .eq("codigo", codigo)
     .maybeSingle();
 

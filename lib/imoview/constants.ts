@@ -64,7 +64,29 @@ export const IMOBIEE_API_URL = "https://www.imobee.net/imoveis/codigos/";
 
 export const IMOBEE_RATE_LIMIT_MS = 200;
 
+/** Retry em fetches Imobee (rede/timeout transitório) */
+export const IMOVIEW_FETCH_RETRY = {
+  maxAttempts: 3,
+  delayMs: 1500,
+} as const;
+
 /** Situações excluídas da migração (Documento N) */
 export const IMOVIEW_EXCLUDED_SITUACOES = ["Desativado"] as const;
+
+/**
+ * Códigos Imoview excluídos manualmente (duplicatas/endereço ou descarte acordado).
+ * 2103 permanece — 2039 removido do banco para liberar endereço.
+ */
+export const IMOVIEW_EXCLUDED_CODIGOS = [
+  "1638",
+  "1369",
+  "1677",
+  "1845",
+  "1930",
+  "1814",
+  "2039",
+  "2158",
+  "2161",
+] as const;
 
 export const IMOBEE_SITE_BASE = "https://www.imobee.net";

@@ -1,9 +1,9 @@
-import {
-  IMOVIEW_CAPTADOR_PRINCIPAL_ID,
-  IMOVIEW_IMPORT_CORRETOR_ID,
-} from "@/lib/imoview/constants";
 import { enrichImovelWithPhotos } from "@/lib/imoview/enrich-from-imobee";
 import { findOrCreateCliente } from "@/lib/imoview/dedupe-clientes";
+import {
+  loadStatusImovelLookup,
+  type ImoviewImportTarget,
+} from "@/lib/imoview/import-target";
 import { mapRowToImovel } from "@/lib/imoview/map-row-to-imovel";
 import { isPhotoEligible, normalizeCodigo } from "@/lib/imoview/parse-xls";
 import { ensureUniqueImovelSlug, imovelExistsByCodigo } from "@/lib/imoview/slug-unique";
@@ -15,6 +15,7 @@ export async function importSingleImovel(
   admin: SupabaseClient,
   row: XlsRow,
   exportYear: number,
+  target: ImoviewImportTarget,
   options: ImportSingleOptions = {},
 ): Promise<ImportRowResult> {
   const codigo = normalizeCodigo(row.Codigo);
@@ -23,24 +24,36 @@ export async function importSingleImovel(
     return { codigo: "(vazio)", status: "error", message: "Código ausente na planilha." };
   }
 
-  const existingId = await imovelExistsByCodigo(admin, codigo);
+  const existingId = await imovelExistsByCodigo(admin, codigo, target.corretorId);
   if (existingId) {
     return { codigo, status: "skipped", message: "Imóvel já existe.", imovelId: existingId };
   }
 
   try {
+    const statusImovelLookup =
+      options.statusImovelLookup ??
+      (await loadStatusImovelLookup(admin, target.corretorId));
+    const mapContext = {
+      captadorPerfilId: target.captadorPerfilId,
+      statusImovelLookup,
+    };
+
     const tempSlug = generateImovelSlug("temp", String(row.Cidade ?? ""));
-    const { mapped: draft, warnings } = mapRowToImovel(row, exportYear, tempSlug);
+    const { mapped: draft, warnings } = mapRowToImovel(row, exportYear, tempSlug, mapContext);
     const baseSlug = generateImovelSlug(draft.titulo, draft.cidade);
-    const slug = await ensureUniqueImovelSlug(admin, baseSlug);
+    const slug = await ensureUniqueImovelSlug(admin, baseSlug, target.corretorId);
     const mapped = { ...draft, slug };
 
-    const clienteResult = await findOrCreateCliente(admin, row.Proprietarios);
+    const clienteResult = await findOrCreateCliente(
+      admin,
+      row.Proprietarios,
+      target.corretorId,
+    );
 
     const { data: imovel, error: insertError } = await admin
       .from("imoveis")
       .insert({
-        corretor_id: IMOVIEW_IMPORT_CORRETOR_ID,
+        corretor_id: target.corretorId,
         ...mapped,
         cliente_id: clienteResult.clienteId,
       })
@@ -57,7 +70,7 @@ export async function importSingleImovel(
 
     const { error: captadorError } = await admin.from("imovel_captadores").insert({
       imovel_id: imovel.id,
-      perfil_id: IMOVIEW_CAPTADOR_PRINCIPAL_ID,
+      perfil_id: target.captadorPerfilId,
       principal: true,
       nome_externo: null,
     });
@@ -85,6 +98,7 @@ export async function importSingleImovel(
         imovel.id,
         codigo,
         mapped.cidade,
+        target.corretorId,
       );
 
       photosDownloaded = enrichment.photosDownloaded;
@@ -116,6 +130,7 @@ export async function importSpreadsheetRows(
   admin: SupabaseClient,
   rows: XlsRow[],
   exportYear: number,
+  target: ImoviewImportTarget,
   limit?: number,
   options: ImportSingleOptions = {},
 ): Promise<{
@@ -141,8 +156,14 @@ export async function importSpreadsheetRows(
   let photosFailed = 0;
   const semTelefone: string[] = [];
 
+  const statusImovelLookup = await loadStatusImovelLookup(admin, target.corretorId);
+  const importOptions: ImportSingleOptions = {
+    ...options,
+    statusImovelLookup,
+  };
+
   for (const row of toProcess) {
-    const result = await importSingleImovel(admin, row, exportYear, options);
+    const result = await importSingleImovel(admin, row, exportYear, target, importOptions);
     results.push(result);
 
     if (result.status === "ok") {

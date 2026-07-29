@@ -1,4 +1,5 @@
 import { IMOBIEE_API_URL, IMOBEE_RATE_LIMIT_MS } from "@/lib/imoview/constants";
+import { fetchWithRetry } from "@/lib/imoview/fetch-with-retry";
 import type { ImobeeMetadata } from "@/lib/imoview/types";
 
 function sleep(ms: number): Promise<void> {
@@ -8,7 +9,7 @@ function sleep(ms: number): Promise<void> {
 export async function fetchImobeeMetadata(codigo: string): Promise<ImobeeMetadata | null> {
   const body = new URLSearchParams({ codigo, finalidade: "venda" });
 
-  const response = await fetch(IMOBIEE_API_URL, {
+  const response = await fetchWithRetry(IMOBIEE_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
@@ -83,7 +84,7 @@ export async function fetchImobeeMetadataBatch(
 
 export async function fetchPhotoContentLength(url: string): Promise<number | null> {
   try {
-    const head = await fetch(url, {
+    const head = await fetchWithRetry(url, {
       method: "HEAD",
       signal: AbortSignal.timeout(10000),
     });
@@ -96,7 +97,7 @@ export async function fetchPhotoContentLength(url: string): Promise<number | nul
       }
     }
 
-    const range = await fetch(url, {
+    const range = await fetchWithRetry(url, {
       method: "GET",
       headers: { Range: "bytes=0-0" },
       signal: AbortSignal.timeout(10000),

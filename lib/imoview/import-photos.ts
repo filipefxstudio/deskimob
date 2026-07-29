@@ -1,8 +1,12 @@
 import {
   destroyCloudinaryPublicId,
   uploadFotoImovel,
-} from "@/lib/imoveis/foto-cloudinary";
-import { IMOBEE_RATE_LIMIT_MS, IMOVIEW_IMPORT_CORRETOR_ID } from "@/lib/imoview/constants";
+} from "@/lib/imoveis/foto-cloudinary-core";
+import {
+  IMOBEE_RATE_LIMIT_MS,
+  IMOVIEW_IMPORT_CORRETOR_ID,
+} from "@/lib/imoview/constants";
+import { fetchWithRetry } from "@/lib/imoview/fetch-with-retry";
 import {
   isValidImageBuffer,
   looksLikeUtf8CorruptedBinary,
@@ -34,24 +38,23 @@ function guessContentType(buffer: Buffer, url: string): string {
   return "image/jpeg";
 }
 
-async function downloadPhoto(url: string, maxAttempts = 3): Promise<Buffer | null> {
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
-      if (!response.ok) continue;
+async function downloadPhoto(url: string): Promise<Buffer | null> {
+  try {
+    const response = await fetchWithRetry(url, {
+      signal: AbortSignal.timeout(30000),
+    });
 
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (looksLikeUtf8CorruptedBinary(buffer) || !isValidImageBuffer(buffer)) {
-        return null;
-      }
+    if (!response.ok) return null;
 
-      return buffer;
-    } catch {
-      // retry
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (looksLikeUtf8CorruptedBinary(buffer) || !isValidImageBuffer(buffer)) {
+      return null;
     }
-  }
 
-  return null;
+    return buffer;
+  } catch {
+    return null;
+  }
 }
 
 export async function imovelHasPhotos(

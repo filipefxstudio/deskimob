@@ -11,6 +11,7 @@ export type XlsRow = {
   Endereco?: string;
   EnderecoNumero?: string | number;
   Complemento?: string;
+  Bloco?: string;
   Bairro?: string;
   Cidade?: string;
   Estado?: string;
@@ -102,6 +103,9 @@ export type MappedImovelInsert = {
   numero: string;
   complemento: string | null;
   complemento_valor: string | null;
+  complemento_tipo: string | null;
+  complemento_numero: string | null;
+  complemento_torre: string | null;
   bairro: string;
   cidade: string;
   estado: string;
@@ -159,6 +163,7 @@ export type ImportRowResult = {
 
 export type ImportSingleOptions = {
   skipPhotos?: boolean;
+  statusImovelLookup?: import("@/lib/imoview/import-target").StatusImovelLookup;
 };
 
 export type ImportSummary = {
@@ -175,6 +180,7 @@ export type ImportSummary = {
 };
 
 export type ImobeeMetadata = {
+  /** Slug da URL Imobee (campo `titulo` da API) — NÃO é o título de exibição */
   titulo: string;
   latitude: number | null;
   longitude: number | null;

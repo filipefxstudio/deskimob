@@ -38,12 +38,11 @@ import {
   getCaptadorPrincipalNome,
   getCaptadoresLista,
 } from "@/lib/imoveis/captador";
-import { getImovelCodigo } from "@/lib/imoveis/format";
+import { getImovelCodigo, formatEnderecoCompleto } from "@/lib/imoveis/format";
 import { getPublicImovelShareUrlClient } from "@/lib/imoveis/share-url";
 import { buildTelLinkLocal, buildWhatsAppLink } from "@/lib/imoveis/telefone";
 import {
   formatCurrency,
-  formatEndereco,
   getFinalidadeLabel,
   getTipoLabel,
   getValorExibicao,
@@ -96,7 +95,7 @@ export function ImovelDetalhes({
 
   const titulo = imovel.titulo ?? "Sem título";
   const codigo = getImovelCodigo(imovel);
-  const endereco = formatEndereco(imovel);
+  const endereco = formatEnderecoCompleto(imovel);
   const fotos = imovel.fotos ?? [];
   const diferenciais = imovel.diferenciais ?? [];
   const hasMap = imovel.latitude != null && imovel.longitude != null;

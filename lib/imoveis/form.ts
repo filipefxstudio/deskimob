@@ -21,18 +21,26 @@ function numericFromDb(
 }
 
 function buildComplementoLegacy(imovel: Imovel): string {
+  if (imovel.complemento_tipo || imovel.complemento_numero) {
+    const parts: string[] = [];
+    if (imovel.complemento_tipo && imovel.complemento_numero) {
+      parts.push(`${imovel.complemento_tipo} ${imovel.complemento_numero}`);
+    } else if (imovel.complemento_numero) {
+      parts.push(imovel.complemento_numero);
+    } else if (imovel.complemento_tipo) {
+      parts.push(imovel.complemento_tipo);
+    }
+    if (imovel.complemento_torre) {
+      parts.push(imovel.complemento_torre);
+    }
+    return parts.join(", ");
+  }
+
   if (imovel.complemento) {
     return imovel.complemento;
   }
 
-  const parts: string[] = [];
-  if (imovel.complemento_tipo && imovel.complemento_numero) {
-    parts.push(`${imovel.complemento_tipo} ${imovel.complemento_numero}`);
-  }
-  if (imovel.complemento_torre) {
-    parts.push(imovel.complemento_torre);
-  }
-  return parts.join(", ");
+  return "";
 }
 
 function captadoresToFormItems(imovel: Imovel): CaptadorFormItem[] {

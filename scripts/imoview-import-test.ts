@@ -1,6 +1,8 @@
 /**
- * Importa imóveis da planilha Imoview via service role.
+ * Importa imóveis da planilha Imoview via service role (conta Imobee).
  * Uso: npx tsx scripts/imoview-import-test.ts [limit] [--photos]
+ *
+ * Preferir: npx tsx scripts/imoview-import.ts imobee [limit] [--photos]
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -30,35 +32,50 @@ async function main() {
     "../lib/imoview/analyze-spreadsheet"
   );
   const { importSpreadsheetRows } = await import("../lib/imoview/import-single-imovel");
+  const { buildImobeeImportTarget } = await import("../lib/imoview/import-target");
   const { createServiceRoleClient } = await import("../lib/supabase/admin");
   const { parseXlsBuffer, filterMigratableRows } = await import("../lib/imoview/parse-xls");
 
   const buffer = fs.readFileSync(xlsPath);
+  const admin = createServiceRoleClient();
+  const target = await buildImobeeImportTarget(admin);
+
   console.log("Analisando planilha…");
-  const analysis = await analyzeSpreadsheet({
-    buffer,
-    filename: path.basename(xlsPath),
-    exportYear: 2026,
-    skipImobeeApi: !withPhotos,
-  });
+  const analysis = await analyzeSpreadsheet(
+    {
+      buffer,
+      filename: path.basename(xlsPath),
+      exportYear: 2026,
+      skipImobeeApi: !withPhotos,
+    },
+    target,
+  );
   console.log("Total planilha:", analysis.spreadsheet.totalRows);
   console.log("A migrar:", analysis.spreadsheet.migratableRows);
   console.log("Excluídos Desativado:", analysis.spreadsheet.excludedDesativado);
   console.log("Elegíveis fotos:", analysis.photos.eligibleCount);
-  console.log("Destino fotos:", analysis.photos.destination);
 
   const parsed = parseXlsBuffer(buffer, { filename: path.basename(xlsPath), exportYear: 2026 });
-  const rows = summarizeRowsForImport(parsed.rows, limit);
-  const excludedDesativado = parsed.rows.length - filterMigratableRows(parsed.rows).length;
-  const admin = createServiceRoleClient();
+  const rows = summarizeRowsForImport(parsed.rows, limit, target);
+  const filterOptions = {
+    excludedCodigos: target.excludedCodigos,
+    rowFilter: target.rowFilter,
+  };
+  const excludedDesativado =
+    parsed.rows.length - filterMigratableRows(parsed.rows, filterOptions).length;
 
   console.log(
     `Importando ${rows.length} imóveis${withPhotos ? " com fotos (Cloudinary)" : " (sem fotos)"}…`,
   );
 
-  const summary = await importSpreadsheetRows(admin, rows, parsed.exportYear, undefined, {
-    skipPhotos: !withPhotos,
-  });
+  const summary = await importSpreadsheetRows(
+    admin,
+    rows,
+    parsed.exportYear,
+    target,
+    undefined,
+    { skipPhotos: !withPhotos },
+  );
   summary.excludedDesativado = excludedDesativado;
 
   console.log("\n--- Resultado ---");
@@ -67,13 +84,6 @@ async function main() {
   console.log("Erros:", summary.errors);
   console.log("Fotos baixadas:", summary.photosDownloaded);
   console.log("Fotos falha:", summary.photosFailed);
-  console.log("Clientes criados:", summary.clientesCreated);
-  console.log("Clientes reutilizados:", summary.clientesReused);
-  console.log("Sem telefone:", summary.semTelefone.join(", ") || "(nenhum)");
-
-  for (const r of summary.results) {
-    console.log(`  ${r.codigo}: ${r.status}${r.message ? ` — ${r.message}` : ""}`);
-  }
 
   if (summary.errors > 0) process.exit(1);
 }

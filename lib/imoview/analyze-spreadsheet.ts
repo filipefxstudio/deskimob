@@ -1,8 +1,4 @@
-import {
-  IMOVIEW_CAPTADOR_PRINCIPAL_ID,
-  IMOVIEW_IMPORT_CORRETOR_ID,
-  STORAGE_ESTIMATE_CONFIG,
-} from "@/lib/imoview/constants";
+import { STORAGE_ESTIMATE_CONFIG } from "@/lib/imoview/constants";
 import {
   fetchImobeeMetadataBatch,
   fetchPhotoContentLength,
@@ -12,6 +8,7 @@ import {
   formatBytesLabel,
   stratifiedSample,
 } from "@/lib/imoview/get-storage-usage";
+import type { ImoviewImportTarget } from "@/lib/imoview/import-target";
 import { countProprietariosSemTelefone } from "@/lib/imoview/parse-proprietario";
 import {
   countByField,
@@ -19,6 +16,7 @@ import {
   filterPhotoEligible,
   normalizeCodigo,
   parseXlsBuffer,
+  type MigratableFilterOptions,
 } from "@/lib/imoview/parse-xls";
 import type { AnalyzeResponse, XlsRow } from "@/lib/imoview/types";
 
@@ -27,16 +25,29 @@ type AnalyzeOptions = {
   filename?: string;
   exportYear?: number;
   skipImobeeApi?: boolean;
+  filter?: MigratableFilterOptions;
 };
 
-export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<AnalyzeResponse> {
+function getMigratableFilter(target?: ImoviewImportTarget): MigratableFilterOptions | undefined {
+  if (!target) return undefined;
+  return {
+    excludedCodigos: target.excludedCodigos,
+    rowFilter: target.rowFilter,
+  };
+}
+
+export async function analyzeSpreadsheet(
+  options: AnalyzeOptions,
+  target?: ImoviewImportTarget,
+): Promise<AnalyzeResponse> {
   const parsed = parseXlsBuffer(options.buffer, {
     filename: options.filename,
     exportYear: options.exportYear,
   });
 
   const { rows, exportYear } = parsed;
-  const migratable = filterMigratableRows(rows);
+  const filter = options.filter ?? getMigratableFilter(target);
+  const migratable = filterMigratableRows(rows, filter);
   const semTelefone = countProprietariosSemTelefone(migratable);
   const eligible = filterPhotoEligible(migratable);
 
@@ -126,8 +137,12 @@ export async function analyzeSpreadsheet(options: AnalyzeOptions): Promise<Analy
   };
 }
 
-export function summarizeRowsForImport(rows: XlsRow[], limit?: number): XlsRow[] {
-  const migratable = filterMigratableRows(rows);
+export function summarizeRowsForImport(
+  rows: XlsRow[],
+  limit?: number,
+  target?: ImoviewImportTarget,
+): XlsRow[] {
+  const migratable = filterMigratableRows(rows, getMigratableFilter(target));
   if (limit && limit > 0) return migratable.slice(0, limit);
   return migratable;
 }

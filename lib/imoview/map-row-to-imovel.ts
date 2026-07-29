@@ -1,6 +1,7 @@
 import { TIPOS_IMOVEL } from "@/lib/constants/imoveis";
-import { IMOVIEW_CAPTADOR_PRINCIPAL_ID, SITUACAO_STATUS_MAP } from "@/lib/imoview/constants";
+import { resolveStatusFromSituacao, type StatusImovelLookup } from "@/lib/imoview/import-target";
 import { extractDiferenciais } from "@/lib/imoview/diferenciais-map";
+import { mapComplementoFromImoview } from "@/lib/imoview/map-complemento";
 import {
   mapDestinacao,
   mapLocalChaves,
@@ -36,17 +37,16 @@ export function mapRowToImovel(
   row: XlsRow,
   exportYear: number,
   slug: string,
+  context: {
+    captadorPerfilId: string;
+    statusImovelLookup: StatusImovelLookup;
+  },
 ): { mapped: MappedImovelInsert; warnings: string[] } {
   const warnings: string[] = [];
   const codigo = normalizeCodigo(row.Codigo);
-  const situacao = String(row.Situacao ?? "").trim() as keyof typeof SITUACAO_STATUS_MAP;
-  const statusConfig = SITUACAO_STATUS_MAP[situacao];
-
-  if (!statusConfig) {
-    warnings.push(`Situação desconhecida "${row.Situacao}" — usando Desativado`);
-  }
-
-  const status = statusConfig ?? SITUACAO_STATUS_MAP.Desativado;
+  const situacaoRaw = String(row.Situacao ?? "").trim();
+  const statusResolved = resolveStatusFromSituacao(situacaoRaw, context.statusImovelLookup);
+  if (statusResolved.warning) warnings.push(statusResolved.warning);
   const { tipo, warning: tipoWarning } = mapTipoImoview(row.Tipo);
   if (tipoWarning) warnings.push(tipoWarning);
 
@@ -54,7 +54,13 @@ export function mapRowToImovel(
   const chavesCodigo =
     local_chaves === "imobiliaria" ? String(row.IdenticadorChave ?? "").trim() || null : null;
 
-  const complemento = String(row.Complemento ?? "").trim() || null;
+  const complementoRaw = String(row.Complemento ?? "").trim();
+  const blocoCol = String(row.Bloco ?? "").trim();
+  const complementoMapped = mapComplementoFromImoview(
+    complementoRaw || null,
+    tipo,
+    blocoCol || null,
+  );
   const titulo = generateAutoTitulo(row);
   const dataCadastro = parseDataBr(row.DataCadastro);
   const dataUltimaAlteracao = parseDataBr(row.DataHoraUltimaAlteracao);
@@ -65,15 +71,18 @@ export function mapRowToImovel(
     slug,
     tipo,
     finalidade: "venda",
-    status: status.status,
-    status_imovel_id: status.statusImovelId,
-    status_aprovacao: status.statusAprovacao,
+    status: statusResolved.status,
+    status_imovel_id: statusResolved.statusImovelId,
+    status_aprovacao: statusResolved.statusAprovacao,
     motivo_desativacao: String(row.MotivoDesativacao ?? "").trim() || null,
     cep: sanitizeCep(row.Cep),
     logradouro: String(row.Endereco ?? "").trim() || "—",
     numero: String(row.EnderecoNumero ?? "").trim() || "S/N",
-    complemento,
-    complemento_valor: complemento,
+    complemento: complementoMapped.complemento,
+    complemento_valor: complementoMapped.complemento_valor,
+    complemento_tipo: complementoMapped.complemento_tipo,
+    complemento_numero: complementoMapped.complemento_numero,
+    complemento_torre: complementoMapped.complemento_torre,
     bairro: String(row.Bairro ?? "").trim() || "—",
     cidade: String(row.Cidade ?? "").trim() || "—",
     estado: String(row.Estado ?? "").trim().toUpperCase().slice(0, 2) || "SC",
@@ -117,7 +126,7 @@ export function mapRowToImovel(
     aceita_permuta: null,
     latitude: null,
     longitude: null,
-    captador_id: IMOVIEW_CAPTADOR_PRINCIPAL_ID,
+    captador_id: context.captadorPerfilId,
   };
 
   if (!mapped.slug) {

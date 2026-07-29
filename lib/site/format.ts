@@ -51,6 +51,7 @@ export function getCapaUrl(imovel: Imovel): string | null {
   return ordenadas[0]?.url ?? null;
 }
 
+/** Endereço no site público — sem complemento (apenas logradouro e número). */
 export function formatEndereco(imovel: Imovel): string {
   const partes = [
     imovel.logradouro,

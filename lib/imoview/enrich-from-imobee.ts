@@ -20,12 +20,11 @@ export async function enrichImovelFromImobee(
   codigo: string,
   cidade: string,
   metadata: ImobeeMetadata,
-): Promise<{ titulo: string; slug: string }> {
-  let titulo = await fetchImobeeOgTitle(metadata.titulo, codigo);
-
-  if (!titulo?.trim()) {
-    titulo = metadata.titulo?.trim() || "";
-  }
+  corretorId: string,
+): Promise<{ titulo: string | null; slug: string | null }> {
+  // metadata.titulo da API é o slug da URL, não o título de exibição (Documento L §10.2)
+  const urlSlug = metadata.titulo?.trim() ?? "";
+  const tituloReal = urlSlug ? await fetchImobeeOgTitle(urlSlug, codigo) : null;
 
   const updatePayload: Record<string, unknown> = {
     publicado_site: true,
@@ -35,11 +34,13 @@ export async function enrichImovelFromImobee(
     aceita_permuta: metadata.aceitaPermuta,
   };
 
-  let slug = generateImovelSlug(titulo, cidade);
+  let titulo: string | null = null;
+  let slug: string | null = null;
 
-  if (titulo) {
+  if (tituloReal?.trim()) {
+    titulo = tituloReal.trim();
+    slug = await ensureUniqueImovelSlug(admin, generateImovelSlug(titulo, cidade), corretorId);
     updatePayload.titulo = titulo;
-    slug = await ensureUniqueImovelSlug(admin, slug);
     updatePayload.slug = slug;
   }
 
@@ -57,6 +58,7 @@ export async function enrichImovelWithPhotos(
   imovelId: string,
   codigo: string,
   cidade: string,
+  corretorId: string,
 ): Promise<ImobeeEnrichmentResult> {
   const metadata = await fetchImobeeMetadata(codigo);
 
@@ -70,7 +72,14 @@ export async function enrichImovelWithPhotos(
     };
   }
 
-  const { titulo } = await enrichImovelFromImobee(admin, imovelId, codigo, cidade, metadata);
+  const { titulo } = await enrichImovelFromImobee(
+    admin,
+    imovelId,
+    codigo,
+    cidade,
+    metadata,
+    corretorId,
+  );
 
   const photoResult = await importPhotosForImovel(
     admin,
@@ -83,9 +92,11 @@ export async function enrichImovelWithPhotos(
     photosDownloaded: photoResult.downloaded,
     photosFailed: photoResult.failed,
     photosSkipped: photoResult.skipped,
-    warning:
-      photoResult.failed > 0
-        ? `${photoResult.failed} foto(s) falharam.`
-        : undefined,
+    warning: [
+      !titulo ? "og:title não encontrado — título automático mantido." : null,
+      photoResult.failed > 0 ? `${photoResult.failed} foto(s) falharam.` : null,
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined,
   };
 }

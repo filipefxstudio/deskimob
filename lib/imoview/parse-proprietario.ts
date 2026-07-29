@@ -1,5 +1,11 @@
 import type { ParsedProprietario } from "@/lib/imoview/types";
 
+/** E-mails de corretor/imobiliária — não são do proprietário (Imoview). */
+function isBrokerPlaceholderEmail(email: string): boolean {
+  const domain = email.split("@")[1]?.trim().toLowerCase();
+  return domain === "imobee.net";
+}
+
 export function parseProprietario(raw: string | undefined | null): ParsedProprietario | null {
   if (!raw?.trim()) return null;
 
@@ -23,7 +29,10 @@ export function parseProprietario(raw: string | undefined | null): ParsedProprie
     }
 
     if (part.includes("@")) {
-      result.email = part.trim();
+      const email = part.trim();
+      if (!isBrokerPlaceholderEmail(email)) {
+        result.email = email;
+      }
       continue;
     }
 
@@ -40,6 +49,20 @@ export function normalizeTelefone(telefone: string | null | undefined): string |
   if (!telefone?.trim()) return null;
   const digits = telefone.replace(/\D/g, "");
   return digits.length >= 8 ? digits : null;
+}
+
+/** Telefone parcialmente oculto na exportação Imoview (ex.: `(**) *****-6581`). */
+export function isMaskedPhone(raw: string | null | undefined): boolean {
+  return Boolean(raw?.includes("*"));
+}
+
+/** Últimos dígitos visíveis em telefone mascarado (geralmente 4). */
+export function extractVisiblePhoneSuffix(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 8) return null;
+  if (digits.length >= 4) return digits.slice(-4);
+  return digits.length > 0 ? digits : null;
 }
 
 export function countProprietariosSemTelefone(

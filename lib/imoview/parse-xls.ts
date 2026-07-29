@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 
 import type { XlsRow } from "@/lib/imoview/types";
+import { IMOVIEW_EXCLUDED_CODIGOS } from "@/lib/imoview/constants";
 
 export type ParsedSpreadsheet = {
   rows: XlsRow[];
@@ -77,9 +78,32 @@ export function isExcludedSituacao(row: XlsRow): boolean {
   return getRowSituacao(row) === "Desativado";
 }
 
-/** Linhas a migrar — exclui Desativado (Documento N: 676 de 2.190) */
-export function filterMigratableRows(rows: XlsRow[]): XlsRow[] {
-  return rows.filter((row) => !isExcludedSituacao(row));
+export function isExcludedCodigo(
+  row: XlsRow,
+  excludedCodigos: readonly string[] = IMOVIEW_EXCLUDED_CODIGOS,
+): boolean {
+  const codigo = normalizeCodigo(row.Codigo);
+  return excludedCodigos.includes(codigo);
+}
+
+export type MigratableFilterOptions = {
+  excludedCodigos?: readonly string[];
+  rowFilter?: (row: XlsRow) => boolean;
+};
+
+/** Linhas a migrar — exclui Desativado, blocklist e filtro opcional (ex.: captadora Kenia). */
+export function filterMigratableRows(
+  rows: XlsRow[],
+  options?: MigratableFilterOptions,
+): XlsRow[] {
+  const excludedCodigos = options?.excludedCodigos ?? IMOVIEW_EXCLUDED_CODIGOS;
+
+  return rows.filter((row) => {
+    if (isExcludedSituacao(row)) return false;
+    if (isExcludedCodigo(row, excludedCodigos)) return false;
+    if (options?.rowFilter && !options.rowFilter(row)) return false;
+    return true;
+  });
 }
 
 export function isPhotoEligible(row: XlsRow): boolean {

@@ -123,7 +123,7 @@ export async function SiteImovelDetalheContent({
 
             <ImovelStats
               imovel={imovel}
-              variant="detail"
+              variant="site-detail"
               showAreaTotal
               iconClassName="text-primary"
             />

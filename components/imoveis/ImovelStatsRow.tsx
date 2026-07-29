@@ -2,16 +2,18 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type ImovelStatsVariant = "card" | "detail";
+type ImovelStatsVariant = "card" | "detail" | "site-detail";
 
 const rowClass: Record<ImovelStatsVariant, string> = {
   card: "gap-x-2 text-xs text-muted-foreground",
   detail: "gap-x-3 text-sm text-muted-foreground",
+  "site-detail": "gap-x-4 text-base text-muted-foreground",
 };
 
 const itemClass: Record<ImovelStatsVariant, string> = {
   card: "gap-1",
   detail: "gap-1",
+  "site-detail": "gap-1.5",
 };
 
 interface ImovelStatsRowProps {

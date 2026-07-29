@@ -12,6 +12,7 @@ import { FaleComCorretorCard } from "@/components/site/FaleComCorretorCard";
 import { ImovelGaleriaPublica } from "@/components/site/ImovelGaleriaPublica";
 import { ImovelMapa } from "@/components/site/ImovelMapa";
 import {
+  deveExibirMapaPublico,
   formatEndereco,
   getCapaUrl,
   getFinalidadeLabel,
@@ -41,6 +42,7 @@ export async function SiteImovelDetalheContent({
 }: SiteImovelDetalheContentProps) {
   const endereco = formatEndereco(imovel);
   const preco = imovel.finalidade === "venda" ? imovel.valor_venda : imovel.valor_locacao;
+  const exibirLocalizacao = (imovel.exibir_endereco_site ?? "apenas_bairro") !== "oculto";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -49,16 +51,21 @@ export async function SiteImovelDetalheContent({
     description: imovel.descricao ?? undefined,
     url: absolutePageUrl,
     image: getCapaUrl(imovel) ?? undefined,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: [imovel.logradouro, imovel.numero].filter(Boolean).join(", ") || undefined,
-      addressLocality: imovel.cidade ?? undefined,
-      addressRegion: imovel.estado ?? undefined,
-      postalCode: imovel.cep ?? undefined,
-      addressCountry: "BR",
-    },
+    address: exibirLocalizacao
+      ? {
+          "@type": "PostalAddress",
+          streetAddress:
+            imovel.exibir_endereco_site === "completo"
+              ? [imovel.logradouro, imovel.numero].filter(Boolean).join(", ") || undefined
+              : undefined,
+          addressLocality: imovel.cidade ?? undefined,
+          addressRegion: imovel.estado ?? undefined,
+          postalCode: imovel.cep ?? undefined,
+          addressCountry: "BR",
+        }
+      : undefined,
     geo:
-      imovel.latitude && imovel.longitude
+      exibirLocalizacao && imovel.latitude && imovel.longitude
         ? {
             "@type": "GeoCoordinates",
             latitude: imovel.latitude,
@@ -174,12 +181,12 @@ export async function SiteImovelDetalheContent({
               </section>
             ) : null}
 
-            {imovel.latitude && imovel.longitude ? (
+            {deveExibirMapaPublico(imovel) ? (
               <section>
                 <h2 className="mb-4 text-xl font-semibold text-primary">Localização</h2>
                 <ImovelMapa
-                  latitude={imovel.latitude}
-                  longitude={imovel.longitude}
+                  latitude={imovel.latitude!}
+                  longitude={imovel.longitude!}
                   endereco={endereco}
                 />
               </section>

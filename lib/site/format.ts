@@ -21,6 +21,11 @@ export function getImovelCodigoSite(imovel: Pick<Imovel, "id" | "codigo">): stri
 }
 
 export function getBairroCidadeCardLabel(imovel: Imovel): string | null {
+  const modo = imovel.exibir_endereco_site ?? "apenas_bairro";
+  if (modo === "oculto") {
+    return null;
+  }
+
   const partes = [imovel.bairro, imovel.cidade].filter(Boolean);
   return partes.length > 0 ? partes.join(" - ") : null;
 }
@@ -51,15 +56,23 @@ export function getCapaUrl(imovel: Imovel): string | null {
   return ordenadas[0]?.url ?? null;
 }
 
-/** Endereço no site público — sem complemento (apenas logradouro e número). */
+/** Endereço no site público — respeita exibir_endereco_site. */
 export function formatEndereco(imovel: Imovel): string {
-  const partes = [
-    imovel.logradouro,
-    imovel.numero,
-    imovel.bairro,
-    imovel.cidade,
-    imovel.estado,
-  ].filter(Boolean);
+  const modo = imovel.exibir_endereco_site ?? "apenas_bairro";
 
-  return partes.join(", ");
+  if (modo === "oculto") {
+    return "";
+  }
+
+  const partes =
+    modo === "completo"
+      ? [imovel.logradouro, imovel.numero, imovel.bairro, imovel.cidade, imovel.estado]
+      : [imovel.bairro, imovel.cidade, imovel.estado];
+
+  return partes.filter(Boolean).join(", ");
+}
+
+export function deveExibirMapaPublico(imovel: Imovel): boolean {
+  const modo = imovel.exibir_endereco_site ?? "apenas_bairro";
+  return modo !== "oculto" && Boolean(imovel.latitude && imovel.longitude);
 }

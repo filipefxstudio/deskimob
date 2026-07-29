@@ -21,7 +21,7 @@ interface ImovelInteresseAutocompleteProps {
 export function ImovelInteresseAutocomplete({
   value,
   onChange,
-  placeholder = "Buscar por título, código, bairro ou endereço",
+  placeholder = "Buscar por título, código, bairro, endereço ou proprietário",
   disabled,
 }: ImovelInteresseAutocompleteProps) {
   const [isPending, startTransition] = useTransition();
@@ -29,7 +29,7 @@ export function ImovelInteresseAutocomplete({
   const [resultados, setResultados] = useState<ImovelSearchResult[]>([]);
 
   useEffect(() => {
-    if (!busca.trim() || value) {
+    if (!busca.trim() || busca.trim().length < 2 || value) {
       setResultados([]);
       return;
     }
@@ -118,6 +118,8 @@ export function ImovelInteresseAutocomplete({
                 </li>
               ))}
             </ul>
+          ) : busca.trim().length >= 2 && !isPending ? (
+            <p className="mt-2 text-sm text-muted-foreground">Nenhum imóvel encontrado.</p>
           ) : null}
         </div>
       )}

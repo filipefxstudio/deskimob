@@ -840,6 +840,340 @@ export async function linkImovel(
   return { success: true, message: "Imóvel indicado." };
 }
 
+const IMOVEIS_STATUS_EXCLUIDOS_BUSCA = '("vendido","locado")';
+const IMOVEIS_DESATIVADOS_BUSCA = new Set(["desativado", "desativado_temporariamente"]);
+const IMOVEL_BUSCA_MAX_DESATIVADOS = 3;
+
+const IMOVEL_SEARCH_RELATIONS =
+  ", cliente:clientes(nome), proprietarios:imovel_proprietarios(cliente:clientes(nome))";
+
+const IMOVEL_SEARCH_SELECT =
+  `id, titulo, codigo, bairro, logradouro, cidade, finalidade, status, tipo, valor_venda, valor_locacao, fotos:imovel_fotos(id, url, ordem)${IMOVEL_SEARCH_RELATIONS}`;
+
+const IMOVEL_SEARCH_SELECT_NO_FOTOS =
+  `id, titulo, codigo, bairro, logradouro, cidade, finalidade, status, tipo, valor_venda, valor_locacao${IMOVEL_SEARCH_RELATIONS}`;
+
+type ImovelSearchRow = {
+  id: string;
+  titulo: string | null;
+  codigo: string | null;
+  bairro: string | null;
+  logradouro: string | null;
+  cidade: string | null;
+  finalidade: string | null;
+  status: string | null;
+  tipo: string | null;
+  valor_venda: number | null;
+  valor_locacao: number | null;
+  fotos?: { id: string; url: string; ordem: number }[];
+  cliente?: { nome: string | null } | null;
+  proprietarios?: { cliente?: { nome: string | null } | null }[];
+};
+
+function escapeIlikePattern(value: string): string {
+  return value.replace(/[%_\\,()]/g, "\\$&");
+}
+
+function buildImovelSearchOrFilter(trimmed: string): string {
+  const pattern = escapeIlikePattern(trimmed);
+
+  return [
+    `titulo.ilike.%${pattern}%`,
+    `codigo.ilike.%${pattern}%`,
+    `bairro.ilike.%${pattern}%`,
+    `logradouro.ilike.%${pattern}%`,
+    `cidade.ilike.%${pattern}%`,
+  ].join(",");
+}
+
+function imovelMatchesSearchQuery(imovel: ImovelSearchRow, trimmed: string): boolean {
+  const nomesProprietarios: string[] = [];
+
+  if (imovel.cliente?.nome) {
+    nomesProprietarios.push(imovel.cliente.nome);
+  }
+
+  for (const proprietario of imovel.proprietarios ?? []) {
+    if (proprietario.cliente?.nome) {
+      nomesProprietarios.push(proprietario.cliente.nome);
+    }
+  }
+
+  const campos = [
+    imovel.titulo,
+    imovel.codigo,
+    imovel.bairro,
+    imovel.logradouro,
+    imovel.cidade,
+    ...nomesProprietarios,
+  ];
+
+  return campos.some((campo) => contemNormalizado(campo, trimmed));
+}
+
+function imovelEstaDesativado(imovel: ImovelSearchRow): boolean {
+  return IMOVEIS_DESATIVADOS_BUSCA.has(imovel.status ?? "");
+}
+
+function limitImovelSearchResults(
+  rows: ImovelSearchRow[],
+  limit = 10,
+  maxDesativados = IMOVEL_BUSCA_MAX_DESATIVADOS,
+): ImovelSearchRow[] {
+  const ativos = rows.filter((row) => !imovelEstaDesativado(row));
+  const desativados = rows.filter((row) => imovelEstaDesativado(row));
+  const picked: ImovelSearchRow[] = [];
+
+  for (const row of ativos) {
+    if (picked.length >= limit) {
+      break;
+    }
+    picked.push(row);
+  }
+
+  let desativadosAdicionados = 0;
+
+  for (const row of desativados) {
+    if (picked.length >= limit || desativadosAdicionados >= maxDesativados) {
+      break;
+    }
+
+    picked.push(row);
+    desativadosAdicionados += 1;
+  }
+
+  return picked;
+}
+
+function mergeImovelSearchRows(...groups: ImovelSearchRow[][]): ImovelSearchRow[] {
+  const byId = new Map<string, ImovelSearchRow>();
+
+  for (const group of groups) {
+    for (const imovel of group) {
+      byId.set(imovel.id, imovel);
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
+async function fetchImoveisByIds(
+  supabase: TenantDbClient,
+  corretorId: string,
+  ids: string[],
+  withFotos: boolean,
+): Promise<ImovelSearchRow[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const select = withFotos ? IMOVEL_SEARCH_SELECT : IMOVEL_SEARCH_SELECT_NO_FOTOS;
+
+  const { data, error } = await supabase
+    .from("imoveis")
+    .select(select)
+    .eq("corretor_id", corretorId)
+    .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
+    .in("id", ids.slice(0, 50))
+    .order("atualizado_em", { ascending: false });
+
+  if (error) {
+    console.error("[fetchImoveisByIds] failed", { withFotos, error });
+
+    if (withFotos) {
+      return fetchImoveisByIds(supabase, corretorId, ids, false);
+    }
+
+    return [];
+  }
+
+  return (data ?? []) as ImovelSearchRow[];
+}
+
+async function fetchImoveisSearchRowsWithFilter(
+  supabase: TenantDbClient,
+  corretorId: string,
+  trimmed: string,
+  withFotos: boolean,
+): Promise<ImovelSearchRow[]> {
+  const select = withFotos ? IMOVEL_SEARCH_SELECT : IMOVEL_SEARCH_SELECT_NO_FOTOS;
+
+  const { data, error } = await supabase
+    .from("imoveis")
+    .select(select)
+    .eq("corretor_id", corretorId)
+    .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
+    .or(buildImovelSearchOrFilter(trimmed))
+    .order("atualizado_em", { ascending: false })
+    .limit(30);
+
+  if (error) {
+    console.error("[fetchImoveisSearchRowsWithFilter] failed", { withFotos, error });
+
+    if (withFotos) {
+      return fetchImoveisSearchRowsWithFilter(supabase, corretorId, trimmed, false);
+    }
+
+    return [];
+  }
+
+  return (data ?? []) as ImovelSearchRow[];
+}
+
+async function fetchImoveisSearchRowsForScan(
+  supabase: TenantDbClient,
+  corretorId: string,
+  withFotos: boolean,
+): Promise<ImovelSearchRow[]> {
+  const select = withFotos ? IMOVEL_SEARCH_SELECT : IMOVEL_SEARCH_SELECT_NO_FOTOS;
+
+  const { data, error } = await supabase
+    .from("imoveis")
+    .select(select)
+    .eq("corretor_id", corretorId)
+    .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
+    .order("atualizado_em", { ascending: false })
+    .limit(400);
+
+  if (error) {
+    console.error("[fetchImoveisSearchRowsForScan] failed", { withFotos, error });
+
+    if (withFotos) {
+      return fetchImoveisSearchRowsForScan(supabase, corretorId, false);
+    }
+
+    return [];
+  }
+
+  return (data ?? []) as ImovelSearchRow[];
+}
+
+async function fetchClienteIdsByProprietarioNome(
+  supabase: TenantDbClient,
+  corretorId: string,
+  trimmed: string,
+): Promise<string[]> {
+  const pattern = `%${escapeIlikePattern(trimmed)}%`;
+
+  const { data: clientesIlike, error } = await supabase
+    .from("clientes")
+    .select("id, nome")
+    .eq("corretor_id", corretorId)
+    .ilike("nome", pattern)
+    .limit(30);
+
+  if (error) {
+    console.error("[fetchClienteIdsByProprietarioNome] failed", error);
+    return [];
+  }
+
+  let matching = (clientesIlike ?? []).filter((cliente) =>
+    contemNormalizado(cliente.nome, trimmed),
+  );
+
+  if (matching.length === 0) {
+    const { data: clientesScan, error: scanError } = await supabase
+      .from("clientes")
+      .select("id, nome")
+      .eq("corretor_id", corretorId)
+      .order("nome", { ascending: true })
+      .limit(400);
+
+    if (scanError) {
+      console.error("[fetchClienteIdsByProprietarioNome] scan failed", scanError);
+      return [];
+    }
+
+    matching = (clientesScan ?? []).filter((cliente) =>
+      contemNormalizado(cliente.nome, trimmed),
+    );
+  }
+
+  return matching.map((cliente) => cliente.id);
+}
+
+async function fetchImovelIdsByProprietarioNome(
+  supabase: TenantDbClient,
+  corretorId: string,
+  trimmed: string,
+): Promise<string[]> {
+  const clienteIds = await fetchClienteIdsByProprietarioNome(supabase, corretorId, trimmed);
+
+  if (clienteIds.length === 0) {
+    return [];
+  }
+
+  const imovelIds = new Set<string>();
+
+  const [{ data: directImoveis }, { data: proprietarioLinks }] = await Promise.all([
+    supabase
+      .from("imoveis")
+      .select("id")
+      .eq("corretor_id", corretorId)
+      .in("cliente_id", clienteIds)
+      .limit(50),
+    supabase
+      .from("imovel_proprietarios")
+      .select("imovel_id")
+      .in("cliente_id", clienteIds)
+      .limit(50),
+  ]);
+
+  for (const row of directImoveis ?? []) {
+    imovelIds.add(row.id);
+  }
+
+  const linkedIds = (proprietarioLinks ?? []).map((row) => row.imovel_id);
+
+  if (linkedIds.length > 0) {
+    const { data: linkedImoveis } = await supabase
+      .from("imoveis")
+      .select("id")
+      .eq("corretor_id", corretorId)
+      .in("id", linkedIds);
+
+    for (const row of linkedImoveis ?? []) {
+      imovelIds.add(row.id);
+    }
+  }
+
+  return Array.from(imovelIds);
+}
+
+async function searchImoveisForLeadRows(
+  corretorId: string,
+  trimmed: string,
+): Promise<ImovelSearchRow[]> {
+  const runSearch = async (client: TenantDbClient) => {
+    const [textFiltered, imovelIdsPorProprietario] = await Promise.all([
+      fetchImoveisSearchRowsWithFilter(client, corretorId, trimmed, true),
+      fetchImovelIdsByProprietarioNome(client, corretorId, trimmed),
+    ]);
+
+    const byProprietario =
+      imovelIdsPorProprietario.length > 0
+        ? await fetchImoveisByIds(client, corretorId, imovelIdsPorProprietario, true)
+        : [];
+
+    const directMatches = mergeImovelSearchRows(textFiltered, byProprietario).filter((imovel) =>
+      imovelMatchesSearchQuery(imovel, trimmed),
+    );
+
+    if (directMatches.length > 0) {
+      return directMatches;
+    }
+
+    const scanned = await fetchImoveisSearchRowsForScan(client, corretorId, true);
+    return scanned.filter((imovel) => imovelMatchesSearchQuery(imovel, trimmed));
+  };
+
+  return fetchWithTenantFallback(
+    corretorId,
+    runSearch,
+    (rows) => rows.length === 0,
+  );
+}
+
 export async function searchImoveisForLead(query: string) {
   const corretor = await getCorretorForUser();
 
@@ -848,37 +1182,12 @@ export async function searchImoveisForLead(query: string) {
   }
 
   const trimmed = query.trim();
-  if (!trimmed) {
+  if (trimmed.length < 2) {
     return [];
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("imoveis")
-    .select(
-      "id, titulo, codigo, bairro, logradouro, finalidade, status, tipo, valor_venda, valor_locacao, fotos:imovel_fotos(id, url, ordem)",
-    )
-    .eq("corretor_id", corretor.id)
-    .in("status", ["disponivel", "reservado"])
-    .order("atualizado_em", { ascending: false })
-    .limit(80);
-
-  if (error) {
-    console.error("[searchImoveisForLead] failed", error);
-    return [];
-  }
-
-  const filtrados = (data ?? []).filter((imovel) => {
-    const campos = [
-      imovel.titulo,
-      imovel.codigo,
-      imovel.bairro,
-      imovel.logradouro,
-    ];
-    return campos.some((campo) => contemNormalizado(campo, trimmed));
-  });
-
-  return filtrados.slice(0, 10);
+  const rows = await searchImoveisForLeadRows(corretor.id, trimmed);
+  return limitImovelSearchResults(rows, 10);
 }
 
 export async function getPerfisForLeads() {

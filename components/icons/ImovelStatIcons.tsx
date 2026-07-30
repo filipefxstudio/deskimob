@@ -3,8 +3,8 @@ import type { SVGProps } from "react";
 import { cn } from "@/lib/utils";
 
 type ImovelStatIconProps = SVGProps<SVGSVGElement> & {
-  /** `card` para listagens; `detail` para CRM; `site-detail` para site público; `detail-prominent` para destaque no detalhe. */
-  size?: "card" | "detail" | "site-detail" | "detail-prominent";
+  /** `card` para listagens; `detail` para CRM; `site-detail` para site público; `detail-prominent` para destaque no detalhe; `detail-card` para card de resumo. */
+  size?: "card" | "detail" | "site-detail" | "detail-prominent" | "detail-card";
 };
 
 const sizeClass = {
@@ -12,6 +12,7 @@ const sizeClass = {
   detail: "size-4",
   "site-detail": "size-5",
   "detail-prominent": "size-8",
+  "detail-card": "size-5 sm:size-6 md:size-7 lg:size-8",
 } as const;
 
 type IconConfig = {

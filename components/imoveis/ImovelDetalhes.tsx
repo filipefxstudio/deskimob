@@ -31,7 +31,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { aprovarImovel, reprovarImovel } from "@/lib/actions/imoveis";
-import { labelStatusAprovacao, podeAprovarImovel } from "@/lib/imoveis/aprovacao";
+import { podeAprovarImovel } from "@/lib/imoveis/aprovacao";
 import {
   getCaptadorNome,
   getCaptadorPrincipalNome,
@@ -268,32 +268,32 @@ export function ImovelDetalhes({
           <ImovelRepublicacaoAlerta alerta={alertaRepublicacao} />
         ) : null}
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={imovel.status} statusImovel={imovel.status_imovel} />
-            <span className="text-sm text-muted-foreground">
-              {getFinalidadeLabel(imovel.finalidade)} • {getTipoLabel(imovel.tipo)}
-            </span>
-          </div>
-
-          <h2 className="text-xl font-semibold text-primary md:text-2xl">{titulo}</h2>
-
-          <p className="text-base text-muted-foreground">{codigo}</p>
-
-          {aguardandoAprovacao ? (
-            <p className="text-sm font-medium text-amber-600">
-              {labelStatusAprovacao("aguardando_aprovacao")}
-            </p>
-          ) : null}
-        </div>
-
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
-            <CardContent className="space-y-2 pt-6">
+            <CardContent className="space-y-4 pt-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={imovel.status} statusImovel={imovel.status_imovel} />
+                <span className="text-sm text-muted-foreground">
+                  {getFinalidadeLabel(imovel.finalidade)} • {getTipoLabel(imovel.tipo)}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold text-primary md:text-2xl">{titulo}</h2>
+                <p className="text-base text-muted-foreground">{codigo}</p>
+              </div>
+
+              <ImovelStats
+                imovel={imovel}
+                variant="detail-card"
+                showAreaTotal
+                iconClassName="text-primary"
+              />
+
               <p className="text-sm text-muted-foreground">
                 {getFinalidadeLabel(imovel.finalidade)}
               </p>
-              <p className="text-3xl font-black tracking-tight text-primary md:text-4xl">
+              <p className="text-xl font-semibold tracking-tight text-primary md:text-2xl">
                 {getValorExibicao(imovel)}
               </p>
               <p className="text-sm text-muted-foreground">
@@ -324,14 +324,6 @@ export function ImovelDetalhes({
             </CardContent>
           </Card>
         </div>
-
-        <ImovelStats
-          imovel={imovel}
-          variant="detail-prominent"
-          showAreaTotal
-          iconClassName="text-primary"
-          className="justify-start py-2"
-        />
 
         {shareUrl ? (
           <p className="text-xs text-muted-foreground break-all">

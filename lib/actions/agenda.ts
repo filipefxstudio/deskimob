@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   registrarAuditoria,
   registrarInteracao,
+  syncVisitasSemAgenda,
   updateVisita,
 } from "@/lib/actions/atendimentos";
 import { getTipoCompromisso } from "@/lib/constants/agenda";
@@ -77,7 +78,10 @@ export async function getAgendaItems(filters?: AgendaFilterParams): Promise<Agen
   const access = await resolveTenantAccess(corretor);
   const items = await fetchWithTenantFallback(
     corretor.id,
-    (client) => fetchAgendaItemsRows(client, corretor.id, filters),
+    async (client) => {
+      await syncVisitasSemAgenda(corretor.id, client);
+      return fetchAgendaItemsRows(client, corretor.id, filters);
+    },
     (rows) => rows.length === 0,
   );
 

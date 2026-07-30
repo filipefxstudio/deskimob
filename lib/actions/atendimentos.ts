@@ -327,18 +327,23 @@ async function criarAgendaFutura(input: {
   descricao?: string;
   dataAtividade: string;
   lembreteEmail?: boolean;
-}): Promise<void> {
+  /** Visitas e reagendamentos devem sempre aparecer na agenda, mesmo no passado. */
+  allowPast?: boolean;
+}): Promise<boolean> {
   let dataAtividadeUtc: string;
   try {
     dataAtividadeUtc = parseLocalDateTimeInput(input.dataAtividade);
   } catch {
-    return;
+    console.error("[criarAgendaFutura] data inválida:", input.dataAtividade);
+    return false;
   }
 
-  if (new Date(dataAtividadeUtc) <= new Date()) return;
+  if (!input.allowPast && new Date(dataAtividadeUtc) <= new Date()) {
+    return false;
+  }
 
   const supabase = await createClient();
-  await supabase.from("agenda").insert({
+  const { error } = await supabase.from("agenda").insert({
     corretor_id: input.corretorId,
     lead_id: input.leadId,
     imovel_id: input.imovelId ?? null,
@@ -351,6 +356,80 @@ async function criarAgendaFutura(input: {
     lembrete_email: input.lembreteEmail ?? false,
     status: "pendente",
   });
+
+  if (error) {
+    console.error("[criarAgendaFutura]", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    return false;
+  }
+
+  return true;
+}
+
+/** Recupera visitas agendadas que ficaram sem registro na agenda (ex.: horário no passado). */
+export async function syncVisitasSemAgenda(
+  corretorId: string,
+  supabase: TenantDbClient,
+): Promise<void> {
+  const { data: visitas, error: visitasError } = await supabase
+    .from("visitas")
+    .select("id, lead_id, imovel_id, perfil_id, data_visita, observacoes")
+    .eq("corretor_id", corretorId)
+    .eq("status", "agendada");
+
+  if (visitasError || !visitas?.length) {
+    if (visitasError) {
+      console.error("[syncVisitasSemAgenda]", visitasError);
+    }
+    return;
+  }
+
+  const visitaIds = visitas.map((visita) => visita.id);
+  const { data: agendas, error: agendasError } = await supabase
+    .from("agenda")
+    .select("visita_id")
+    .eq("corretor_id", corretorId)
+    .in("visita_id", visitaIds);
+
+  if (agendasError) {
+    console.error("[syncVisitasSemAgenda]", agendasError);
+    return;
+  }
+
+  const visitasComAgenda = new Set(
+    (agendas ?? [])
+      .map((item) => item.visita_id)
+      .filter((visitaId): visitaId is string => Boolean(visitaId)),
+  );
+
+  for (const visita of visitas) {
+    if (visitasComAgenda.has(visita.id)) continue;
+
+    const { error } = await supabase.from("agenda").insert({
+      corretor_id: corretorId,
+      lead_id: visita.lead_id,
+      imovel_id: visita.imovel_id,
+      visita_id: visita.id,
+      perfil_id: visita.perfil_id,
+      tipo: "visita",
+      titulo: "Visita agendada",
+      descricao: visita.observacoes,
+      data_atividade: visita.data_visita,
+      status: "pendente",
+    });
+
+    if (error) {
+      console.error("[syncVisitasSemAgenda] insert", {
+        visitaId: visita.id,
+        message: error.message,
+        code: error.code,
+      });
+    }
+  }
 }
 
 export interface CreateAtendimentoInput {
@@ -1671,6 +1750,7 @@ export async function createVisita(
     descricao: input.observacoes,
     dataAtividade: input.data_visita,
     lembreteEmail: input.lembrete_email,
+    allowPast: true,
   });
 
   await avancarEtapaLead(leadId, "visita_agendada", supabase, corretor.id, false);
@@ -1813,7 +1893,7 @@ export async function editarVisita(
   const supabase = await createClient();
   const { data: visita, error: buscaError } = await supabase
     .from("visitas")
-    .select("id, lead_id, imovel:imoveis(codigo)")
+    .select("id, lead_id, imovel_id, perfil_id, observacoes, imovel:imoveis(codigo)")
     .eq("id", visitaId)
     .eq("corretor_id", corretor.id)
     .maybeSingle();
@@ -1830,11 +1910,27 @@ export async function editarVisita(
 
   if (error) return { error: "Não foi possível reagendar a visita." };
 
-  await supabase
+  const { data: agendaAtualizada } = await supabase
     .from("agenda")
     .update({ data_atividade: novaData })
     .eq("visita_id", visitaId)
-    .eq("corretor_id", corretor.id);
+    .eq("corretor_id", corretor.id)
+    .select("id");
+
+  if (!agendaAtualizada?.length) {
+    await criarAgendaFutura({
+      corretorId: corretor.id,
+      leadId,
+      imovelId: visita.imovel_id as string,
+      visitaId,
+      perfilId: visita.perfil_id as string | null | undefined,
+      tipo: "visita",
+      titulo: "Visita agendada",
+      descricao: (visita.observacoes as string | null) ?? undefined,
+      dataAtividade: novaData,
+      allowPast: true,
+    });
+  }
 
   const dataHoraFmt = formatDateTimeBrasilia(novaData);
   const [dataFmt, horaFmt] = dataHoraFmt.split(", ");

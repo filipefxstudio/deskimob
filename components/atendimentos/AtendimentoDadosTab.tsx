@@ -34,7 +34,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   descartarAtendimento,
+  desmarcarContatoFeito,
   desqualificarLead,
+  marcarContatoFeito,
   qualificarLead,
   updateAtendimentoDados,
 } from "@/lib/actions/atendimentos";
@@ -53,6 +55,7 @@ import {
   etapaParaSelectAtendimento,
   formatOrigemDisplay,
   formatTempoPrimeiraResposta,
+  isLeadContatoFeito,
   isLeadQualificado,
 } from "@/lib/leads/format";
 import { parseLeadObservacoes, serializeLeadObservacoes } from "@/lib/leads/observacoes";
@@ -86,6 +89,7 @@ export function AtendimentoDadosTab({
   );
   const [etapa, setEtapa] = useState<EtapaLead>(etapaParaSelectAtendimento(lead.etapa));
   const [situacao, setSituacao] = useState<SituacaoLead>(lead.situacao ?? "em_atendimento");
+  const [contatoFeito, setContatoFeito] = useState(isLeadContatoFeito(lead));
   const [qualificado, setQualificado] = useState(isLeadQualificado(lead));
 
   const [imovelInteresse, setImovelInteresse] = useState<ImovelSearchResult | null>(
@@ -120,6 +124,7 @@ export function AtendimentoDadosTab({
   const situacaoAnteriorRef = useRef<SituacaoLead>(lead.situacao ?? "em_atendimento");
 
   useEffect(() => {
+    setContatoFeito(isLeadContatoFeito(lead));
     setQualificado(isLeadQualificado(lead));
     setEtapa(etapaParaSelectAtendimento(lead.etapa));
   }, [lead]);
@@ -251,6 +256,24 @@ export function AtendimentoDadosTab({
     };
   }
 
+  function handleContatoFeitoChange(checked: boolean) {
+    setContatoFeito(checked);
+    startTransition(async () => {
+      const result = checked
+        ? await marcarContatoFeito(lead.id)
+        : await desmarcarContatoFeito(lead.id);
+
+      if (result.error) {
+        toast({ variant: "destructive", title: "Erro", description: result.error });
+        setContatoFeito(!checked);
+        return;
+      }
+
+      toast({ title: result.message });
+      router.refresh();
+    });
+  }
+
   function handleQualificadoChange(checked: boolean) {
     setQualificado(checked);
     startTransition(async () => {
@@ -334,6 +357,15 @@ export function AtendimentoDadosTab({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex w-fit items-center gap-2 self-end pb-2">
+            <Switch
+              id="contato-feito"
+              checked={contatoFeito}
+              onCheckedChange={handleContatoFeitoChange}
+              disabled={isPending || (contatoFeito && lead.etapa !== "contato_feito")}
+            />
+            <Label htmlFor="contato-feito">Contato feito</Label>
           </div>
           <div className="flex w-fit items-center gap-2 self-end pb-2">
             <Switch

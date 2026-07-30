@@ -1,5 +1,7 @@
 import type { Lead } from "@/types";
 
+import { ETAPA_FUNIL_ORDEM } from "./etapa-order";
+
 import { formatTipoBairrosInteresse } from "@/lib/atendimentos/interesse-from-imovel";
 import { parseLeadObservacoes } from "@/lib/leads/observacoes";
 
@@ -108,7 +110,14 @@ export function isLeadQualificado(lead: Lead): boolean {
   return parseLeadObservacoes(lead.observacoes).meta.qualificado === true;
 }
 
-/** Mapeia etapa legada "qualificado" para exibição no seletor de etapas. */
+export function isLeadContatoFeito(lead: Pick<Lead, "etapa">): boolean {
+  return ETAPA_FUNIL_ORDEM[lead.etapa] >= ETAPA_FUNIL_ORDEM.contato_feito;
+}
+
+/** Mapeia etapas internas para exibição no seletor de etapas do atendimento. */
 export function etapaParaSelectAtendimento(etapa: Lead["etapa"]): Lead["etapa"] {
-  return etapa === "qualificado" ? "contato_feito" : etapa;
+  if (etapa === "qualificado" || etapa === "contato_feito") {
+    return "novo";
+  }
+  return etapa;
 }

@@ -2716,6 +2716,49 @@ export async function marcarContatoFeito(leadId: string): Promise<AtendimentoAct
   return { success: true, message: "Contato registrado." };
 }
 
+export async function desmarcarContatoFeito(leadId: string): Promise<AtendimentoActionResult> {
+  const corretor = await getCorretorForUser();
+  if (!corretor) return { error: "Sessão expirada." };
+
+  const supabase = await createClient();
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("etapa")
+    .eq("id", leadId)
+    .eq("corretor_id", corretor.id)
+    .maybeSingle();
+
+  if (!lead) return { error: "Atendimento não encontrado." };
+  if (lead.etapa !== "contato_feito") {
+    return { error: "Não é possível desfazer o contato nesta etapa." };
+  }
+
+  const { error } = await supabase
+    .from("leads")
+    .update({
+      etapa: "novo",
+      atualizado_em: new Date().toISOString(),
+    })
+    .eq("id", leadId)
+    .eq("corretor_id", corretor.id);
+
+  if (error) {
+    console.error("[desmarcarContatoFeito]", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
+    return { error: "Não foi possível desfazer o contato." };
+  }
+
+  await registrarInteracao(leadId, "anotacao", "Contato desmarcado.");
+  await registrarAuditoria(leadId, "contato_desmarcado", {});
+
+  revalidateAtendimentoPaths(leadId);
+  return { success: true, message: "Contato desmarcado." };
+}
+
 export async function getImoveisIndicados(lead: Lead) {
   const corretor = await getCorretorForUser();
   if (!corretor) return [];

@@ -130,11 +130,11 @@ export const ETAPAS_LEAD_ATIVAS: readonly EtapaLead[] = ETAPAS_LEAD.filter(
 
 
 
-/** Etapas do funil na aba Detalhes do atendimento (sem "Qualificado"). */
+/** Etapas do funil na aba Detalhes do atendimento (sem "Qualificado" nem "Contato feito"). */
 
 export const ETAPAS_ATENDIMENTO: readonly EtapaLead[] = ETAPAS_LEAD.filter(
 
-  (etapa) => etapa !== "qualificado",
+  (etapa) => etapa !== "qualificado" && etapa !== "contato_feito",
 
 );
 

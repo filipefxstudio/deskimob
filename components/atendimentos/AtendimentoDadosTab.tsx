@@ -55,7 +55,7 @@ import {
   formatTempoPrimeiraResposta,
   isLeadQualificado,
 } from "@/lib/leads/format";
-import { parseLeadObservacoes } from "@/lib/leads/observacoes";
+import { parseLeadObservacoes, serializeLeadObservacoes } from "@/lib/leads/observacoes";
 import { toast } from "@/hooks/use-toast";
 import { isValidUuid } from "@/lib/utils/uuid";
 import type { EtapaLead, Lead, MotivoDescarte, SituacaoLead, TemperaturaLead, TipoImovelCustom } from "@/types";
@@ -65,9 +65,16 @@ interface AtendimentoDadosTabProps {
   perfis: { id: string; nome: string }[];
   tiposImovel: TipoImovelCustom[];
   motivos: MotivoDescarte[];
+  faixaValorPercent?: number;
 }
 
-export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: AtendimentoDadosTabProps) {
+export function AtendimentoDadosTab({
+  lead,
+  perfis,
+  tiposImovel,
+  motivos,
+  faixaValorPercent = 20,
+}: AtendimentoDadosTabProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -122,7 +129,7 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
     [tiposImovel],
   );
 
-  const { aplicar: aplicarInteresseFromImovel } = useAplicarInteresseFromImovel();
+  const { aplicar: aplicarInteresseFromImovel } = useAplicarInteresseFromImovel(faixaValorPercent);
 
   function aplicarEstadoInteresse(state: ReturnType<typeof interesseFormStateVazio>) {
     setFinalidade(state.finalidade);
@@ -196,7 +203,28 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
     return Number.isFinite(numero) ? numero : null;
   }
 
+  function buildInteressePayload(): Parameters<typeof updateAtendimentoDados>[1] {
+    const { meta } = parseLeadObservacoes(lead.observacoes);
+
+    return {
+      imovel_id: imovelInteresse?.id ?? null,
+      finalidade_busca: finalidade || null,
+      tipo_imovel_busca: tipoImovel,
+      bairros_interesse: bairros,
+      quartos_minimo: parseNumeroMinimo(quartos),
+      suites_minimas: parseNumeroMinimo(suites),
+      banheiros_minimos: parseNumeroMinimo(banheiros),
+      vagas_minimas: parseNumeroMinimo(vagas),
+      valor_minimo: valorMin,
+      valor_maximo: valorMax,
+      prazo_decisao: prazo || null,
+      observacoes: serializeLeadObservacoes(meta, obsTexto),
+    };
+  }
+
   function buildPreferenciasPayload(): Parameters<typeof updateAtendimentoDados>[1] {
+    const { meta } = parseLeadObservacoes(lead.observacoes);
+
     return {
       temperatura,
       etapa,
@@ -212,7 +240,7 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
       valor_minimo: valorMin,
       valor_maximo: valorMax,
       prazo_decisao: prazo || null,
-      observacoes: obsTexto,
+      observacoes: serializeLeadObservacoes(meta, obsTexto),
       entrada_fgts: entradaFgts,
       entrada_recursos_proprios: entradaProprios,
       financiamento_aprovado: finAprovado,
@@ -390,11 +418,21 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
           </div>
           <div className="space-y-2">
             <Label>Valor mín.</Label>
-            <CurrencyInput value={valorMin} onChange={setValorMin} mode="filter" />
+            <CurrencyInput
+              key={`valor-min-${valorMin ?? "vazio"}`}
+              value={valorMin}
+              onChange={setValorMin}
+              mode="filter"
+            />
           </div>
           <div className="space-y-2">
             <Label>Valor máx.</Label>
-            <CurrencyInput value={valorMax} onChange={setValorMax} mode="filter" />
+            <CurrencyInput
+              key={`valor-max-${valorMax ?? "vazio"}`}
+              value={valorMax}
+              onChange={setValorMax}
+              mode="filter"
+            />
           </div>
           <div className="space-y-2">
             <Label>Prazo decisão</Label>
@@ -405,7 +443,7 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
           <Label>Observações</Label>
           <Textarea value={obsTexto} onChange={(e) => setObsTexto(e.target.value)} rows={2} />
         </div>
-        <Button type="button" onClick={() => save()} disabled={isPending}>
+        <Button type="button" onClick={() => save(buildInteressePayload())} disabled={isPending}>
           {isPending ? <Loader2 className="size-4 animate-spin" /> : "Salvar preferências"}
         </Button>
       </section>

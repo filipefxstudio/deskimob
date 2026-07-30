@@ -39,6 +39,7 @@ interface AtendimentoClientProps {
   tiposImovel: TipoImovelCustom[];
   corretorSlug: string;
   statusList: StatusImovel[];
+  faixaValorPercent?: number;
 }
 
 export function AtendimentoClient({
@@ -56,6 +57,7 @@ export function AtendimentoClient({
   tiposImovel,
   corretorSlug,
   statusList,
+  faixaValorPercent = 20,
 }: AtendimentoClientProps) {
   const imoveisParaAcao = imoveisSelecionados
     .map((s) => s.imovel)
@@ -73,7 +75,15 @@ export function AtendimentoClient({
       <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
         <AtendimentoTabs
           panels={{
-            dados: <AtendimentoDadosTab lead={lead} perfis={perfis} tiposImovel={tiposImovel} motivos={motivos} />,
+            dados: (
+              <AtendimentoDadosTab
+                lead={lead}
+                perfis={perfis}
+                tiposImovel={tiposImovel}
+                motivos={motivos}
+                faixaValorPercent={faixaValorPercent}
+              />
+            ),
             radar: (
               <RadarImoveisTab
                 leadId={lead.id}

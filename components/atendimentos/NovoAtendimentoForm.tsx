@@ -94,7 +94,7 @@ export function NovoAtendimentoForm({
     [midias],
   );
 
-  const { aplicar: aplicarInteresseFromImovel } = useAplicarInteresseFromImovel();
+  const { aplicar: aplicarInteresseFromImovel } = useAplicarInteresseFromImovel(faixaValorPercent);
 
   function aplicarEstadoInteresse(state: ReturnType<typeof interesseFormStateVazio>) {
     setFinalidade(state.finalidade);

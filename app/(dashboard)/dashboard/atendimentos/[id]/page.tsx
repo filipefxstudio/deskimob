@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { AtendimentoClient } from "@/components/atendimentos/AtendimentoClient";
 import {
   getAtendimentoCompleto,
+  getAtendimentoConfig,
   getImoveisRadar,
   getMotivosDescarte,
   podeTransferirAtendimento,
@@ -41,7 +42,7 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
 
   const { lead, visitas, propostas, negocios, imoveisSelecionados, auditoria } = data;
 
-  const [perfis, imoveisRadar, motivos, podeTransferir, tiposImovel, statusList, perfilAtual] =
+  const [perfis, imoveisRadar, motivos, podeTransferir, tiposImovel, statusList, perfilAtual, atendimentoConfig] =
     await Promise.all([
     getPerfisForLeads(),
     getImoveisRadar(id),
@@ -50,6 +51,7 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
     getTiposImovelCustom(),
     getStatusImovelList(corretor.id),
     getPerfilForUser(),
+    getAtendimentoConfig(),
   ]);
 
   return (
@@ -77,6 +79,7 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
         tiposImovel={tiposImovel}
         corretorSlug={corretor.slug}
         statusList={statusList}
+        faixaValorPercent={atendimentoConfig?.faixa_valor_percent ?? 20}
       />
     </div>
   );

@@ -18,6 +18,7 @@ import { podeAvancarEtapa } from "@/lib/leads/etapa-order";
 import { parseLeadObservacoes, mergeLeadObservacoesMeta } from "@/lib/leads/observacoes";
 import {
   fetchPreferenciasInteresseFromImovel,
+  resolveValorReferenciaImovel,
   type PreferenciasInteresseFromImovel,
 } from "@/lib/atendimentos/interesse-from-imovel";
 import { atualizarStatusImovelAutomatico } from "@/lib/actions/imoveis";
@@ -890,7 +891,12 @@ export async function updateAtendimentoDados(
   if (input.interesse_permuta !== undefined) payload.interesse_permuta = input.interesse_permuta;
   if (input.info_permuta !== undefined) payload.info_permuta = input.info_permuta?.trim() || null;
   if (input.obs_financeiras !== undefined) payload.obs_financeiras = input.obs_financeiras?.trim() || null;
-  if (input.observacoes !== undefined) payload.observacoes = input.observacoes?.trim() || null;
+  if (input.observacoes !== undefined) {
+    payload.observacoes =
+      input.observacoes == null
+        ? null
+        : input.observacoes.trim() || null;
+  }
 
   if (input.etapa !== undefined) {
     payload.etapa = input.etapa;
@@ -902,7 +908,10 @@ export async function updateAtendimentoDados(
     .eq("id", leadId)
     .eq("corretor_id", corretor.id);
 
-  if (error) return { error: "Não foi possível salvar." };
+  if (error) {
+    console.error("[updateAtendimentoDados]", error);
+    return { error: error.message || "Não foi possível salvar." };
+  }
 
   if (input.imovel_id !== undefined && input.imovel_id) {
     await garantirImovelInteresseSelecionado(
@@ -910,6 +919,7 @@ export async function updateAtendimentoDados(
       input.imovel_id,
       corretor.id,
       supabase,
+      true,
     );
   }
 
@@ -1290,12 +1300,11 @@ export async function calcularFaixaValorImovel(
 
   if (!imovel) return null;
 
-  const valor =
-    imovel.finalidade === "venda" ? imovel.valor_venda : imovel.valor_locacao;
+  const valor = resolveValorReferenciaImovel(imovel);
   if (valor == null) return null;
 
-  const delta = valor * (percent / 100);
-  return { min: Math.round(valor - delta), max: Math.round(valor + delta) };
+  const delta = Number(valor) * (percent / 100);
+  return { min: Math.round(Number(valor) - delta), max: Math.round(Number(valor) + delta) };
 }
 
 export async function getAtendimentoConfig(): Promise<AtendimentoConfig | null> {

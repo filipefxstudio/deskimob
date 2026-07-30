@@ -9,7 +9,40 @@ export type ImovelPreferenciasSource = {
   suites?: number | null;
   banheiros?: number | null;
   vagas?: number | null;
+  valor_venda?: number | null;
+  valor_locacao?: number | null;
 };
+
+export function resolveValorReferenciaImovel(
+  imovel: Pick<ImovelPreferenciasSource, "finalidade" | "valor_venda" | "valor_locacao">,
+): number | null {
+  if (imovel.finalidade === "locacao") {
+    return imovel.valor_locacao ?? null;
+  }
+
+  if (imovel.finalidade === "venda") {
+    return imovel.valor_venda ?? null;
+  }
+
+  return imovel.valor_venda ?? imovel.valor_locacao ?? null;
+}
+
+export function calcularFaixaValorFromImovel(
+  imovel: ImovelPreferenciasSource,
+  faixaValorPercent = 20,
+): { min: number; max: number } | null {
+  const valor = resolveValorReferenciaImovel(imovel);
+  if (valor == null || !Number.isFinite(Number(valor))) {
+    return null;
+  }
+
+  const valorNumerico = Number(valor);
+  const delta = valorNumerico * (faixaValorPercent / 100);
+  return {
+    min: Math.round(valorNumerico - delta),
+    max: Math.round(valorNumerico + delta),
+  };
+}
 
 export type PreferenciasInteresseFromImovel = {
   finalidade_busca: string | null;
@@ -32,9 +65,12 @@ function numeroMinimoPositivo(valor?: number | null): number | null {
 
 export function finalidadeBuscaFromImovel(
   finalidade?: string | null,
+  imovel?: Pick<ImovelPreferenciasSource, "valor_venda" | "valor_locacao">,
 ): string | null {
   if (finalidade === "venda") return "compra";
   if (finalidade === "locacao") return "locacao";
+  if (imovel?.valor_venda != null) return "compra";
+  if (imovel?.valor_locacao != null) return "locacao";
   return null;
 }
 
@@ -45,7 +81,7 @@ export function buildPreferenciasFromImovel(
   const bairros = imovel.bairro?.trim() ? [imovel.bairro.trim()] : [];
 
   return {
-    finalidade_busca: finalidadeBuscaFromImovel(imovel.finalidade),
+    finalidade_busca: finalidadeBuscaFromImovel(imovel.finalidade, imovel),
     tipo_imovel_busca: imovel.tipo?.trim() || null,
     bairros_interesse: bairros,
     quartos_minimo: numeroMinimoPositivo(imovel.quartos),
@@ -90,14 +126,6 @@ export async function fetchPreferenciasInteresseFromImovel(
 
   if (!imovel) return null;
 
-  const valor =
-    imovel.finalidade === "venda" ? imovel.valor_venda : imovel.valor_locacao;
-
-  let faixa: { min: number; max: number } | null = null;
-  if (valor != null) {
-    const delta = valor * (faixaValorPercent / 100);
-    faixa = { min: Math.round(valor - delta), max: Math.round(valor + delta) };
-  }
-
+  const faixa = calcularFaixaValorFromImovel(imovel, faixaValorPercent);
   return buildPreferenciasFromImovel(imovel, faixa);
 }

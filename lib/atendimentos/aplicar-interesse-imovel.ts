@@ -6,6 +6,7 @@ import type { ImovelSearchResult } from "@/components/atendimentos/ImovelInteres
 import { calcularFaixaValorImovel } from "@/lib/actions/atendimentos";
 import {
   buildPreferenciasFromImovel,
+  calcularFaixaValorFromImovel,
   type PreferenciasInteresseFromImovel,
 } from "@/lib/atendimentos/interesse-from-imovel";
 
@@ -55,16 +56,21 @@ export function interesseFormStateFromImovel(
   return preferenciasToFormState(buildPreferenciasFromImovel(imovel, faixa));
 }
 
-export function useAplicarInteresseFromImovel() {
+export function useAplicarInteresseFromImovel(faixaValorPercent = 20) {
   const [isPending, startTransition] = useTransition();
 
   function aplicar(
     imovel: ImovelSearchResult,
     onApply: (state: InteresseFormState) => void,
   ) {
+    const faixaLocal = calcularFaixaValorFromImovel(imovel, faixaValorPercent);
+    onApply(interesseFormStateFromImovel(imovel, faixaLocal));
+
     startTransition(async () => {
-      const faixa = await calcularFaixaValorImovel(imovel.id);
-      onApply(interesseFormStateFromImovel(imovel, faixa));
+      const faixaServidor = await calcularFaixaValorImovel(imovel.id);
+      if (!faixaServidor) return;
+
+      onApply(interesseFormStateFromImovel(imovel, faixaServidor));
     });
   }
 

@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { MapPin } from "lucide-react";
 
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { FaleComCorretorCard } from "@/components/site/FaleComCorretorCard";
 import { ImovelGaleriaPublica } from "@/components/site/ImovelGaleriaPublica";
@@ -10,9 +11,11 @@ import { ImovelMapa } from "@/components/site/ImovelMapa";
 import { SiteImovelDetalheBackButton } from "@/components/site/SiteImovelDetalheBackButton";
 import {
   deveExibirMapaPublico,
+  formatCurrency,
   formatEndereco,
   getCapaUrl,
   getFinalidadeLabel,
+  getImovelCodigoSite,
   getTipoLabel,
   getValorExibicao,
 } from "@/lib/site/format";
@@ -31,6 +34,14 @@ function buildAbsoluteUrl(path: string): string {
   return `https://${mainDomain}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+function formatValorSecundario(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "R$ —";
+  }
+
+  return formatCurrency(value);
+}
+
 export async function SiteImovelDetalheContent({
   corretor,
   imovel,
@@ -40,6 +51,9 @@ export async function SiteImovelDetalheContent({
   const endereco = formatEndereco(imovel);
   const preco = imovel.finalidade === "venda" ? imovel.valor_venda : imovel.valor_locacao;
   const exibirLocalizacao = (imovel.exibir_endereco_site ?? "apenas_bairro") !== "oculto";
+  const titulo = imovel.titulo ?? "Imóvel disponível";
+  const codigo = getImovelCodigoSite(imovel);
+  const hasMap = deveExibirMapaPublico(imovel);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -114,37 +128,83 @@ export async function SiteImovelDetalheContent({
 
         <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-8">
-            <section className="min-w-0">
-              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="text-sm font-medium uppercase tracking-wide"
-                    style={{ color: "var(--color-secondary)" }}
-                  >
-                    {getFinalidadeLabel(imovel.finalidade)} · {getTipoLabel(imovel.tipo)}
-                  </p>
-                  <h1 className="mt-2 break-words text-2xl font-bold text-primary sm:text-3xl">
-                    {imovel.titulo ?? "Imóvel disponível"}
-                  </h1>
-                  {endereco ? (
-                    <p className="mt-3 inline-flex max-w-full items-start gap-2 break-words text-muted-foreground">
-                      <MapPin className="mt-0.5 size-4 shrink-0" />
-                      <span>{endereco}</span>
-                    </p>
-                  ) : null}
-                </div>
-                <p className="shrink-0 text-xl font-bold text-primary sm:text-2xl">
-                  {getValorExibicao(imovel)}
-                </p>
-              </div>
-            </section>
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
+              <div className="flex min-w-0 flex-1 flex-col gap-6">
+                <Card>
+                  <CardContent className="space-y-4 pt-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-sm text-muted-foreground">{getTipoLabel(imovel.tipo)}</span>
+                      <p className="shrink-0 text-lg font-medium text-muted-foreground">{codigo}</p>
+                    </div>
 
-            <ImovelStats
-              imovel={imovel}
-              variant="site-detail"
-              showAreaTotal
-              iconClassName="text-primary"
-            />
+                    <h1 className="break-words text-xl font-semibold text-primary md:text-2xl">{titulo}</h1>
+
+                    <ImovelStats
+                      imovel={imovel}
+                      variant="detail-prominent"
+                      showAreaTotal
+                      iconClassName="text-primary"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Valores</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {getFinalidadeLabel(imovel.finalidade)}
+                        </p>
+                        <p className="text-3xl font-black tracking-tight text-primary md:text-4xl">
+                          {getValorExibicao(imovel)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-x-8 gap-y-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Condomínio</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            {formatValorSecundario(imovel.valor_condominio)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">IPTU</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            {formatValorSecundario(imovel.valor_iptu)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="flex min-w-0 flex-1 flex-col">
+                <CardHeader className="pb-3">
+                  <CardTitle>Localização</CardTitle>
+                </CardHeader>
+                <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+                  <div className="flex shrink-0 items-start gap-2 text-sm">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <p>{endereco || "Endereço não informado"}</p>
+                  </div>
+                  {hasMap ? (
+                    <div className="min-h-[200px] flex-1 lg:min-h-0">
+                      <ImovelMapa
+                        fill
+                        latitude={imovel.latitude!}
+                        longitude={imovel.longitude!}
+                        endereco={endereco}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Mapa indisponível para este imóvel.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
             {imovel.descricao ? (
               <section className="min-w-0">
@@ -168,17 +228,6 @@ export async function SiteImovelDetalheContent({
                     </li>
                   ))}
                 </ul>
-              </section>
-            ) : null}
-
-            {deveExibirMapaPublico(imovel) ? (
-              <section>
-                <h2 className="mb-4 text-xl font-semibold text-primary">Localização</h2>
-                <ImovelMapa
-                  latitude={imovel.latitude!}
-                  longitude={imovel.longitude!}
-                  endereco={endereco}
-                />
               </section>
             ) : null}
           </div>

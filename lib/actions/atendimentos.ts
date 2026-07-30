@@ -256,15 +256,26 @@ export async function registrarAuditoria(
   const corretor = await getCorretorForUser();
   if (!corretor) return;
 
-  const perfil = perfilId === undefined ? await getPerfilForUser() : null;
+  let perfilIdFinal: string | null = null;
+  if (perfilId !== undefined) {
+    perfilIdFinal = perfilId;
+  } else {
+    const perfil = await getPerfilForUser(corretor.id);
+    perfilIdFinal = perfil?.id ?? null;
+  }
+
   const supabase = await createClient();
-  await supabase.from("auditoria_atendimento").insert({
+  const { error } = await supabase.from("auditoria_atendimento").insert({
     lead_id: leadId,
     corretor_id: corretor.id,
-    perfil_id: perfilId ?? perfil?.id ?? null,
+    perfil_id: perfilIdFinal,
     acao,
     detalhes: detalhes ?? null,
   });
+
+  if (error) {
+    console.error("[registrarAuditoria]", error);
+  }
 }
 
 async function avancarEtapaLead(
@@ -851,6 +862,21 @@ export interface UpdateAtendimentoDadosInput {
   observacoes?: string | null;
 }
 
+async function executarUpdateAtendimentoDados(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  leadId: string,
+  corretorId: string,
+  payload: Record<string, unknown>,
+) {
+  const { error } = await supabase
+    .from("leads")
+    .update(payload)
+    .eq("id", leadId)
+    .eq("corretor_id", corretorId);
+
+  return error;
+}
+
 export async function updateAtendimentoDados(
   leadId: string,
   input: UpdateAtendimentoDadosInput,
@@ -902,15 +928,21 @@ export async function updateAtendimentoDados(
     payload.etapa = input.etapa;
   }
 
-  const { error } = await supabase
-    .from("leads")
-    .update(payload)
-    .eq("id", leadId)
-    .eq("corretor_id", corretor.id);
+  let updateError = await executarUpdateAtendimentoDados(supabase, leadId, corretor.id, payload);
 
-  if (error) {
-    console.error("[updateAtendimentoDados]", error);
-    return { error: error.message || "Não foi possível salvar." };
+  if (updateError) {
+    const admin = await createTenantDataClient();
+    if (admin) {
+      const retryError = await executarUpdateAtendimentoDados(admin, leadId, corretor.id, payload);
+      if (!retryError) {
+        updateError = null;
+      }
+    }
+  }
+
+  if (updateError) {
+    console.error("[updateAtendimentoDados]", updateError);
+    return { error: updateError.message || "Não foi possível salvar." };
   }
 
   if (input.imovel_id !== undefined && input.imovel_id) {

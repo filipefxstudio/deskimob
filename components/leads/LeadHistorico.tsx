@@ -6,9 +6,10 @@ import {
   Handshake,
   Mail,
   MapPin,
-  MessageCircle,
   Phone,
 } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import type { LeadInteracao, TipoInteracao } from "@/types";
 import { formatDateTimeBrasilia } from "@/lib/dates/format";
@@ -23,7 +24,7 @@ function getIcon(tipo: TipoInteracao) {
     case "ligacao":
       return Phone;
     case "mensagem_whatsapp":
-      return MessageCircle;
+      return WhatsAppIcon;
     case "visita":
       return MapPin;
     case "email":

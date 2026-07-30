@@ -6,9 +6,10 @@ import { useState, useTransition } from "react";
 import {
   Check,
   MapPin,
-  MessageCircle,
   Phone,
 } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
@@ -417,7 +418,7 @@ export function ImovelDetalhes({
                       {waLink ? (
                         <Button variant="outline" size="sm" asChild>
                           <a href={waLink} target="_blank" rel="noopener noreferrer">
-                            <MessageCircle data-icon="inline-start" />
+                            <WhatsAppIcon data-icon="inline-start" className="size-4" />
                             WhatsApp
                           </a>
                         </Button>

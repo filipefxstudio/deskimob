@@ -1,13 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowUpDown, MessageCircle, MoreVertical, Phone } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { ArrowUpDown } from "lucide-react";
 
-import { ActionMenuIcon } from "@/components/ui/action-menu-item";
-import { ACTION_MENU_DESTRUCTIVE_CLASS } from "@/lib/ui/action-menu-icons";
-import { cn } from "@/lib/utils";
-
+import { AtendimentoCardActions } from "@/components/atendimentos/AtendimentoCardActions";
 import { AtendimentoModals } from "@/components/atendimentos/AtendimentoModals";
 import { NovoAtendimentoTrigger } from "@/components/atendimentos/NovoAtendimentoTrigger";
 import { FunilKanban } from "@/components/dashboard/FunilKanban";
@@ -41,7 +38,6 @@ import {
 } from "@/lib/constants/config";
 import { ETAPA_FUNIL_ORDEM } from "@/lib/leads/etapa-order";
 import { isLeadAtivo } from "@/lib/leads/format";
-import { buildTelLink, buildWhatsAppLink } from "@/lib/leads/format";
 import { marcarContatoFeito, qualificarLead } from "@/lib/actions/atendimentos";
 import { toast } from "@/hooks/use-toast";
 import { contemNormalizado } from "@/lib/utils/normalizar";
@@ -339,187 +335,6 @@ export function AtendimentosPage({
           onExcluirOpenChange={setExcluirOpen}
         />
       ) : null}
-    </div>
-  );
-}
-
-function AtendimentoCardActions({
-  lead,
-  disabled,
-  podeTransferir,
-  podeExcluir,
-  onContatoFeito,
-  onQualificar,
-  onDescartar,
-  onTransferir,
-  onExcluir,
-}: {
-  lead: Lead;
-  disabled: boolean;
-  podeTransferir: boolean;
-  podeExcluir: boolean;
-  onContatoFeito: () => void;
-  onQualificar: () => void;
-  onDescartar: () => void;
-  onTransferir: () => void;
-  onExcluir: () => void;
-}) {
-  const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const telLink = buildTelLink(lead.telefone);
-  const waLink = buildWhatsAppLink(lead.telefone);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2">
-      {telLink ? (
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.location.href = telLink;
-          }}
-        >
-          <Phone className="size-3.5" />
-          Ligar
-        </button>
-      ) : null}
-      {waLink ? (
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-lg border border-[#2DC653]/40 bg-[#2DC653]/10 px-3 py-1.5 text-xs font-medium text-[#1a7a34]"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.open(waLink, "_blank", "noopener,noreferrer");
-          }}
-        >
-          <MessageCircle className="size-3.5" />
-          WhatsApp
-        </button>
-      ) : null}
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          className="inline-flex items-center rounded-lg border border-border px-2 py-1.5"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setMenuOpen((open) => !open);
-          }}
-        >
-          <MoreVertical className="size-3.5" />
-        </button>
-        {menuOpen ? (
-          <div className="absolute right-0 z-10 mt-1 min-w-36 rounded-lg border border-border bg-card py-1 shadow-lg">
-            <button
-              type="button"
-              disabled={disabled}
-              className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                onContatoFeito();
-              }}
-            >
-              <ActionMenuIcon action="contatoFeito" className="size-3.5" />
-              Contato feito
-            </button>
-            <button
-              type="button"
-              disabled={disabled}
-              className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                onQualificar();
-              }}
-            >
-              <ActionMenuIcon action="qualificar" className="size-3.5" />
-              Qualificar
-            </button>
-            {podeTransferir ? (
-              <button
-                type="button"
-                className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onTransferir();
-                }}
-              >
-                <ActionMenuIcon action="transferir" className="size-3.5" />
-                Transferir
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className={cn(
-                "flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted",
-                ACTION_MENU_DESTRUCTIVE_CLASS,
-              )}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                onDescartar();
-              }}
-            >
-              <ActionMenuIcon action="descartar" className="size-3.5" />
-              Descartar
-            </button>
-            {podeExcluir ? (
-              <button
-                type="button"
-                className={cn(
-                  "flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted",
-                  ACTION_MENU_DESTRUCTIVE_CLASS,
-                )}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onExcluir();
-                }}
-              >
-                <ActionMenuIcon action="excluir" className="size-3.5" />
-                Excluir atendimento
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                router.push(`/dashboard/atendimentos/${lead.id}`);
-              }}
-            >
-              <ActionMenuIcon action="abrirAtendimento" className="size-3.5" />
-              Abrir atendimento
-            </button>
-          </div>
-        ) : null}
-      </div>
     </div>
   );
 }

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Loader2, MessageCircle, Phone, Plus, Search } from "lucide-react";
+import { Loader2, Phone, Plus, Search } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import { TemperaturaBadge } from "@/components/leads/TemperaturaBadge";
 import { Button } from "@/components/ui/button";
@@ -217,7 +219,7 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded-lg border border-[#2DC653]/40 bg-[#2DC653]/10 px-3 py-1.5 text-xs text-[#1a7a34]"
               >
-                <MessageCircle className="size-3.5" /> WhatsApp
+                <WhatsAppIcon className="size-3.5" /> WhatsApp
               </a>
             ) : null}
           </div>

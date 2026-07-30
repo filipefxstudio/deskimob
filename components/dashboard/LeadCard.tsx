@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { Draggable } from "@hello-pangea/dnd";
-import { Bot, Globe, MessageCircle } from "lucide-react";
+import { Bot, Globe } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { CSSProperties } from "react";
 
 import { TemperaturaBadge } from "@/components/leads/TemperaturaBadge";
@@ -21,7 +23,7 @@ interface LeadCardProps {
 
 function OrigemIcon({ origem }: { origem: string }) {
   if (origem === "whatsapp") {
-    return <MessageCircle className="size-3" />;
+    return <WhatsAppIcon className="size-3" />;
   }
 
   return <Globe className="size-3" />;

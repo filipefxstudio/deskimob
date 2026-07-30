@@ -1,6 +1,8 @@
 "use client";
 
-import { Loader2, MessageCircle, Send, X } from "lucide-react";
+import { Loader2, Send, X } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -60,7 +62,7 @@ export function WhatsAppWidget() {
         <div className="mb-3 w-[min(100vw-2.5rem,320px)] overflow-hidden rounded-2xl border border-border bg-white shadow-2xl">
           <div className="flex items-center justify-between bg-[#25D366] px-4 py-3 text-white">
             <div className="flex items-center gap-2">
-              <MessageCircle className="size-5" />
+              <WhatsAppIcon className="size-5" />
               <span className="text-sm font-semibold">Chat com o corretor</span>
             </div>
             <button
@@ -136,7 +138,7 @@ export function WhatsAppWidget() {
           "inline-flex size-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#1da851]",
         )}
       >
-        <MessageCircle className="size-7" />
+        <WhatsAppIcon className="size-7" />
       </button>
     </div>
   );

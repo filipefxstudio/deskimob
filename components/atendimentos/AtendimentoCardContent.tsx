@@ -11,9 +11,8 @@ import {
 import { TemperaturaBadge } from "@/components/leads/TemperaturaBadge";
 import { ImovelStatItem, ImovelStatsRow } from "@/components/imoveis/ImovelStatsRow";
 import { ETAPA_LEAD_LABELS } from "@/lib/constants/leads";
-import { formatTipoBairrosInteresse } from "@/lib/atendimentos/interesse-from-imovel";
 import { etapaParaSelectAtendimento, formatTelefoneLead } from "@/lib/leads/format";
-import { formatCurrency } from "@/lib/site/format";
+import { formatCurrency, getTipoLabel } from "@/lib/site/format";
 import type { Lead } from "@/types";
 
 interface AtendimentoCardContentProps {
@@ -35,6 +34,12 @@ function formatFaixaValorCard(lead: Lead): string | null {
     return `Até ${formatCurrency(max)}`;
   }
   return null;
+}
+
+function formatTipoInteresse(lead: Lead): string | null {
+  const tipo = lead.tipo_imovel_busca?.trim();
+  if (!tipo) return null;
+  return getTipoLabel(tipo);
 }
 
 function LeadInteresseStats({ lead }: { lead: Lead }) {
@@ -71,76 +76,73 @@ export function AtendimentoCardContent({
 }: AtendimentoCardContentProps) {
   const responsavelNome =
     lead.perfil?.nome ?? perfis.find((p) => p.id === lead.perfil_id)?.nome ?? null;
-  const tipoBairros = formatTipoBairrosInteresse(lead);
+  const tipoLabel = formatTipoInteresse(lead);
   const faixaValor = formatFaixaValorCard(lead);
   const etapaExibicao = etapaParaSelectAtendimento(lead.etapa);
+  const nome = lead.nome?.trim() || "Atendimento sem nome";
+  const telefone = formatTelefoneLead(lead.telefone);
 
   return (
     <>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {lead.codigo_atendimento ? (
-              <span className="font-mono text-xs text-muted-foreground">
-                {lead.codigo_atendimento}
-              </span>
-            ) : null}
-            <p className="truncate font-semibold text-primary">
-              {lead.nome?.trim() || "Atendimento sem nome"}
-            </p>
-          </div>
-        </div>
-        <TemperaturaBadge temperatura={lead.temperatura} className="shrink-0" />
-      </div>
-
-      <p className="mt-1 text-sm text-muted-foreground">{formatTelefoneLead(lead.telefone)}</p>
-
-      <p className="mt-1 text-xs text-muted-foreground">
-        {responsavelNome ? (
+      <p className="truncate text-sm">
+        <span className="font-semibold text-primary">{nome}</span>
+        {telefone ? (
           <>
-            Corretor: <span className="font-medium text-foreground">{responsavelNome}</span>
+            <span className="text-muted-foreground"> - </span>
+            <span className="font-normal text-muted-foreground">{telefone}</span>
           </>
-        ) : (
-          "Corretor responsável não definido"
-        )}
+        ) : null}
       </p>
 
-      {tipoBairros ? (
-        <p className="mt-2 truncate text-sm text-foreground" title={tipoBairros}>
-          {tipoBairros}
+      {tipoLabel || faixaValor ? (
+        <p className="mt-1 truncate text-sm text-muted-foreground">
+          {tipoLabel ? <span>{tipoLabel}</span> : null}
+          {tipoLabel && faixaValor ? <span> - </span> : null}
+          {faixaValor ? (
+            <span className="font-semibold text-foreground">{faixaValor}</span>
+          ) : null}
         </p>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Interesse não informado</p>
+        <p className="mt-1 text-sm text-muted-foreground">Interesse não informado</p>
       )}
-
-      {faixaValor ? (
-        <p className="mt-1 text-sm font-medium text-primary">{faixaValor}</p>
-      ) : null}
 
       <LeadInteresseStats lead={lead} />
 
-      {footer ? (
-        <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-            {ETAPA_LEAD_LABELS[etapaExibicao]}
-          </span>
-          <div
-            className="flex shrink-0 items-center gap-2"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
-          >
-            {footer}
+      <p className="mt-2 truncate text-xs text-muted-foreground">
+        {lead.codigo_atendimento ? (
+          <span className="font-mono">{lead.codigo_atendimento}</span>
+        ) : null}
+        {lead.codigo_atendimento && responsavelNome ? <span> | </span> : null}
+        {responsavelNome ? (
+          <>
+            Corretor: <span className="text-foreground">{responsavelNome}</span>
+          </>
+        ) : !lead.codigo_atendimento ? (
+          "Corretor responsável não definido"
+        ) : null}
+      </p>
+
+      <div className="mt-3 border-t border-border/60 pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <TemperaturaBadge temperatura={lead.temperatura} />
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+              {ETAPA_LEAD_LABELS[etapaExibicao]}
+            </span>
           </div>
+          {footer ? (
+            <div
+              className="flex shrink-0 items-center"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+            >
+              {footer}
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <div className="mt-4 border-t border-border/60 pt-3">
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-            {ETAPA_LEAD_LABELS[etapaExibicao]}
-          </span>
-        </div>
-      )}
+      </div>
     </>
   );
 }

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import {
   ChevronDown,
-  MessageCircle,
   MoreVertical,
   Phone,
 } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import { ActionMenuItem } from "@/components/ui/action-menu-item";
 
@@ -103,7 +104,7 @@ export function AtendimentoHeader({
             {waLink ? (
               <Button variant="outline" size="sm" asChild>
                 <a href={waLink} target="_blank" rel="noopener noreferrer">
-                  <MessageCircle data-icon="inline-start" />
+                  <WhatsAppIcon data-icon="inline-start" className="size-4" />
                   WhatsApp
                 </a>
               </Button>

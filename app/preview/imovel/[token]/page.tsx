@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
   MapPin,
-  MessageCircle,
 } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import { ImovelStats } from "@/components/imoveis/ImovelStats";
 
@@ -105,7 +106,7 @@ export default async function PreviewImovelPage({ params }: PreviewPageProps) {
           <div className="mx-auto flex max-w-4xl justify-center">
             <Button asChild size="lg" className="w-full max-w-md bg-[#2DC653] hover:bg-[#25a847]">
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <MessageCircle data-icon="inline-start" />
+                <WhatsAppIcon data-icon="inline-start" className="size-4" />
                 Falar no WhatsApp
               </a>
             </Button>

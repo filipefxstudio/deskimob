@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
 
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { SocialIcons } from "@/components/site/SocialIcons";
 import { sitePath } from "@/lib/site/paths";
 import { getSiteCreci, getSiteEmail, getSiteNomeExibicao, getSocialLinks } from "@/lib/site/social";
@@ -54,6 +55,7 @@ export function FooterSite({ corretor, basePath }: FooterSiteProps) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 hover:text-accent"
                 >
+                  <WhatsAppIcon className="size-4" />
                   WhatsApp
                 </a>
               </li>

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
+import { Clock, Mail, MapPin, Phone } from "lucide-react";
+
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 import { Button } from "@/components/ui/button";
 import { sitePath } from "@/lib/site/paths";
@@ -93,7 +95,7 @@ export function SiteSobreContent({ corretor, basePath }: SiteSobreContentProps) 
           {whatsappUrl ? (
             <Button asChild className="mt-6 w-full bg-[#25D366] hover:bg-[#1da851]">
               <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="size-4" />
+                <WhatsAppIcon className="size-4" />
                 WhatsApp
               </a>
             </Button>

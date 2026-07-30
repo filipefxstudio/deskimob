@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { MapPin } from "lucide-react";
 
@@ -8,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FaleComCorretorCard } from "@/components/site/FaleComCorretorCard";
 import { ImovelGaleriaPublica } from "@/components/site/ImovelGaleriaPublica";
 import { ImovelMapa } from "@/components/site/ImovelMapa";
-import { SiteImovelDetalheBackButton } from "@/components/site/SiteImovelDetalheBackButton";
+import { SiteImovelDetalheStickyBar } from "@/components/site/SiteImovelDetalheStickyBar";
 import {
   deveExibirMapaPublico,
   formatCurrency,
@@ -115,39 +114,34 @@ export async function SiteImovelDetalheContent({
         }
       />
 
-      <div className="mx-auto min-w-0 max-w-7xl overflow-x-hidden px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-8">
-        <SiteImovelDetalheBackButton />
+      <SiteImovelDetalheStickyBar
+        imoveisHref={sitePath(basePath, "/imoveis")}
+        titulo={titulo}
+      />
 
-        <div className="mb-6 hidden text-sm text-muted-foreground sm:block">
-          <Link href={sitePath(basePath, "/imoveis")} className="hover:text-primary">
-            Imóveis
-          </Link>
-          <span className="mx-2">/</span>
-          <span className="break-words">{imovel.titulo ?? "Detalhes"}</span>
-        </div>
-
+      <div className="mx-auto min-w-0 max-w-7xl px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-8">
         <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0 space-y-8">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-              <div className="flex min-w-0 flex-1 flex-col gap-6">
-                <Card>
-                  <CardContent className="space-y-4 pt-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="text-sm text-muted-foreground">{getTipoLabel(imovel.tipo)}</span>
-                      <p className="shrink-0 text-lg font-medium text-muted-foreground">{codigo}</p>
-                    </div>
+            <div className="flex flex-col gap-6">
+              <Card>
+                <CardContent className="space-y-4 pt-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="text-sm text-muted-foreground">{getTipoLabel(imovel.tipo)}</span>
+                    <p className="shrink-0 text-lg font-medium text-muted-foreground">{codigo}</p>
+                  </div>
 
-                    <h1 className="break-words text-xl font-semibold text-primary md:text-2xl">{titulo}</h1>
+                  <h1 className="break-words text-xl font-semibold text-primary md:text-2xl">{titulo}</h1>
 
-                    <ImovelStats
-                      imovel={imovel}
-                      variant="detail-prominent"
-                      showAreaTotal
-                      iconClassName="text-primary"
-                    />
-                  </CardContent>
-                </Card>
+                  <ImovelStats
+                    imovel={imovel}
+                    variant="detail-prominent"
+                    showAreaTotal
+                    iconClassName="text-primary"
+                  />
+                </CardContent>
+              </Card>
 
+              <div className="grid min-w-0 gap-6 lg:grid-cols-2 lg:items-stretch">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Valores</CardTitle>
@@ -179,31 +173,31 @@ export async function SiteImovelDetalheContent({
                     </div>
                   </CardContent>
                 </Card>
-              </div>
 
-              <Card className="flex min-w-0 flex-1 flex-col">
-                <CardHeader className="pb-3">
-                  <CardTitle>Localização</CardTitle>
-                </CardHeader>
-                <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
-                  <div className="flex shrink-0 items-start gap-2 text-sm">
-                    <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    <p>{endereco || "Endereço não informado"}</p>
-                  </div>
-                  {hasMap ? (
-                    <div className="min-h-[200px] flex-1 lg:min-h-0">
-                      <ImovelMapa
-                        fill
-                        latitude={imovel.latitude!}
-                        longitude={imovel.longitude!}
-                        endereco={endereco}
-                      />
+                <Card className="flex min-w-0 flex-col">
+                  <CardHeader className="pb-3">
+                    <CardTitle>Localização</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
+                    <div className="flex shrink-0 items-start gap-2 text-sm">
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <p>{endereco || "Endereço não informado"}</p>
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Mapa indisponível para este imóvel.</p>
-                  )}
-                </CardContent>
-              </Card>
+                    {hasMap ? (
+                      <div className="min-h-[200px] flex-1">
+                        <ImovelMapa
+                          fill
+                          latitude={imovel.latitude!}
+                          longitude={imovel.longitude!}
+                          endereco={endereco}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Mapa indisponível para este imóvel.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             {imovel.descricao ? (
@@ -232,7 +226,11 @@ export async function SiteImovelDetalheContent({
             ) : null}
           </div>
 
-          <FaleComCorretorCard corretor={corretor} imovel={imovel} className="min-w-0" />
+          <FaleComCorretorCard
+            corretor={corretor}
+            imovel={imovel}
+            className="min-w-0 lg:top-44"
+          />
         </div>
       </div>
     </>

@@ -8,15 +8,18 @@ import {
   queueListingScrollRestore,
   readListingReturnState,
 } from "@/lib/site/listing-return";
+import { cn } from "@/lib/utils";
 
 import { useSite } from "./SiteProvider";
 
 interface SiteImovelDetalheBackButtonProps {
   fallbackHref?: string;
+  className?: string;
 }
 
 export function SiteImovelDetalheBackButton({
   fallbackHref = "/imoveis",
+  className,
 }: SiteImovelDetalheBackButtonProps) {
   const router = useRouter();
   const { link } = useSite();
@@ -43,7 +46,7 @@ export function SiteImovelDetalheBackButton({
       type="button"
       variant="outline"
       size="sm"
-      className="mb-4 gap-2"
+      className={cn("mb-4 gap-2", className)}
       onClick={handleBack}
     >
       <ArrowLeft className="size-4" aria-hidden="true" />

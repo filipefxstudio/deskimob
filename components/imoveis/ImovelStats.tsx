@@ -33,7 +33,9 @@ function ResponsiveStatLabel({
   suffix: string;
   variant: ImovelStatsVariant;
 }) {
-  if (variant !== "detail-card") {
+  const isResponsive = variant === "detail-card" || variant === "detail-prominent";
+
+  if (!isResponsive) {
     return (
       <>
         {value}
@@ -44,8 +46,10 @@ function ResponsiveStatLabel({
 
   return (
     <>
-      <span className="font-medium text-foreground">{value}</span>
-      <span className="hidden min-[420px]:inline">{suffix}</span>
+      <span className={variant === "detail-prominent" ? "text-foreground" : "font-medium text-foreground"}>
+        {value}
+      </span>
+      <span className="hidden min-[480px]:inline">{suffix}</span>
     </>
   );
 }
@@ -59,21 +63,19 @@ export function ImovelStats({
 }: ImovelStatsProps) {
   const iconSize = variant;
   const isProminent = variant === "detail-prominent";
-  const isDetailCard = variant === "detail-card";
+  const isResponsive = variant === "detail-card" || variant === "detail-prominent";
 
   const stats = [
     showAreaTotal && imovel.area_total
       ? {
           key: "area_total",
           icon: <IconAreaTotal size={iconSize} className={iconClassName} />,
-          label: isDetailCard ? (
+          label: isResponsive ? (
             <ResponsiveStatLabel
               variant={variant}
-              value={String(imovel.area_total)}
-              suffix=" m² tot."
+              value={`${imovel.area_total} m²`}
+              suffix=" tot."
             />
-          ) : isProminent ? (
-            `${imovel.area_total} m² tot.`
           ) : (
             `${imovel.area_total} m² total`
           ),
@@ -83,14 +85,12 @@ export function ImovelStats({
       ? {
           key: "area_util",
           icon: <IconAreaUtil size={iconSize} className={iconClassName} />,
-          label: isDetailCard ? (
+          label: isResponsive ? (
             <ResponsiveStatLabel
               variant={variant}
-              value={String(imovel.area_util)}
-              suffix=" m² útil"
+              value={`${imovel.area_util} m²`}
+              suffix=" útil"
             />
-          ) : isProminent ? (
-            `${imovel.area_util} m² útil`
           ) : (
             `${imovel.area_util} m²`
           ),
@@ -100,7 +100,7 @@ export function ImovelStats({
       ? {
           key: "quartos",
           icon: <IconQuartos size={iconSize} className={iconClassName} />,
-          label: isDetailCard ? (
+          label: isResponsive ? (
             <ResponsiveStatLabel
               variant={variant}
               value={String(imovel.quartos)}
@@ -117,7 +117,7 @@ export function ImovelStats({
       ? {
           key: "suites",
           icon: <IconSuite size={iconSize} className={iconClassName} />,
-          label: isDetailCard ? (
+          label: isResponsive ? (
             <ResponsiveStatLabel
               variant={variant}
               value={String(imovel.suites)}
@@ -134,7 +134,7 @@ export function ImovelStats({
       ? {
           key: "banheiros",
           icon: <IconBanheiro size={iconSize} className={iconClassName} />,
-          label: isDetailCard ? (
+          label: isResponsive ? (
             <ResponsiveStatLabel
               variant={variant}
               value={String(imovel.banheiros)}
@@ -151,7 +151,7 @@ export function ImovelStats({
       ? {
           key: "vagas",
           icon: <IconVagas size={iconSize} className={iconClassName} />,
-          label: isDetailCard ? (
+          label: isResponsive ? (
             <ResponsiveStatLabel
               variant={variant}
               value={String(imovel.vagas)}

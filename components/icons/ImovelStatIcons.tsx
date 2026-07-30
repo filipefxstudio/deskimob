@@ -11,7 +11,7 @@ const sizeClass = {
   card: "size-4",
   detail: "size-4",
   "site-detail": "size-5",
-  "detail-prominent": "size-8",
+  "detail-prominent": "size-7 sm:size-8",
   "detail-card": "size-5 sm:size-6 md:size-7 lg:size-8",
 } as const;
 

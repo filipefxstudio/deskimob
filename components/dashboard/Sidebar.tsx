@@ -92,11 +92,11 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
           <SidebarPanel />
           <div
             className={cn(
-              "flex min-h-screen flex-col pt-10 transition-[margin] duration-200 ease-in-out",
+              "mt-10 flex h-[calc(100dvh-2.5rem)] min-h-0 flex-col transition-[margin] duration-200 ease-in-out",
               collapsed ? "md:ml-[52px]" : "md:ml-60",
             )}
           >
-            <main className="flex-1 overflow-y-auto" data-dashboard-scroll>
+            <main className="min-h-0 flex-1 overflow-y-auto" data-dashboard-scroll>
               {children}
             </main>
           </div>

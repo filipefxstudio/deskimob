@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import {
   Check,
   MapPin,
@@ -103,7 +103,7 @@ export function ImovelDetalhes({
   const [isPending, startTransition] = useTransition();
   const [imovel, setImovel] = useState(initialImovel);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = toolbarRef.current;
     if (!element) {
       return;
@@ -257,7 +257,14 @@ export function ImovelDetalhes({
         }
       />
 
-      <div className="space-y-6 p-4 md:p-6">
+      <div
+        className="space-y-6 p-4 md:p-6"
+        style={
+          toolbarHeight > 0
+            ? ({ "--imovel-toolbar-height": `${toolbarHeight}px` } as CSSProperties)
+            : undefined
+        }
+      >
         <ImovelDetalheToolbar
           codigo={codigo}
           actions={acoesToolbar}
@@ -360,9 +367,8 @@ export function ImovelDetalhes({
         <Tabs defaultValue="detalhes">
           <TabsList
             className={cn(
-              "sticky z-20 -mx-4 h-auto w-auto justify-start overflow-x-auto rounded-none border-b border-border/80 bg-background/95 p-0 px-4 backdrop-blur md:-mx-6 md:px-6",
+              "sticky top-[var(--imovel-toolbar-height,4.5rem)] z-20 -mx-4 h-auto w-auto justify-start overflow-x-auto rounded-none border-b border-border/80 bg-background/95 p-0 px-4 backdrop-blur md:-mx-6 md:px-6",
             )}
-            style={{ top: toolbarHeight > 0 ? toolbarHeight : undefined }}
           >
             <TabsTrigger
               value="detalhes"

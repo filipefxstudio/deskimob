@@ -282,7 +282,7 @@ export function ImovelDetalhes({
 
           {aguardandoAprovacao ? (
             <p className="text-sm font-medium text-amber-600">
-              {labelStatusAprovacao(imovel.status_aprovacao)}
+              {labelStatusAprovacao("aguardando_aprovacao")}
             </p>
           ) : null}
         </div>

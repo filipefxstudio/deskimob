@@ -6,6 +6,7 @@ import {
 } from "@/lib/imoview/import-target";
 import { mapRowToImovel } from "@/lib/imoview/map-row-to-imovel";
 import { isPhotoEligible, normalizeCodigo } from "@/lib/imoview/parse-xls";
+import { syncCaptadoresFromRow } from "@/lib/imoview/sync-captadores";
 import { ensureUniqueImovelSlug, imovelExistsByCodigo } from "@/lib/imoview/slug-unique";
 import type { ImportRowResult, ImportSingleOptions, XlsRow } from "@/lib/imoview/types";
 import { generateImovelSlug } from "@/lib/utils";
@@ -84,7 +85,18 @@ export async function importSingleImovel(
       };
     }
 
+    const captadorSync = await syncCaptadoresFromRow(
+      admin,
+      imovel.id,
+      codigo,
+      row,
+      target,
+    );
+
     const messages = [...warnings];
+    if (captadorSync.added.length > 0) {
+      messages.push(`Captadores externos: ${captadorSync.added.join(", ")}`);
+    }
     if (clienteResult.semTelefone) {
       messages.push("Proprietário sem telefone — cliente_id null.");
     }

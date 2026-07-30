@@ -25,11 +25,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  calcularFaixaValorImovel,
   createAtendimento,
 } from "@/lib/actions/atendimentos";
-import { FINALIDADE_BUSCA_OPTIONS } from "@/lib/constants/leads";
+import {
+  FINALIDADE_BUSCA_OPTIONS,
+} from "@/lib/constants/leads";
 import type { NovoAtendimentoPrefill } from "@/lib/atendimentos/novo-prefill";
+import {
+  interesseFormStateVazio,
+  useAplicarInteresseFromImovel,
+} from "@/lib/atendimentos/aplicar-interesse-imovel";
 import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import { toast } from "@/hooks/use-toast";
 import type { MidiaOrigem, TipoImovelCustom } from "@/types";
@@ -89,32 +94,35 @@ export function NovoAtendimentoForm({
     [midias],
   );
 
+  const { aplicar: aplicarInteresseFromImovel } = useAplicarInteresseFromImovel();
+
+  function aplicarEstadoInteresse(state: ReturnType<typeof interesseFormStateVazio>) {
+    setFinalidade(state.finalidade);
+    setTipoImovel(state.tipoImovel);
+    setBairros(state.bairros);
+    setQuartos(state.quartos);
+    setSuites(state.suites);
+    setBanheiros(state.banheiros);
+    setVagas(state.vagas);
+    setValorMin(state.valorMin);
+    setValorMax(state.valorMax);
+  }
+
+  function handleImovelSelecionadoChange(imovel: ImovelSearchResult | null) {
+    setImovelSelecionado(imovel);
+    if (!imovel) {
+      aplicarEstadoInteresse(interesseFormStateVazio());
+      return;
+    }
+    aplicarInteresseFromImovel(imovel, aplicarEstadoInteresse);
+  }
+
   useEffect(() => {
     if (perfilId || !perfilAtualId) {
       return;
     }
     setPerfilId(perfilAtualId);
   }, [perfilAtualId, perfilId]);
-
-  useEffect(() => {
-    if (!imovelSelecionado) return;
-    startTransition(async () => {
-      const faixa = await calcularFaixaValorImovel(imovelSelecionado.id);
-      if (faixa) {
-        setValorMin(faixa.min);
-        setValorMax(faixa.max);
-      }
-      if (imovelSelecionado.finalidade === "venda") {
-        setFinalidade("compra");
-      } else if (imovelSelecionado.finalidade === "locacao") {
-        setFinalidade("locacao");
-      }
-      if (imovelSelecionado.tipo) setTipoImovel(imovelSelecionado.tipo);
-      if (imovelSelecionado.bairro && !bairros.includes(imovelSelecionado.bairro)) {
-        setBairros((prev) => [...prev, imovelSelecionado.bairro!]);
-      }
-    });
-  }, [imovelSelecionado]);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -239,7 +247,7 @@ export function NovoAtendimentoForm({
             <h3 className="font-semibold text-primary">Imóvel de interesse</h3>
             <ImovelInteresseAutocomplete
               value={imovelSelecionado}
-              onChange={setImovelSelecionado}
+              onChange={handleImovelSelecionadoChange}
               disabled={isPending}
             />
           </section>

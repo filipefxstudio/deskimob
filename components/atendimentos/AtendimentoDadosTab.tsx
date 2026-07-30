@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 
 import {
   ImovelInteresseAutocomplete,
+  imovelToSearchResult,
   type ImovelSearchResult,
 } from "@/components/atendimentos/ImovelInteresseAutocomplete";
 import { BairrosInteresseInput } from "@/components/atendimentos/BairrosInteresseInput";
@@ -32,12 +33,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  calcularFaixaValorImovel,
   descartarAtendimento,
   desqualificarLead,
   qualificarLead,
   updateAtendimentoDados,
 } from "@/lib/actions/atendimentos";
+import {
+  interesseFormStateVazio,
+  useAplicarInteresseFromImovel,
+} from "@/lib/atendimentos/aplicar-interesse-imovel";
 import { SITUACAO_LEAD_LABELS } from "@/lib/constants/atendimentos";
 import {
   ETAPA_LEAD_LABELS,
@@ -78,22 +82,7 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
   const [qualificado, setQualificado] = useState(isLeadQualificado(lead));
 
   const [imovelInteresse, setImovelInteresse] = useState<ImovelSearchResult | null>(
-    lead.imovel
-      ? {
-          id: lead.imovel.id,
-          titulo: lead.imovel.titulo ?? null,
-          codigo: lead.imovel.codigo ?? null,
-          bairro: lead.imovel.bairro ?? null,
-          logradouro: lead.imovel.logradouro ?? null,
-          cidade: lead.imovel.cidade ?? null,
-          tipo: lead.imovel.tipo ?? null,
-          finalidade: lead.imovel.finalidade ?? null,
-          status: lead.imovel.status ?? null,
-          valor_venda: lead.imovel.valor_venda ?? null,
-          valor_locacao: lead.imovel.valor_locacao ?? null,
-          fotos: lead.imovel.fotos ?? [],
-        }
-      : null,
+    lead.imovel ? imovelToSearchResult(lead.imovel) : null,
   );
 
   const [finalidade, setFinalidade] = useState(lead.finalidade_busca ?? "");
@@ -133,32 +122,29 @@ export function AtendimentoDadosTab({ lead, perfis, tiposImovel, motivos }: Aten
     [tiposImovel],
   );
 
+  const { aplicar: aplicarInteresseFromImovel } = useAplicarInteresseFromImovel();
+
+  function aplicarEstadoInteresse(state: ReturnType<typeof interesseFormStateVazio>) {
+    setFinalidade(state.finalidade);
+    setTipoImovel(state.tipoImovel);
+    setBairros(state.bairros);
+    setQuartos(state.quartos);
+    setSuites(state.suites);
+    setBanheiros(state.banheiros);
+    setVagas(state.vagas);
+    setValorMin(state.valorMin);
+    setValorMax(state.valorMax);
+  }
+
   function handleImovelInteresseChange(imovel: ImovelSearchResult | null) {
     if (!imovel) {
-      setFinalidade("");
-      setTipoImovel("");
-      setBairros([]);
-      setValorMin(null);
-      setValorMax(null);
       setImovelInteresse(null);
+      aplicarEstadoInteresse(interesseFormStateVazio());
       return;
     }
 
     setImovelInteresse(imovel);
-
-    startTransition(async () => {
-      const faixa = await calcularFaixaValorImovel(imovel.id);
-      if (faixa) {
-        setValorMin(faixa.min);
-        setValorMax(faixa.max);
-      }
-      if (imovel.finalidade === "venda") setFinalidade("compra");
-      if (imovel.finalidade === "locacao") setFinalidade("locacao");
-      if (imovel.tipo) setTipoImovel(imovel.tipo);
-      if (imovel.bairro) {
-        setBairros((prev) => (prev.includes(imovel.bairro!) ? prev : [...prev, imovel.bairro!]));
-      }
-    });
+    aplicarInteresseFromImovel(imovel, aplicarEstadoInteresse);
   }
 
   function handleSituacaoChange(nova: SituacaoLead) {

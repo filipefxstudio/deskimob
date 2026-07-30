@@ -129,8 +129,6 @@ export function AtendimentosPage({
   const [transferirOpen, setTransferirOpen] = useState(false);
   const [excluirOpen, setExcluirOpen] = useState(false);
 
-  const showResponsavel = perfis.length > 1;
-
   useEffect(() => {
     if (initialBusca) {
       setSearch(initialBusca);
@@ -285,7 +283,6 @@ export function AtendimentosPage({
         <LeadCardGrid
           leads={filteredLeads}
           basePath="/dashboard/atendimentos"
-          showResponsavel={showResponsavel}
           perfis={perfis}
         >
           {(lead) => (
@@ -308,7 +305,6 @@ export function AtendimentosPage({
         <LeadCardList
           leads={filteredLeads}
           basePath="/dashboard/atendimentos"
-          showResponsavel={showResponsavel}
           perfis={perfis}
         >
           {(lead) => (

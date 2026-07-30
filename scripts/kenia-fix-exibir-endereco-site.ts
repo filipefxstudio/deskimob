@@ -1,5 +1,5 @@
 /**
- * Define exibir_endereco_site = oculto para todos os imóveis da Kenia.
+ * Define exibir_endereco_site = apenas_bairro para todos os imóveis da Kenia.
  * Uso: npx tsx scripts/kenia-fix-exibir-endereco-site.ts
  */
 import fs from "node:fs";
@@ -43,13 +43,13 @@ async function main() {
 
   const { data: atualizados, error: updateError } = await admin
     .from("imoveis")
-    .update({ exibir_endereco_site: "oculto" })
+    .update({ exibir_endereco_site: "apenas_bairro" })
     .eq("corretor_id", KENIA_CORRETOR_ID)
     .select("id");
 
   if (updateError) throw updateError;
 
-  console.log(`\nAtualizados: ${atualizados?.length ?? 0} imóveis → exibir_endereco_site = oculto`);
+  console.log(`\nAtualizados: ${atualizados?.length ?? 0} imóveis → exibir_endereco_site = apenas_bairro`);
 }
 
 main().catch((error) => {

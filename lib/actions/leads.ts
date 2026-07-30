@@ -848,10 +848,10 @@ const IMOVEL_SEARCH_RELATIONS =
   ", cliente:clientes(nome), proprietarios:imovel_proprietarios(cliente:clientes(nome))";
 
 const IMOVEL_SEARCH_SELECT =
-  `id, titulo, codigo, bairro, logradouro, cidade, finalidade, status, tipo, valor_venda, valor_locacao, fotos:imovel_fotos(id, url, ordem)${IMOVEL_SEARCH_RELATIONS}`;
+  `id, titulo, codigo, bairro, logradouro, cidade, finalidade, status, tipo, valor_venda, valor_locacao, quartos, suites, banheiros, vagas, fotos:imovel_fotos(id, url, ordem)${IMOVEL_SEARCH_RELATIONS}`;
 
 const IMOVEL_SEARCH_SELECT_NO_FOTOS =
-  `id, titulo, codigo, bairro, logradouro, cidade, finalidade, status, tipo, valor_venda, valor_locacao${IMOVEL_SEARCH_RELATIONS}`;
+  `id, titulo, codigo, bairro, logradouro, cidade, finalidade, status, tipo, valor_venda, valor_locacao, quartos, suites, banheiros, vagas${IMOVEL_SEARCH_RELATIONS}`;
 
 type ImovelSearchRow = {
   id: string;
@@ -865,6 +865,10 @@ type ImovelSearchRow = {
   tipo: string | null;
   valor_venda: number | null;
   valor_locacao: number | null;
+  quartos: number | null;
+  suites: number | null;
+  banheiros: number | null;
+  vagas: number | null;
   fotos?: { id: string; url: string; ordem: number }[];
   cliente?: { nome: string | null } | null;
   proprietarios?: { cliente?: { nome: string | null } | null }[];

@@ -1,5 +1,6 @@
 import type { Lead } from "@/types";
 
+import { formatTipoBairrosInteresse } from "@/lib/atendimentos/interesse-from-imovel";
 import { parseLeadObservacoes } from "@/lib/leads/observacoes";
 
 export function formatTelefoneLead(telefone: string | null | undefined): string {
@@ -35,32 +36,9 @@ export function buildWhatsAppLink(telefone: string | null | undefined): string |
 }
 
 export function getInteresseResumido(lead: Lead): string {
-  if (lead.imovel?.titulo) {
-    return lead.imovel.titulo;
-  }
-
-  const partes: string[] = [];
-
-  if (lead.tipo_imovel_busca) {
-    partes.push(lead.tipo_imovel_busca);
-  }
-
-  if (lead.bairros_interesse && lead.bairros_interesse.length > 0) {
-    partes.push(lead.bairros_interesse.slice(0, 2).join(", "));
-  }
-
-  if (lead.finalidade_busca) {
-    partes.push(
-      lead.finalidade_busca === "compra"
-        ? "Compra"
-        : lead.finalidade_busca === "locacao"
-          ? "Locação"
-          : lead.finalidade_busca,
-    );
-  }
-
-  if (partes.length > 0) {
-    return partes.join(" · ");
+  const tipoBairros = formatTipoBairrosInteresse(lead);
+  if (tipoBairros) {
+    return tipoBairros;
   }
 
   return "Interesse não informado";

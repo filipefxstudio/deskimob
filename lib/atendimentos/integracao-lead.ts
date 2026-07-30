@@ -9,6 +9,7 @@ import {
   telefonesEquivalentes,
 } from "@/lib/pessoas/duplicate";
 import { gerarCodigoAtendimento } from "@/lib/actions/atendimentos";
+import { fetchPreferenciasInteresseFromImovel } from "@/lib/atendimentos/interesse-from-imovel";
 import type { OrigemLead } from "@/types";
 
 export type IntegracaoLeadInput = {
@@ -244,6 +245,10 @@ export async function processarLeadIntegracao(
   const codigo = await gerarCodigoAtendimento(input.corretorId);
   const agora = new Date().toISOString();
 
+  const preferenciasImovel = input.imovelId
+    ? await fetchPreferenciasInteresseFromImovel(supabase, input.corretorId, input.imovelId)
+    : null;
+
   const { data: novoLead, error } = await supabase
     .from("leads")
     .insert({
@@ -261,6 +266,17 @@ export async function processarLeadIntegracao(
       atendido_por: "corretor",
       data_entrada: agora,
       observacoes: input.observacoes?.trim() || null,
+      finalidade_busca: preferenciasImovel?.finalidade_busca ?? null,
+      tipo_imovel_busca: preferenciasImovel?.tipo_imovel_busca ?? null,
+      bairros_interesse: preferenciasImovel?.bairros_interesse.length
+        ? preferenciasImovel.bairros_interesse
+        : null,
+      quartos_minimo: preferenciasImovel?.quartos_minimo ?? null,
+      suites_minimas: preferenciasImovel?.suites_minimas ?? null,
+      banheiros_minimos: preferenciasImovel?.banheiros_minimos ?? null,
+      vagas_minimas: preferenciasImovel?.vagas_minimas ?? null,
+      valor_minimo: preferenciasImovel?.valor_minimo ?? null,
+      valor_maximo: preferenciasImovel?.valor_maximo ?? null,
     })
     .select("id")
     .single();

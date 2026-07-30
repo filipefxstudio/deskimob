@@ -11,6 +11,27 @@ import type { Imovel } from "@/types";
 
 export type ImovelSearchResult = Awaited<ReturnType<typeof searchImoveisForLead>>[number];
 
+export function imovelToSearchResult(imovel: Imovel): ImovelSearchResult {
+  return {
+    id: imovel.id,
+    titulo: imovel.titulo ?? null,
+    codigo: imovel.codigo ?? null,
+    bairro: imovel.bairro ?? null,
+    logradouro: imovel.logradouro ?? null,
+    cidade: imovel.cidade ?? null,
+    tipo: imovel.tipo ?? null,
+    finalidade: imovel.finalidade ?? null,
+    status: imovel.status ?? null,
+    valor_venda: imovel.valor_venda ?? null,
+    valor_locacao: imovel.valor_locacao ?? null,
+    quartos: imovel.quartos ?? null,
+    suites: imovel.suites ?? null,
+    banheiros: imovel.banheiros ?? null,
+    vagas: imovel.vagas ?? null,
+    fotos: imovel.fotos ?? [],
+  };
+}
+
 interface ImovelInteresseAutocompleteProps {
   value: ImovelSearchResult | null;
   onChange: (imovel: ImovelSearchResult | null) => void;

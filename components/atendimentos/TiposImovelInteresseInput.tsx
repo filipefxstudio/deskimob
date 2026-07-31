@@ -1,6 +1,14 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { useMemo } from "react";
+import { ChevronDownIcon } from "lucide-react";
+
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { TipoImovelCustom } from "@/types";
 
@@ -17,6 +25,21 @@ export function TiposImovelInteresseInput({
   tipos,
   disabled,
 }: TiposImovelInteresseInputProps) {
+  const labelPorSlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const tipo of tipos) {
+      map.set(tipo.nome.trim().toLowerCase(), tipo.nome);
+    }
+    return map;
+  }, [tipos]);
+
+  const rotuloSelecionados = useMemo(() => {
+    if (value.length === 0) return null;
+    return value
+      .map((slug) => labelPorSlug.get(slug) ?? slug)
+      .join(", ");
+  }, [value, labelPorSlug]);
+
   function toggleTipo(slug: string, checked: boolean) {
     const normalizado = slug.trim().toLowerCase();
     if (checked) {
@@ -34,29 +57,45 @@ export function TiposImovelInteresseInput({
   }
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2">
-      {tipos.map((tipo) => {
-        const slug = tipo.nome.trim().toLowerCase();
-        const checked = value.includes(slug);
-
-        return (
-          <label
-            key={tipo.id}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button
+          type="button"
+          className={cn(
+            "flex h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
+          )}
+        >
+          <span
             className={cn(
-              "flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm transition-colors",
-              checked ? "border-primary/40 bg-primary/5" : "hover:bg-muted/40",
-              disabled && "cursor-not-allowed opacity-60",
+              "min-w-0 truncate text-left",
+              !rotuloSelecionados && "text-muted-foreground",
             )}
           >
-            <Checkbox
+            {rotuloSelecionados ?? "Selecione"}
+          </span>
+          <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="max-h-64 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
+      >
+        {tipos.map((tipo) => {
+          const slug = tipo.nome.trim().toLowerCase();
+          const checked = value.includes(slug);
+
+          return (
+            <DropdownMenuCheckboxItem
+              key={tipo.id}
               checked={checked}
-              disabled={disabled}
               onCheckedChange={(next) => toggleTipo(slug, next === true)}
-            />
-            <span>{tipo.nome}</span>
-          </label>
-        );
-      })}
-    </div>
+              onSelect={(event) => event.preventDefault()}
+            >
+              {tipo.nome}
+            </DropdownMenuCheckboxItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

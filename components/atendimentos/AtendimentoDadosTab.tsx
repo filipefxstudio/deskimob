@@ -317,7 +317,7 @@ export function AtendimentoDadosTab({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_520px]">
       <div className="space-y-6">
         <AtendimentoClienteSection
           lead={lead}
@@ -421,7 +421,7 @@ export function AtendimentoDadosTab({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 sm:col-span-2">
+          <div className="space-y-2">
             <Label>Tipo de imóvel</Label>
             <TiposImovelInteresseInput
               value={tiposImovelSelecionados}

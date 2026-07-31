@@ -272,7 +272,7 @@ export function NovoAtendimentoForm({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 sm:col-span-2">
+              <div className="space-y-2">
                 <Label>Tipo de imóvel</Label>
                 <TiposImovelInteresseInput
                   value={tiposImovelSelecionados}

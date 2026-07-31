@@ -317,7 +317,7 @@ export function AtendimentoDadosTab({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_520px]">
+    <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
         <AtendimentoClienteSection
           lead={lead}

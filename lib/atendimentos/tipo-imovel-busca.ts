@@ -10,9 +10,9 @@ export function parseTiposImovelBusca(value?: string | null): string[] {
     .filter(Boolean);
 }
 
-export function serializeTiposImovelBusca(tipos: string[]): string | null {
+export function serializeTiposImovelBusca(tipos: string[]): string | undefined {
   const unique = [...new Set(tipos.map((item) => item.trim().toLowerCase()).filter(Boolean))];
-  return unique.length > 0 ? unique.join(SEPARATOR) : null;
+  return unique.length > 0 ? unique.join(SEPARATOR) : undefined;
 }
 
 export function formatTiposImovelBusca(value?: string | null): string | null {

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
 import { BairrosInteresseInput } from "@/components/atendimentos/BairrosInteresseInput";
+import { TiposImovelInteresseInput } from "@/components/atendimentos/TiposImovelInteresseInput";
 import {
   ImovelInteresseAutocomplete,
   type ImovelSearchResult,
@@ -35,6 +36,7 @@ import {
   interesseFormStateVazio,
   useAplicarInteresseFromImovel,
 } from "@/lib/atendimentos/aplicar-interesse-imovel";
+import { serializeTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import { toast } from "@/hooks/use-toast";
 import type { MidiaOrigem, TipoImovelCustom } from "@/types";
@@ -75,7 +77,7 @@ export function NovoAtendimentoForm({
   const [imovelSelecionado, setImovelSelecionado] = useState<ImovelSearchResult | null>(null);
 
   const [finalidade, setFinalidade] = useState("");
-  const [tipoImovel, setTipoImovel] = useState("");
+  const [tiposImovelSelecionados, setTiposImovelSelecionados] = useState<string[]>([]);
   const [bairros, setBairros] = useState<string[]>([]);
   const [quartos, setQuartos] = useState("");
   const [suites, setSuites] = useState("");
@@ -98,7 +100,7 @@ export function NovoAtendimentoForm({
 
   function aplicarEstadoInteresse(state: ReturnType<typeof interesseFormStateVazio>) {
     setFinalidade(state.finalidade);
-    setTipoImovel(state.tipoImovel);
+    setTiposImovelSelecionados(state.tiposImovel);
     setBairros(state.bairros);
     setQuartos(state.quartos);
     setSuites(state.suites);
@@ -138,7 +140,7 @@ export function NovoAtendimentoForm({
         perfil_id: perfilId || undefined,
         imovel_id: imovelSelecionado?.id,
         finalidade_busca: finalidade || undefined,
-        tipo_imovel_busca: tipoImovel || undefined,
+        tipo_imovel_busca: serializeTiposImovelBusca(tiposImovelSelecionados),
         bairros_interesse: bairros.length ? bairros : undefined,
         quartos_minimo: quartos ? Number(quartos) : undefined,
         suites_minimas: suites ? Number(suites) : undefined,
@@ -270,20 +272,14 @@ export function NovoAtendimentoForm({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Tipo de imóvel</Label>
-                <Select value={tipoImovel} onValueChange={setTipoImovel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposAtivos.map((t) => (
-                      <SelectItem key={t.id} value={t.nome.toLowerCase()}>
-                        {t.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <TiposImovelInteresseInput
+                  value={tiposImovelSelecionados}
+                  onChange={setTiposImovelSelecionados}
+                  tipos={tiposAtivos}
+                  disabled={isPending}
+                />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Bairros</Label>

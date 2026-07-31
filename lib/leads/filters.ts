@@ -1,4 +1,5 @@
 import { leadMatchesTipoImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
+import type { LeadsViewMode } from "@/lib/constants/config";
 import { parseLeadObservacoes } from "@/lib/leads/observacoes";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
 import {

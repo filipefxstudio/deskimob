@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 
 import { AtendimentoClient } from "@/components/atendimentos/AtendimentoClient";
 import {
@@ -55,15 +53,7 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
   ]);
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-6">
-      <Link
-        href="/dashboard/atendimentos"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
-      >
-        <ChevronLeft className="size-4" />
-        Voltar para atendimentos
-      </Link>
-
+    <div className="flex-1 p-4 md:p-6">
       <AtendimentoClient
         lead={lead}
         perfis={perfis}

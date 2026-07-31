@@ -1,4 +1,4 @@
-import { getTipoLabel } from "@/lib/site/format";
+import { formatTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ImovelPreferenciasSource = {
@@ -97,9 +97,7 @@ export function formatTipoBairrosInteresse(input: {
   tipo_imovel_busca?: string | null;
   bairros_interesse?: string[] | null;
 }): string | null {
-  const tipo = input.tipo_imovel_busca?.trim()
-    ? getTipoLabel(input.tipo_imovel_busca.trim())
-    : null;
+  const tipo = formatTiposImovelBusca(input.tipo_imovel_busca);
   const bairros = (input.bairros_interesse ?? []).filter(Boolean);
 
   if (tipo && bairros.length > 0) {

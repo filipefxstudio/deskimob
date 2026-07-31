@@ -11,8 +11,9 @@ import {
 import { TemperaturaBadge } from "@/components/leads/TemperaturaBadge";
 import { ImovelStatItem, ImovelStatsRow } from "@/components/imoveis/ImovelStatsRow";
 import { ETAPA_LEAD_LABELS } from "@/lib/constants/leads";
+import { formatTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import { etapaParaSelectAtendimento, formatTelefoneLead } from "@/lib/leads/format";
-import { formatCurrency, getTipoLabel } from "@/lib/site/format";
+import { formatCurrency } from "@/lib/site/format";
 import type { Lead } from "@/types";
 
 interface AtendimentoCardContentProps {
@@ -21,25 +22,14 @@ interface AtendimentoCardContentProps {
   footer?: ReactNode;
 }
 
-function formatFaixaValorCard(lead: Lead): string | null {
-  const { valor_minimo: min, valor_maximo: max } = lead;
+function formatTipoValorCard(lead: Lead): { tipo: string | null; valorMax: string | null } {
+  const tipo = formatTiposImovelBusca(lead.tipo_imovel_busca);
+  const max = lead.valor_maximo;
 
-  if (min != null && max != null) {
-    return `${formatCurrency(min)} a ${formatCurrency(max)}`;
-  }
-  if (min != null) {
-    return `A partir de ${formatCurrency(min)}`;
-  }
-  if (max != null) {
-    return `Até ${formatCurrency(max)}`;
-  }
-  return null;
-}
-
-function formatTipoInteresse(lead: Lead): string | null {
-  const tipo = lead.tipo_imovel_busca?.trim();
-  if (!tipo) return null;
-  return getTipoLabel(tipo);
+  return {
+    tipo,
+    valorMax: max != null ? formatCurrency(max) : null,
+  };
 }
 
 function LeadInteresseStats({ lead }: { lead: Lead }) {
@@ -76,8 +66,7 @@ export function AtendimentoCardContent({
 }: AtendimentoCardContentProps) {
   const responsavelNome =
     lead.perfil?.nome ?? perfis.find((p) => p.id === lead.perfil_id)?.nome ?? null;
-  const tipoLabel = formatTipoInteresse(lead);
-  const faixaValor = formatFaixaValorCard(lead);
+  const { tipo, valorMax } = formatTipoValorCard(lead);
   const etapaExibicao = etapaParaSelectAtendimento(lead.etapa);
   const nome = lead.nome?.trim() || "Atendimento sem nome";
   const telefone = formatTelefoneLead(lead.telefone);
@@ -94,12 +83,12 @@ export function AtendimentoCardContent({
         ) : null}
       </p>
 
-      {tipoLabel || faixaValor ? (
+      {tipo || valorMax ? (
         <p className="mt-1 truncate text-sm text-muted-foreground">
-          {tipoLabel ? <span>{tipoLabel}</span> : null}
-          {tipoLabel && faixaValor ? <span> - </span> : null}
-          {faixaValor ? (
-            <span className="font-semibold text-foreground">{faixaValor}</span>
+          {tipo ? <span>{tipo}</span> : null}
+          {tipo && valorMax ? <span> até </span> : null}
+          {valorMax ? (
+            <span className="font-semibold text-foreground">{valorMax}</span>
           ) : null}
         </p>
       ) : (

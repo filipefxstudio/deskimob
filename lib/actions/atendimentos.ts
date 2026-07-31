@@ -39,6 +39,7 @@ import {
 } from "@/lib/atendimentos/regras";
 import { normalizar } from "@/lib/utils/normalizar";
 import { isValidUuid } from "@/lib/utils/uuid";
+import { parseTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -1337,7 +1338,12 @@ export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
   }
 
   if (campoTextoPreenchido(lead.tipo_imovel_busca)) {
-    query = query.eq("tipo", lead.tipo_imovel_busca);
+    const tipos = parseTiposImovelBusca(lead.tipo_imovel_busca);
+    if (tipos.length === 1) {
+      query = query.eq("tipo", tipos[0]);
+    } else if (tipos.length > 1) {
+      query = query.in("tipo", tipos);
+    }
   }
 
   if (numeroFiltroAtivo(lead.quartos_minimo)) {

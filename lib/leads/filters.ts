@@ -1,4 +1,4 @@
-import type { LeadsViewMode } from "@/lib/constants/config";
+import { leadMatchesTipoImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import { parseLeadObservacoes } from "@/lib/leads/observacoes";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
 import {
@@ -81,8 +81,7 @@ function matchesInteresseFilters(lead: Lead, interesse: LeadsInteresseFilterStat
   }
 
   if (interesse.tipoImovel) {
-    const tipoLead = lead.tipo_imovel_busca?.toLowerCase() ?? "";
-    if (tipoLead !== interesse.tipoImovel.toLowerCase()) {
+    if (!leadMatchesTipoImovelBusca(lead.tipo_imovel_busca, interesse.tipoImovel)) {
       return false;
     }
   }

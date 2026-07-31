@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 
-import { AtendimentoHeader } from "@/components/atendimentos/AtendimentoHeader";
 import { AtendimentoTabs } from "@/components/atendimentos/AtendimentoTabs";
 import { AtendimentoDadosTab } from "@/components/atendimentos/AtendimentoDadosTab";
 import { AuditoriaTab } from "@/components/atendimentos/AuditoriaTab";
@@ -64,23 +63,16 @@ export function AtendimentoClient({
     .filter((i): i is Imovel => Boolean(i));
 
   return (
-    <div className="space-y-4">
-      <AtendimentoHeader
-        lead={lead}
-        perfis={perfis}
-        motivos={motivos}
-        podeTransferir={podeTransferir}
-      />
-
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
-        <AtendimentoTabs
-          panels={{
+    <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
+      <AtendimentoTabs
+        panels={{
             dados: (
               <AtendimentoDadosTab
                 lead={lead}
                 perfis={perfis}
                 tiposImovel={tiposImovel}
                 motivos={motivos}
+                podeTransferir={podeTransferir}
                 faixaValorPercent={faixaValorPercent}
               />
             ),
@@ -130,8 +122,7 @@ export function AtendimentoClient({
             ),
             auditoria: <AuditoriaTab registros={auditoria} />,
           }}
-        />
-      </Suspense>
-    </div>
+      />
+    </Suspense>
   );
 }

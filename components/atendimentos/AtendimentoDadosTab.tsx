@@ -9,7 +9,9 @@ import {
   imovelToSearchResult,
   type ImovelSearchResult,
 } from "@/components/atendimentos/ImovelInteresseAutocomplete";
+import { AtendimentoClienteSection } from "@/components/atendimentos/AtendimentoClienteSection";
 import { BairrosInteresseInput } from "@/components/atendimentos/BairrosInteresseInput";
+import { TiposImovelInteresseInput } from "@/components/atendimentos/TiposImovelInteresseInput";
 import { AgendarAtividadeForm } from "@/components/agenda/AgendarAtividadeForm";
 import { InteracaoForm } from "@/components/leads/InteracaoForm";
 import { LeadHistorico } from "@/components/leads/LeadHistorico";
@@ -44,6 +46,10 @@ import {
   interesseFormStateVazio,
   useAplicarInteresseFromImovel,
 } from "@/lib/atendimentos/aplicar-interesse-imovel";
+import {
+  parseTiposImovelBusca,
+  serializeTiposImovelBusca,
+} from "@/lib/atendimentos/tipo-imovel-busca";
 import { SITUACAO_LEAD_LABELS } from "@/lib/constants/atendimentos";
 import {
   ETAPA_LEAD_LABELS,
@@ -68,6 +74,7 @@ interface AtendimentoDadosTabProps {
   perfis: { id: string; nome: string }[];
   tiposImovel: TipoImovelCustom[];
   motivos: MotivoDescarte[];
+  podeTransferir: boolean;
   faixaValorPercent?: number;
 }
 
@@ -76,6 +83,7 @@ export function AtendimentoDadosTab({
   perfis,
   tiposImovel,
   motivos,
+  podeTransferir,
   faixaValorPercent = 20,
 }: AtendimentoDadosTabProps) {
   const router = useRouter();
@@ -97,7 +105,9 @@ export function AtendimentoDadosTab({
   );
 
   const [finalidade, setFinalidade] = useState(lead.finalidade_busca ?? "");
-  const [tipoImovel, setTipoImovel] = useState(lead.tipo_imovel_busca ?? "");
+  const [tiposImovelSelecionados, setTiposImovelSelecionados] = useState<string[]>(
+    parseTiposImovelBusca(lead.tipo_imovel_busca),
+  );
   const [bairros, setBairros] = useState<string[]>(lead.bairros_interesse ?? []);
   const [quartos, setQuartos] = useState(lead.quartos_minimo?.toString() ?? "");
   const [suites, setSuites] = useState(lead.suites_minimas?.toString() ?? "");
@@ -127,6 +137,7 @@ export function AtendimentoDadosTab({
     setContatoFeito(isLeadContatoFeito(lead));
     setQualificado(isLeadQualificado(lead));
     setEtapa(etapaParaSelectAtendimento(lead.etapa));
+    setTiposImovelSelecionados(parseTiposImovelBusca(lead.tipo_imovel_busca));
   }, [lead]);
 
   const tiposAtivos = useMemo(
@@ -138,7 +149,7 @@ export function AtendimentoDadosTab({
 
   function aplicarEstadoInteresse(state: ReturnType<typeof interesseFormStateVazio>) {
     setFinalidade(state.finalidade);
-    setTipoImovel(state.tipoImovel);
+    setTiposImovelSelecionados(state.tiposImovel);
     setBairros(state.bairros);
     setQuartos(state.quartos);
     setSuites(state.suites);
@@ -214,7 +225,7 @@ export function AtendimentoDadosTab({
     return {
       imovel_id: imovelInteresse?.id ?? null,
       finalidade_busca: finalidade || null,
-      tipo_imovel_busca: tipoImovel,
+      tipo_imovel_busca: serializeTiposImovelBusca(tiposImovelSelecionados),
       bairros_interesse: bairros,
       quartos_minimo: parseNumeroMinimo(quartos),
       suites_minimas: parseNumeroMinimo(suites),
@@ -236,7 +247,7 @@ export function AtendimentoDadosTab({
       situacao,
       imovel_id: imovelInteresse?.id ?? null,
       finalidade_busca: finalidade || null,
-      tipo_imovel_busca: tipoImovel,
+      tipo_imovel_busca: serializeTiposImovelBusca(tiposImovelSelecionados),
       bairros_interesse: bairros,
       quartos_minimo: parseNumeroMinimo(quartos),
       suites_minimas: parseNumeroMinimo(suites),
@@ -306,7 +317,15 @@ export function AtendimentoDadosTab({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="space-y-6">
+        <AtendimentoClienteSection
+          lead={lead}
+          perfis={perfis}
+          motivos={motivos}
+          podeTransferir={podeTransferir}
+        />
+
       <section className="space-y-4 rounded-xl border border-border p-4">
         <h3 className="font-semibold text-primary">Status</h3>
         <div className="grid grid-cols-2 gap-4 lg:flex lg:flex-wrap lg:items-end">
@@ -402,22 +421,14 @@ export function AtendimentoDadosTab({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 sm:col-span-2">
             <Label>Tipo de imóvel</Label>
-            <Select
-              value={tipoImovel || "__none__"}
-              onValueChange={(v) => setTipoImovel(v === "__none__" ? "" : v)}
-            >
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">—</SelectItem>
-                {tiposAtivos.map((t) => (
-                  <SelectItem key={t.id} value={t.nome.toLowerCase()}>
-                    {t.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TiposImovelInteresseInput
+              value={tiposImovelSelecionados}
+              onChange={setTiposImovelSelecionados}
+              tipos={tiposAtivos}
+              disabled={isPending}
+            />
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>Bairros</Label>
@@ -550,18 +561,29 @@ export function AtendimentoDadosTab({
           </div>
         </dl>
       </section>
+      </div>
 
-      <section className="space-y-4 rounded-xl border border-border p-4">
-        <h3 className="font-semibold text-primary">Histórico de interações</h3>
-        <InteracaoForm leadId={lead.id} onSuccess={() => router.refresh()} />
-        <AgendarAtividadeForm
-          leadId={lead.id}
-          leadNome={lead.nome ?? undefined}
-          requireFuture
-          onSuccess={() => router.refresh()}
-        />
-        <LeadHistorico interacoes={lead.interacoes ?? []} />
-      </section>
+      <div className="space-y-6">
+        <section className="space-y-4 rounded-xl border border-border p-4">
+          <h3 className="font-semibold text-primary">Agendar atividade</h3>
+          <AgendarAtividadeForm
+            leadId={lead.id}
+            leadNome={lead.nome ?? undefined}
+            requireFuture
+            onSuccess={() => router.refresh()}
+          />
+        </section>
+
+        <section className="space-y-4 rounded-xl border border-border p-4">
+          <h3 className="font-semibold text-primary">Registrar interação</h3>
+          <InteracaoForm leadId={lead.id} onSuccess={() => router.refresh()} />
+        </section>
+
+        <section className="space-y-4 rounded-xl border border-border p-4">
+          <h3 className="font-semibold text-primary">Histórico de interações</h3>
+          <LeadHistorico interacoes={lead.interacoes ?? []} />
+        </section>
+      </div>
 
       <Dialog
         open={descartarOpen}

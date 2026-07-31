@@ -9,10 +9,11 @@ import {
   calcularFaixaValorFromImovel,
   type PreferenciasInteresseFromImovel,
 } from "@/lib/atendimentos/interesse-from-imovel";
+import { parseTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 
 export type InteresseFormState = {
   finalidade: string;
-  tipoImovel: string;
+  tiposImovel: string[];
   bairros: string[];
   quartos: string;
   suites: string;
@@ -24,7 +25,7 @@ export type InteresseFormState = {
 
 export const EMPTY_INTERESSE_FORM_STATE: InteresseFormState = {
   finalidade: "",
-  tipoImovel: "",
+  tiposImovel: [],
   bairros: [],
   quartos: "",
   suites: "",
@@ -37,7 +38,7 @@ export const EMPTY_INTERESSE_FORM_STATE: InteresseFormState = {
 function preferenciasToFormState(preferencias: PreferenciasInteresseFromImovel): InteresseFormState {
   return {
     finalidade: preferencias.finalidade_busca ?? "",
-    tipoImovel: preferencias.tipo_imovel_busca ?? "",
+    tiposImovel: parseTiposImovelBusca(preferencias.tipo_imovel_busca),
     bairros: preferencias.bairros_interesse,
     quartos: preferencias.quartos_minimo != null ? String(preferencias.quartos_minimo) : "",
     suites: preferencias.suites_minimas != null ? String(preferencias.suites_minimas) : "",

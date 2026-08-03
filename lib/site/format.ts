@@ -1,5 +1,6 @@
 import { FINALIDADES_IMOVEL, TIPOS_IMOVEL } from "@/lib/constants/imoveis";
 import { formatCurrency, getImovelCodigo } from "@/lib/imoveis/format";
+import { getImovelFotoThumbnailUrl } from "@/lib/imoveis/foto-url";
 import type { FinalidadeImovel, Imovel, TipoImovel } from "@/types";
 
 export { formatCurrency };
@@ -50,10 +51,15 @@ export function getValorExibicao(imovel: Imovel): string {
   return `${formatCurrency(imovel.valor_locacao)}/mês`;
 }
 
-export function getCapaUrl(imovel: Imovel): string | null {
+export function getCapaUrl(imovel: Imovel, thumbnail = false): string | null {
   const fotos = imovel.fotos ?? [];
   const ordenadas = [...fotos].sort((a, b) => a.ordem - b.ordem);
-  return ordenadas[0]?.url ?? null;
+  const url = ordenadas[0]?.url ?? null;
+  if (!url) {
+    return null;
+  }
+
+  return thumbnail ? getImovelFotoThumbnailUrl(url) : url;
 }
 
 /** Endereço no site público — respeita exibir_endereco_site. */

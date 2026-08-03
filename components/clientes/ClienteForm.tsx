@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Controller, useForm, type Resolver } from "react-hook-form";
@@ -214,18 +213,14 @@ export function ClienteForm({ mode, cliente, onSuccess }: ClienteFormProps) {
             </p>
           ) : null}
 
-          <Button type="submit" disabled={isPending || duplicidadeAtiva}>
-            {isPending ? (
-              <>
-                <Loader2 className="animate-spin" data-icon="inline-start" />
-                Salvando...
-              </>
-            ) : mode === "edit" ? (
-              "Salvar alterações"
-            ) : (
-              "Cadastrar cliente"
-            )}
-          </Button>
+      <Button
+        type="submit"
+        loading={isPending}
+        loadingText="Salvando..."
+        disabled={duplicidadeAtiva}
+      >
+        {mode === "edit" ? "Salvar alterações" : "Cadastrar cliente"}
+      </Button>
         </form>
       </CardContent>
     </Card>

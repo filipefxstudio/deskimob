@@ -65,8 +65,8 @@ export function EsqueciSenhaForm({ initialError }: EsqueciSenhaFormProps) {
                 {errorMessage}
               </p>
             ) : null}
-            <Button type="submit" className="h-10 w-full" disabled={isPending}>
-              {isPending ? "Enviando..." : "Enviar link"}
+            <Button type="submit" className="h-10 w-full" loading={isPending} loadingText="Enviando...">
+              Enviar link
             </Button>
           </form>
         )}

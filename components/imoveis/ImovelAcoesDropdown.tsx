@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
+  Loader2,
   MoreVertical,
 } from "lucide-react";
 
@@ -290,13 +291,22 @@ export function ImovelAcoesDropdown({
   const menuContent = menuOpen ? (
     <div
       ref={menuRef}
-      className="fixed z-[9999] min-w-48 rounded-lg border border-border bg-card py-1 shadow-lg"
+      className={cn(
+        "fixed z-[9999] min-w-48 rounded-lg border border-border bg-card py-1 shadow-lg",
+        isPending && "pointer-events-none opacity-80",
+      )}
       style={
         menuPosition
           ? { top: menuPosition.top, left: menuPosition.left }
           : { top: -9999, left: -9999, visibility: "hidden" as const }
       }
     >
+      {isPending ? (
+        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Processando...
+        </div>
+      ) : null}
       {variant === "card" ? (
         <button
           type="button"

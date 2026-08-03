@@ -11,6 +11,7 @@ interface KanbanColumnProps {
   label: string;
   leads: Lead[];
   accent?: "default" | "success" | "danger";
+  pendingLeadIds?: Set<string>;
 }
 
 const accentStyles = {
@@ -25,7 +26,13 @@ const headerAccentStyles = {
   danger: "text-red-700",
 } as const;
 
-export function KanbanColumn({ etapa, label, leads, accent = "default" }: KanbanColumnProps) {
+export function KanbanColumn({
+  etapa,
+  label,
+  leads,
+  accent = "default",
+  pendingLeadIds,
+}: KanbanColumnProps) {
   return (
     <div
       className={cn(
@@ -56,7 +63,12 @@ export function KanbanColumn({ etapa, label, leads, accent = "default" }: Kanban
             )}
           >
             {leads.map((lead, index) => (
-              <LeadCard key={lead.id} lead={lead} index={index} />
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                index={index}
+                isUpdating={pendingLeadIds?.has(lead.id)}
+              />
             ))}
             {provided.placeholder}
             {leads.length === 0 ? (

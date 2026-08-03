@@ -1822,18 +1822,12 @@ export function ImovelForm({
           <Button
             type="button"
             variant="secondary"
-            disabled={isPending}
+            loading={isPending}
+            loadingText="Enviando..."
             onClick={handleEnviarAprovacao}
             className="min-w-36"
           >
-            {isPending ? (
-              <>
-                <Loader2 className="animate-spin" data-icon="inline-start" />
-                Enviando...
-              </>
-            ) : (
-              "Enviar para aprovação"
-            )}
+            Enviar para aprovação
           </Button>
         ) : null}
         <Button type="button" variant="outline" asChild disabled={isPending}>
@@ -1841,17 +1835,13 @@ export function ImovelForm({
             Cancelar
           </Link>
         </Button>
-        <Button type="submit" disabled={isPending} className="min-w-36">
-          {isPending ? (
-            <>
-              <Loader2 className="animate-spin" data-icon="inline-start" />
-              Salvando...
-            </>
-          ) : isEdit ? (
-            "Salvar"
-          ) : (
-            "Cadastrar imóvel"
-          )}
+        <Button
+          type="submit"
+          loading={isPending}
+          loadingText="Salvando..."
+          className="min-w-36"
+        >
+          {isEdit ? "Salvar" : "Cadastrar imóvel"}
         </Button>
       </div>
     </form>

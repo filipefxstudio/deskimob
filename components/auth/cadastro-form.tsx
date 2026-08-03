@@ -111,8 +111,8 @@ export function CadastroForm() {
               {JSON.stringify(state.errorDetails, null, 2)}
             </pre>
           ) : null}
-          <Button type="submit" className="h-10 w-full" disabled={isPending}>
-            {isPending ? "Criando conta..." : "Criar conta"}
+          <Button type="submit" className="h-10 w-full" loading={isPending} loadingText="Criando conta...">
+            Criar conta
           </Button>
         </form>
       </CardContent>

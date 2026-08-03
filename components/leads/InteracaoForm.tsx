@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -88,8 +86,7 @@ export function InteracaoForm({ leadId, onSuccess }: InteracaoFormProps) {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+      <Button type="submit" loading={isPending} loadingText="Registrando...">
         Registrar
       </Button>
     </form>

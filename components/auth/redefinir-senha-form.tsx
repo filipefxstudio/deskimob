@@ -72,8 +72,8 @@ export function RedefinirSenhaForm() {
                 {state.error}
               </p>
             ) : null}
-            <Button type="submit" className="h-10 w-full" disabled={isPending}>
-              {isPending ? "Salvando..." : "Salvar nova senha"}
+            <Button type="submit" className="h-10 w-full" loading={isPending} loadingText="Salvando...">
+              Salvar nova senha
             </Button>
           </form>
         )}

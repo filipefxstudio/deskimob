@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { indicarImovelComAuditoria } from "@/lib/actions/atendimentos";
 import { searchImoveisForLead } from "@/lib/actions/leads";
+import { getImovelFotoThumbnailUrl } from "@/lib/imoveis/foto-url";
 import { formatCurrency } from "@/lib/site/format";
 import type { Imovel, Lead } from "@/types";
 
@@ -111,7 +112,13 @@ function ImovelCard({ imovel }: { imovel: Imovel }) {
     <article className="overflow-hidden rounded-xl border border-border bg-card">
       {capa ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={capa} alt="" className="h-32 w-full object-cover" />
+        <img
+          src={getImovelFotoThumbnailUrl(capa)}
+          alt=""
+          className="h-32 w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
       ) : (
         <div className="flex h-32 items-center justify-center bg-muted text-xs text-muted-foreground">
           Sem foto

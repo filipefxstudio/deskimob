@@ -836,72 +836,9 @@ function filterDashboardRawData(
   };
 }
 
-export async function getDashboardData(
-  params: GetDashboardDataParams,
-): Promise<DashboardData | null> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) return null;
-
-  const { periodPreset, customStart, customEnd, tab } = params;
-  const { start, end, previousStart, previousEnd } = resolvePeriodRange(
-    periodPreset,
-    customStart,
-    customEnd,
-  );
-
-  const finalidadeLead = finalidadeLeadFromTab(tab);
-  const finalidadeImovel = finalidadeImovelFromTab(tab);
-
-  const access = await resolveTenantAccess(corretor);
-  const supabase = await createClient();
-  let raw = await fetchDashboardRawData(supabase, corretor.id);
-
-  if (raw.leads.length === 0 && raw.imoveis.length === 0) {
-    const admin = await createTenantDataClient();
-    if (admin) {
-      const fallback = await fetchDashboardRawData(admin, corretor.id);
-      if (fallback.leads.length > 0 || fallback.imoveis.length > 0) {
-        console.warn(
-          "[getDashboardData] authenticated query returned empty; used service role fallback",
-          { corretorId: corretor.id },
-        );
-        raw = fallback;
-      }
-    }
-  }
-
-  const filteredRaw = filterDashboardRawData(raw, access);
-
-  const [
-    config,
-    agendaHoje,
-    visitas24h,
-  ] = await Promise.all([
-    getDashboardConfig(),
-    getAgendaHoje(),
-    getVisitasProximas24h(),
-  ]);
-
-  const dashboardConfig =
-    config ??
-    ({
-      id: "fallback",
-      corretor_id: corretor.id,
-      ...DEFAULT_DASHBOARD_CONFIG,
-      criado_em: new Date().toISOString(),
-      atualizado_em: new Date().toISOString(),
-    } satisfies DashboardConfig);
-
-  const leads = filteredRaw.leads;
-  const imoveis = filteredRaw.imoveis;
-  const interacoes = filteredRaw.interacoes;
-  const negociosAll = filteredRaw.negociosAll;
-  const negocios = negociosAll.filter(
-    (n) => n.lead?.finalidade_busca === finalidadeLead,
-  );
-  const fotos = filteredRaw.fotos;
-  const imovelIdsComFoto = new Set(fotos.map((f) => f.imovel_id));
-
+function buildInteracoesPorLead(
+  interacoes: InteracaoRow[],
+): Map<string, { first: string; last: string }> {
   const interacoesPorLead = new Map<string, { first: string; last: string }>();
   for (const interacao of interacoes) {
     const existing = interacoesPorLead.get(interacao.lead_id);
@@ -914,6 +851,44 @@ export async function getDashboardData(
       existing.last = interacao.criado_em;
     }
   }
+
+  return interacoesPorLead;
+}
+
+type DashboardSharedContext = {
+  filteredRaw: DashboardRawData;
+  dashboardConfig: DashboardConfig;
+  agendaHojeCount: number;
+  visitas24hCount: number;
+  periodPreset: DashboardPeriodPreset;
+  customStart?: string;
+  customEnd?: string;
+};
+
+function buildDashboardDataForTab(
+  tab: DashboardTab,
+  context: DashboardSharedContext,
+): DashboardData {
+  const { periodPreset, customStart, customEnd, filteredRaw, dashboardConfig } = context;
+  const { start, end, previousStart, previousEnd } = resolvePeriodRange(
+    periodPreset,
+    customStart,
+    customEnd,
+  );
+
+  const finalidadeLead = finalidadeLeadFromTab(tab);
+  const finalidadeImovel = finalidadeImovelFromTab(tab);
+
+  const leads = filteredRaw.leads;
+  const imoveis = filteredRaw.imoveis;
+  const interacoes = filteredRaw.interacoes;
+  const negociosAll = filteredRaw.negociosAll;
+  const negocios = negociosAll.filter(
+    (n) => n.lead?.finalidade_busca === finalidadeLead,
+  );
+  const fotos = filteredRaw.fotos;
+  const imovelIdsComFoto = new Set(fotos.map((f) => f.imovel_id));
+  const interacoesPorLead = buildInteracoesPorLead(interacoes);
 
   const currentMetrics = computePeriodMetrics(
     leads,
@@ -963,19 +938,122 @@ export async function getDashboardData(
       finalidadeLead,
       finalidadeImovel,
       interacoesPorLead,
-      agendaHoje.length,
-      visitas24h.length,
+      context.agendaHojeCount,
+      context.visitas24hCount,
     ),
   };
 }
 
-export async function getDashboardDataBothTabs(params: Omit<GetDashboardDataParams, "tab">) {
-  const [venda, locacao] = await Promise.all([
-    getDashboardData({ ...params, tab: "venda" }),
-    getDashboardData({ ...params, tab: "locacao" }),
+async function fetchFilteredDashboardRaw(corretorId: string): Promise<DashboardRawData | null> {
+  const corretor = await getCorretorForUser();
+  if (!corretor) return null;
+
+  const access = await resolveTenantAccess(corretor);
+  const supabase = await createClient();
+  let raw = await fetchDashboardRawData(supabase, corretorId);
+
+  if (raw.leads.length === 0 && raw.imoveis.length === 0) {
+    const admin = await createTenantDataClient();
+    if (admin) {
+      const fallback = await fetchDashboardRawData(admin, corretorId);
+      if (fallback.leads.length > 0 || fallback.imoveis.length > 0) {
+        console.warn(
+          "[getDashboardData] authenticated query returned empty; used service role fallback",
+          { corretorId },
+        );
+        raw = fallback;
+      }
+    }
+  }
+
+  return filterDashboardRawData(raw, access);
+}
+
+export async function getDashboardData(
+  params: GetDashboardDataParams,
+): Promise<DashboardData | null> {
+  const corretor = await getCorretorForUser();
+  if (!corretor) return null;
+
+  const filteredRaw = await fetchFilteredDashboardRaw(corretor.id);
+  if (!filteredRaw) return null;
+
+  const [
+    config,
+    agendaHoje,
+    visitas24h,
+  ] = await Promise.all([
+    getDashboardConfig(),
+    getAgendaHoje(),
+    getVisitasProximas24h(),
   ]);
 
-  return { venda, locacao };
+  const dashboardConfig =
+    config ??
+    ({
+      id: "fallback",
+      corretor_id: corretor.id,
+      ...DEFAULT_DASHBOARD_CONFIG,
+      criado_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    } satisfies DashboardConfig);
+
+  return buildDashboardDataForTab(params.tab, {
+    filteredRaw,
+    dashboardConfig,
+    agendaHojeCount: agendaHoje.length,
+    visitas24hCount: visitas24h.length,
+    periodPreset: params.periodPreset,
+    customStart: params.customStart,
+    customEnd: params.customEnd,
+  });
+}
+
+export async function getDashboardDataBothTabs(params: Omit<GetDashboardDataParams, "tab">) {
+  const corretor = await getCorretorForUser();
+  if (!corretor) {
+    return { venda: null, locacao: null };
+  }
+
+  const filteredRaw = await fetchFilteredDashboardRaw(corretor.id);
+  if (!filteredRaw) {
+    return { venda: null, locacao: null };
+  }
+
+  const [
+    config,
+    agendaHoje,
+    visitas24h,
+  ] = await Promise.all([
+    getDashboardConfig(),
+    getAgendaHoje(),
+    getVisitasProximas24h(),
+  ]);
+
+  const dashboardConfig =
+    config ??
+    ({
+      id: "fallback",
+      corretor_id: corretor.id,
+      ...DEFAULT_DASHBOARD_CONFIG,
+      criado_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    } satisfies DashboardConfig);
+
+  const sharedContext = {
+    filteredRaw,
+    dashboardConfig,
+    agendaHojeCount: agendaHoje.length,
+    visitas24hCount: visitas24h.length,
+    periodPreset: params.periodPreset,
+    customStart: params.customStart,
+    customEnd: params.customEnd,
+  };
+
+  return {
+    venda: buildDashboardDataForTab("venda", sharedContext),
+    locacao: buildDashboardDataForTab("locacao", sharedContext),
+  };
 }
 
 /** @deprecated Use getDashboardData */

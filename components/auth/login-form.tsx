@@ -118,8 +118,8 @@ export function LoginForm() {
               {state.error}
             </p>
           ) : null}
-          <Button type="submit" className="h-10 w-full" disabled={isPending}>
-            {isPending ? "Entrando..." : "Entrar"}
+          <Button type="submit" className="h-10 w-full" loading={isPending} loadingText="Entrando...">
+            Entrar
           </Button>
         </form>
       </CardContent>

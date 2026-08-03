@@ -68,6 +68,7 @@ function mergeLeadFromPayload(
 
 export function FunilKanban({ initialLeads, corretorId, hideHeader }: FunilKanbanProps) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [pendingLeadIds, setPendingLeadIds] = useState<Set<string>>(() => new Set());
   const pendingUpdates = useRef<Set<string>>(new Set());
 
   const leadsByEtapa = useMemo(() => {
@@ -126,10 +127,16 @@ export function FunilKanban({ initialLeads, corretorId, hideHeader }: FunilKanba
       );
 
       pendingUpdates.current.add(draggableId);
+      setPendingLeadIds((current) => new Set(current).add(draggableId));
 
       const resultado = await updateLeadEtapa(draggableId, novaEtapa);
 
       pendingUpdates.current.delete(draggableId);
+      setPendingLeadIds((current) => {
+        const next = new Set(current);
+        next.delete(draggableId);
+        return next;
+      });
 
       if (resultado.error) {
         setLeads(snapshot);
@@ -209,6 +216,7 @@ export function FunilKanban({ initialLeads, corretorId, hideHeader }: FunilKanba
                 label={ETAPA_LEAD_LABELS[etapa]}
                 leads={leadsByEtapa[etapa]}
                 accent={getColumnAccent(etapa)}
+                pendingLeadIds={pendingLeadIds}
               />
             ))}
           </div>

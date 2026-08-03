@@ -407,29 +407,32 @@ export async function syncVisitasSemAgenda(
       .filter((visitaId): visitaId is string => Boolean(visitaId)),
   );
 
-  for (const visita of visitas) {
-    if (visitasComAgenda.has(visita.id)) continue;
+  const visitasSemAgenda = visitas.filter((visita) => !visitasComAgenda.has(visita.id));
+  if (visitasSemAgenda.length === 0) {
+    return;
+  }
 
-    const { error } = await supabase.from("agenda").insert({
-      corretor_id: corretorId,
-      lead_id: visita.lead_id,
-      imovel_id: visita.imovel_id,
-      visita_id: visita.id,
-      perfil_id: visita.perfil_id,
-      tipo: "visita",
-      titulo: "Visita agendada",
-      descricao: visita.observacoes,
-      data_atividade: visita.data_visita,
-      status: "pendente",
+  const rows = visitasSemAgenda.map((visita) => ({
+    corretor_id: corretorId,
+    lead_id: visita.lead_id,
+    imovel_id: visita.imovel_id,
+    visita_id: visita.id,
+    perfil_id: visita.perfil_id,
+    tipo: "visita" as const,
+    titulo: "Visita agendada",
+    descricao: visita.observacoes,
+    data_atividade: visita.data_visita,
+    status: "pendente" as const,
+  }));
+
+  const { error } = await supabase.from("agenda").insert(rows);
+
+  if (error) {
+    console.error("[syncVisitasSemAgenda] batch insert", {
+      count: rows.length,
+      message: error.message,
+      code: error.code,
     });
-
-    if (error) {
-      console.error("[syncVisitasSemAgenda] insert", {
-        visitaId: visita.id,
-        message: error.message,
-        code: error.code,
-      });
-    }
   }
 }
 
@@ -1290,7 +1293,6 @@ export async function getBairrosImoveisCadastrados(): Promise<string[]> {
 export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
   const corretor = await getCorretorForUser();
   if (!corretor) {
-    console.log("[Radar] corretor não encontrado");
     return [];
   }
 
@@ -1303,25 +1305,8 @@ export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
     .maybeSingle();
 
   if (!lead) {
-    console.log("[Radar] lead não encontrado", { leadId });
     return [];
   }
-
-  console.log("[Radar] buscando imóveis compatíveis", {
-    leadId,
-    corretorId: corretor.id,
-    filtros: {
-      finalidade_busca: lead.finalidade_busca,
-      tipo_imovel_busca: lead.tipo_imovel_busca,
-      bairros_interesse: lead.bairros_interesse,
-      quartos_minimo: lead.quartos_minimo,
-      suites_minimas: lead.suites_minimas,
-      banheiros_minimos: lead.banheiros_minimos,
-      vagas_minimas: lead.vagas_minimas,
-      valor_minimo: lead.valor_minimo,
-      valor_maximo: lead.valor_maximo,
-    },
-  });
 
   let query = supabase
     .from("imoveis")
@@ -1367,21 +1352,17 @@ export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
   }
 
   let imoveis = (data ?? []) as Imovel[];
-  console.log("[Radar] imóveis disponíveis antes dos filtros locais", { total: imoveis.length });
 
   if (lead.bairros_interesse?.length) {
     imoveis = imoveis.filter((imovel) => imovelCompativelBairros(imovel, lead.bairros_interesse!));
-    console.log("[Radar] após filtro de bairros", { total: imoveis.length });
   }
 
   if (numeroFiltroAtivo(lead.valor_minimo) || numeroFiltroAtivo(lead.valor_maximo)) {
     imoveis = imoveis.filter((imovel) =>
       imovelCompativelValor(imovel, lead.valor_minimo, lead.valor_maximo),
     );
-    console.log("[Radar] após filtro de valor", { total: imoveis.length });
   }
 
-  console.log("[Radar] resultado final", { total: imoveis.length });
   return imoveis;
 }
 
@@ -1785,8 +1766,6 @@ export async function updateVisita(
   const corretor = await getCorretorForUser();
   if (!corretor) return { error: "Sessão expirada." };
 
-  console.log("[Visita] atualizando", { visitaId, input });
-
   const supabase = await createClient();
   const { data: visita, error: buscaError } = await supabase
     .from("visitas")
@@ -1801,7 +1780,6 @@ export async function updateVisita(
   }
 
   if (!visita) {
-    console.log("[Visita] visita não encontrada", { visitaId });
     return { error: "Visita não encontrada." };
   }
 
@@ -1823,11 +1801,8 @@ export async function updateVisita(
   }
 
   if (Object.keys(payload).length === 0) {
-    console.log("[Visita] payload vazio, nada a atualizar");
     return { error: "Nenhum dado para atualizar." };
   }
-
-  console.log("[Visita] payload", payload);
 
   const logContext = input.parecer !== undefined ? "registrarParecer" : "updateVisita";
 

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
 
 import { BairrosInteresseInput } from "@/components/atendimentos/BairrosInteresseInput";
 import { TiposImovelInteresseInput } from "@/components/atendimentos/TiposImovelInteresseInput";
@@ -324,8 +323,8 @@ export function NovoAtendimentoForm({
           {error ? <p className="text-sm text-[#E63946]">{error}</p> : null}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={isPending}>
-              {isPending ? <Loader2 className="size-4 animate-spin" /> : "Criar atendimento"}
+            <Button type="submit" loading={isPending} loadingText="Criando atendimento...">
+              Criar atendimento
             </Button>
             <Button type="button" variant="outline" asChild>
               <Link href="/dashboard/atendimentos">Cancelar</Link>

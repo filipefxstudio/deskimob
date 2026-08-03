@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Draggable } from "@hello-pangea/dnd";
 import { Bot, Globe } from "lucide-react";
@@ -19,6 +20,7 @@ import type { Lead, OrigemLead } from "@/types";
 interface LeadCardProps {
   lead: Lead;
   index: number;
+  isUpdating?: boolean;
 }
 
 function OrigemIcon({ origem }: { origem: string }) {
@@ -31,7 +33,7 @@ function OrigemIcon({ origem }: { origem: string }) {
 
 export { getInteresseResumido };
 
-export function LeadCard({ lead, index }: LeadCardProps) {
+export function LeadCard({ lead, index, isUpdating = false }: LeadCardProps) {
   const nome = lead.nome?.trim() || "Lead sem nome";
   const interesse = getInteresseResumido(lead);
   const origemLabel =
@@ -51,10 +53,16 @@ export function LeadCard({ lead, index }: LeadCardProps) {
           {...provided.dragHandleProps}
           style={dragStyle as CSSProperties | undefined}
           className={cn(
-            "rounded-lg border border-border/70 bg-card p-3 shadow-sm transition-shadow",
+            "relative rounded-lg border border-border/70 bg-card p-3 shadow-sm transition-shadow",
             snapshot.isDragging && "shadow-md ring-2 ring-secondary/30",
+            isUpdating && "pointer-events-none opacity-60",
           )}
         >
+          {isUpdating ? (
+            <div className="absolute right-2 top-2 z-10">
+              <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+            </div>
+          ) : null}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">

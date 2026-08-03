@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { ImovelFoto } from "@/types";
+import { getImovelFotoThumbnailUrl } from "@/lib/imoveis/foto-url";
 
 const PREVIEW_FOTOS = 5;
 
@@ -67,7 +68,13 @@ export function ImovelCardFotoCarousel({
   return (
     <div className={className}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={fotoAtual.url} alt={fotoAtual.legenda ?? alt} className={imageClassName} />
+      <img
+        src={getImovelFotoThumbnailUrl(fotoAtual.url)}
+        alt={fotoAtual.legenda ?? alt}
+        className={imageClassName}
+        loading="lazy"
+        decoding="async"
+      />
 
       {slideOverflow ? (
         <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-base font-semibold text-white">

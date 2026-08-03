@@ -35,6 +35,10 @@ export function formatDateTimeBrasilia(date: string | Date): string {
   return BRASILIA_DATETIME_FORMAT.format(parseDbTimestamp(date));
 }
 
+export function getDbTimestampMs(date: string | Date): number {
+  return parseDbTimestamp(date).getTime();
+}
+
 /** Converte data + hora informadas em Brasília para ISO UTC. */
 export function localDateTimeToUTC(dateStr: string, timeStr: string): string {
   const date = dateStr.trim();

@@ -64,6 +64,7 @@ import {
   isLeadContatoFeito,
   isLeadQualificado,
 } from "@/lib/leads/format";
+import { formatDateTimeBrasilia } from "@/lib/dates/format";
 import { parseLeadObservacoes, serializeLeadObservacoes } from "@/lib/leads/observacoes";
 import { toast } from "@/hooks/use-toast";
 import { isValidUuid } from "@/lib/utils/uuid";
@@ -545,7 +546,7 @@ export function AtendimentoDadosTab({
           </div>
           <div>
             <dt className="text-muted-foreground">Entrada</dt>
-            <dd>{lead.data_entrada ? new Date(lead.data_entrada).toLocaleString("pt-BR") : "—"}</dd>
+            <dd>{lead.data_entrada ? formatDateTimeBrasilia(lead.data_entrada) : "—"}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Tempo 1ª resposta</dt>
@@ -557,7 +558,7 @@ export function AtendimentoDadosTab({
           </div>
           <div>
             <dt className="text-muted-foreground">Cadastro</dt>
-            <dd>{new Date(lead.criado_em).toLocaleDateString("pt-BR")}</dd>
+            <dd>{formatDateTimeBrasilia(lead.criado_em)}</dd>
           </div>
         </dl>
       </section>

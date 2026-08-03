@@ -46,6 +46,7 @@ import {
   formatOrigemDisplay,
   formatTelefoneLead,
 } from "@/lib/leads/format";
+import { formatDateTimeBrasilia } from "@/lib/dates/format";
 import { parseLeadObservacoes } from "@/lib/leads/observacoes";
 import type { EtapaLead, Imovel, Lead, TemperaturaLead } from "@/types";
 
@@ -398,7 +399,7 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
           Origem: {formatOrigemDisplay(lead.origem)}
         </p>
         <p className="text-sm text-muted-foreground">
-          Cadastro: {new Date(lead.criado_em).toLocaleDateString("pt-BR")}
+          Cadastro: {formatDateTimeBrasilia(lead.criado_em)}
         </p>
       </section>
 

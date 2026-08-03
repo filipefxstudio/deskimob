@@ -1,3 +1,4 @@
+import { getDbTimestampMs } from "@/lib/dates/format";
 import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -17,8 +18,8 @@ export async function calcularTempoPrimeiraRespostaIfNeeded(
     return;
   }
 
-  const entradaMs = new Date(lead.data_entrada as string).getTime();
-  const interacaoMs = new Date(interacaoTimestamp).getTime();
+  const entradaMs = getDbTimestampMs(lead.data_entrada as string);
+  const interacaoMs = getDbTimestampMs(interacaoTimestamp);
   const minutos = Math.max(0, Math.round((interacaoMs - entradaMs) / 60_000));
 
   await supabase

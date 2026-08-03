@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
-  avaliarSelecaoPessoaProprietario,
   buscarPessoasAutocomplete,
-  searchClientes,
+  buscarPessoasParaProprietario,
+  vincularPessoaComoProprietario,
   type ClienteSearchResult,
 } from "@/lib/actions/clientes";
 import { mensagemProprietarioIndisponivel } from "@/lib/pessoas/messages";
@@ -76,7 +76,7 @@ export function ProprietarioSection({
     }
 
     startSearch(async () => {
-      const found = await searchClientes(query);
+      const found = await buscarPessoasParaProprietario(query);
       setResults(found);
     });
   }, []);
@@ -111,6 +111,8 @@ export function ProprietarioSection({
           eh_construtor_investidor: pessoa.eh_construtor_investidor,
           corretor_id: "",
           pode_vincular: true,
+          leadId: pessoa.leadId,
+          origem: pessoa.origem,
         })),
       );
     }, 400);
@@ -138,18 +140,33 @@ export function ProprietarioSection({
     setValue("cliente_id", ids[0] ?? null, { shouldValidate: true });
   }
 
-  function confirmCliente(cliente: ClienteSearchResult) {
+  async function confirmCliente(cliente: ClienteSearchResult) {
     if (!cliente.pode_vincular) {
       return;
     }
 
-    if (confirmados.some((item) => item.id === cliente.id)) {
+    const result = await vincularPessoaComoProprietario({
+      clienteId: cliente.id || undefined,
+      leadId: cliente.leadId,
+    });
+
+    if (result.tipo === "bloqueado" || !result.cliente) {
+      return;
+    }
+
+    const pessoa = result.cliente;
+
+    if (confirmados.some((item) => item.id === pessoa.id)) {
       return;
     }
 
     syncProprietarios([
       ...confirmados,
-      { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone },
+      {
+        id: pessoa.id,
+        nome: pessoa.nome,
+        telefone: pessoa.telefone,
+      },
     ]);
     setValue("proprietario_novo", null);
     setShowForm(false);
@@ -187,12 +204,17 @@ export function ProprietarioSection({
     setAutocompleteNovos([]);
   }
 
-  async function vincularProprietarioExistente(clienteId: string) {
-    const result = await avaliarSelecaoPessoaProprietario(clienteId);
+  async function vincularProprietarioExistente(cliente: ClienteSearchResult) {
+    const result = await vincularPessoaComoProprietario({
+      clienteId: cliente.id || undefined,
+      leadId: cliente.leadId,
+    });
+
     if (result.tipo === "bloqueado") {
       setBloqueioNovo(result.mensagem ?? mensagemProprietarioIndisponivel());
       return;
     }
+
     if (!result.cliente) {
       return;
     }
@@ -407,7 +429,7 @@ export function ProprietarioSection({
                     <button
                       type="button"
                       className="w-full px-4 py-3 text-left text-sm hover:bg-muted"
-                      onClick={() => vincularProprietarioExistente(cliente.id)}
+                      onClick={() => vincularProprietarioExistente(cliente)}
                     >
                       <p className="font-medium">{cliente.nome}</p>
                       <p className="text-muted-foreground">{cliente.telefone}</p>

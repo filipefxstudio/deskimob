@@ -68,6 +68,9 @@ export type ClienteSearchResult = {
   corretor_id: string;
   pode_vincular: boolean;
   aviso?: string;
+  /** Quando a correspondência veio de um atendimento sem cadastro em clientes. */
+  leadId?: string;
+  origem?: "cliente" | "lead";
 };
 
 function buildClienteInsert(corretorId: string, data: ClienteFormValues) {
@@ -1063,33 +1066,316 @@ export async function searchClientes(query: string): Promise<ClienteSearchResult
     return false;
   });
 
-  return filtered.slice(0, 10).map((cliente) => {
-    const isOwn = cliente.corretor_id === corretor.id;
-    let pode_vincular = isOwn;
-    let aviso: string | undefined;
+  return filtered.slice(0, 10).map((cliente) => mapClienteRowToSearchResult(cliente, corretor.id));
+}
 
-    if (!isOwn) {
-      if (cliente.eh_construtor_investidor) {
-        pode_vincular = true;
-        aviso = "Construtor/investidor — vinculação permitida.";
-      } else {
-        pode_vincular = false;
-        aviso = mensagemProprietarioIndisponivel();
-      }
+type LeadSearchRow = {
+  id: string;
+  nome: string | null;
+  telefone: string | null;
+  email: string | null;
+  cliente_id: string | null;
+  perfil_id: string | null;
+};
+
+async function fetchLeadsSearchRows(
+  supabase: ClienteDbClient,
+  corretorId: string,
+  trimmed: string,
+  digits: string,
+): Promise<LeadSearchRow[]> {
+  const emailNorm = trimmed.includes("@") ? normalizeEmail(trimmed) : "";
+  const buscaPorTelefone = digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE;
+  const buscaPorEmail = emailValidoParaBusca(emailNorm);
+
+  let dbQuery = supabase
+    .from("leads")
+    .select("id, nome, telefone, email, cliente_id, perfil_id")
+    .eq("corretor_id", corretorId)
+    .order("criado_em", { ascending: false })
+    .limit(50);
+
+  if (buscaPorEmail && !buscaPorTelefone) {
+    dbQuery = dbQuery.ilike("email", `%${escapeIlikePattern(emailNorm)}%`);
+  } else if (!buscaPorTelefone) {
+    dbQuery = dbQuery.ilike("nome", `%${escapeIlikePattern(trimmed)}%`);
+  }
+
+  const { data, error } = await dbQuery;
+
+  if (error) {
+    console.error("[fetchLeadsSearchRows] failed", error);
+    return [];
+  }
+
+  return ((data ?? []) as LeadSearchRow[]).filter((lead) => {
+    const telefone = lead.telefone?.trim() ?? "";
+    if (!telefone) {
+      return false;
     }
 
-    return {
-      id: cliente.id,
-      nome: cliente.nome,
-      telefone: cliente.telefone,
-      email: cliente.email,
-      tipo: cliente.tipo as TipoCliente,
-      eh_construtor_investidor: cliente.eh_construtor_investidor,
-      corretor_id: cliente.corretor_id,
-      pode_vincular,
-      aviso,
-    };
+    if (contemNormalizado(lead.nome, trimmed)) {
+      return true;
+    }
+
+    if (buscaPorTelefone) {
+      const telefoneDigits = sanitizeTelefone(telefone);
+      return (
+        telefoneDigits.includes(digits) ||
+        digits.includes(telefoneDigits) ||
+        telefonesEquivalentes(telefone, digits)
+      );
+    }
+
+    if (buscaPorEmail && lead.email) {
+      return normalizeEmail(lead.email).includes(emailNorm);
+    }
+
+    return false;
   });
+}
+
+function mapClienteRowToSearchResult(
+  cliente: ClienteSearchRow,
+  corretorId: string,
+  extras?: { leadId?: string; origem?: "cliente" | "lead" },
+): ClienteSearchResult {
+  const isOwn = cliente.corretor_id === corretorId;
+  let pode_vincular = isOwn;
+  let aviso: string | undefined;
+
+  if (!isOwn) {
+    if (cliente.eh_construtor_investidor) {
+      pode_vincular = true;
+      aviso = "Construtor/investidor — vinculação permitida.";
+    } else {
+      pode_vincular = false;
+      aviso = mensagemProprietarioIndisponivel();
+    }
+  }
+
+  return {
+    id: cliente.id,
+    nome: cliente.nome,
+    telefone: cliente.telefone,
+    email: cliente.email,
+    tipo: (extras?.origem === "lead" ? "lead" : cliente.tipo) as TipoCliente,
+    eh_construtor_investidor: cliente.eh_construtor_investidor,
+    corretor_id: cliente.corretor_id,
+    pode_vincular: extras?.origem === "lead" ? true : pode_vincular,
+    aviso: extras?.origem === "lead" ? "Lead em atendimento — será vinculado ao imóvel." : aviso,
+    leadId: extras?.leadId,
+    origem: extras?.origem ?? "cliente",
+  };
+}
+
+function dedupeSearchResults(results: ClienteSearchResult[]): ClienteSearchResult[] {
+  const seen = new Set<string>();
+  const deduped: ClienteSearchResult[] = [];
+
+  for (const item of results) {
+    const key = item.id || (item.leadId ? `lead:${item.leadId}` : "");
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
+export async function buscarPessoasParaProprietario(
+  query: string,
+): Promise<ClienteSearchResult[]> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return [];
+  }
+
+  const trimmed = query.trim();
+  if (trimmed.length < 2) {
+    return [];
+  }
+
+  const access = await resolvePessoasAccess(corretor);
+  const digits = sanitizeTelefone(trimmed);
+
+  const supabase = await createClient();
+  let clienteRows = await fetchClientesSearchRows(supabase, corretor.id, trimmed, digits);
+  let leadRows = await fetchLeadsSearchRows(supabase, corretor.id, trimmed, digits);
+
+  if (clienteRows.length === 0 || leadRows.length === 0) {
+    const admin = await createTenantDataClient();
+
+    if (admin) {
+      if (clienteRows.length === 0) {
+        clienteRows = await fetchClientesSearchRows(admin, corretor.id, trimmed, digits);
+      }
+      if (leadRows.length === 0) {
+        leadRows = await fetchLeadsSearchRows(admin, corretor.id, trimmed, digits);
+      }
+    }
+  }
+
+  const clienteIds = new Set(clienteRows.map((row) => row.id));
+  const resultados: ClienteSearchResult[] = [];
+
+  for (const cliente of clienteRows) {
+    if (!pessoaVisivelParaUsuario(cliente.perfil_id, access)) {
+      continue;
+    }
+
+    if (
+      !contemNormalizado(cliente.nome, trimmed) &&
+      !(digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE &&
+        (sanitizeTelefone(cliente.telefone ?? "").includes(digits) ||
+          telefonesEquivalentes(cliente.telefone ?? "", digits)))
+    ) {
+      continue;
+    }
+
+    resultados.push(mapClienteRowToSearchResult(cliente, corretor.id));
+  }
+
+  for (const lead of leadRows) {
+    if (!pessoaVisivelParaUsuario(lead.perfil_id, access)) {
+      continue;
+    }
+
+    if (lead.cliente_id && clienteIds.has(lead.cliente_id)) {
+      continue;
+    }
+
+    const telefone = lead.telefone?.trim() ?? "";
+    resultados.push(
+      mapClienteRowToSearchResult(
+        {
+          id: lead.cliente_id ?? "",
+          nome: lead.nome?.trim() || "Sem nome",
+          telefone,
+          email: lead.email,
+          tipo: "lead",
+          eh_construtor_investidor: false,
+          corretor_id: corretor.id,
+          perfil_id: lead.perfil_id,
+        },
+        corretor.id,
+        { leadId: lead.id, origem: "lead" },
+      ),
+    );
+  }
+
+  return dedupeSearchResults(resultados).slice(0, 10);
+}
+
+async function ensureClienteFromLead(leadId: string): Promise<{ clienteId: string } | { error: string }> {
+  const corretor = await getCorretorForUser();
+  if (!corretor) {
+    return { error: "Sessão expirada." };
+  }
+
+  const fetchLead = async (supabase: ClienteDbClient) => {
+    const { data, error } = await supabase
+      .from("leads")
+      .select("id, nome, telefone, email, cliente_id")
+      .eq("id", leadId)
+      .eq("corretor_id", corretor.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[ensureClienteFromLead] failed", error);
+      return null;
+    }
+
+    return data;
+  };
+
+  const supabase = await createClient();
+  let lead = await fetchLead(supabase);
+
+  if (!lead) {
+    const admin = await createTenantDataClient();
+    if (admin) {
+      lead = await fetchLead(admin);
+    }
+  }
+
+  if (!lead) {
+    return { error: "Atendimento não encontrado." };
+  }
+
+  if (lead.cliente_id) {
+    return { clienteId: lead.cliente_id };
+  }
+
+  const telefone = lead.telefone?.trim() ?? "";
+  if (!telefone) {
+    return { error: "Este atendimento não possui telefone para vincular." };
+  }
+
+  const duplicidade = await verificarPessoaExistente(
+    corretor.id,
+    telefone,
+    lead.email ?? undefined,
+    undefined,
+    leadId,
+  );
+
+  if (duplicidade.existe && duplicidade.cliente?.id) {
+    const clienteId = duplicidade.cliente.id;
+    await supabase.from("leads").update({ cliente_id: clienteId }).eq("id", leadId);
+    return { clienteId };
+  }
+
+  const perfil = await getPerfilForUser(corretor.id);
+  const insertResult = await insertClienteRow(corretor.id, {
+    corretor_id: corretor.id,
+    perfil_id: perfil?.id ?? null,
+    nome: lead.nome?.trim() || "Sem nome",
+    telefone,
+    email: lead.email?.trim() || null,
+    cpf: null,
+    data_nascimento: null,
+    profissao: null,
+    estado_civil: null,
+    observacoes: null,
+    tipo: "ambos",
+    eh_construtor_investidor: false,
+  });
+
+  if ("error" in insertResult) {
+    return { error: insertResult.error };
+  }
+
+  await supabase
+    .from("leads")
+    .update({ cliente_id: insertResult.id })
+    .eq("id", leadId);
+
+  return { clienteId: insertResult.id };
+}
+
+export async function vincularPessoaComoProprietario(input: {
+  clienteId?: string;
+  leadId?: string;
+}): Promise<SelecaoPessoaProprietarioResult> {
+  let clienteId = input.clienteId?.trim() || null;
+
+  if (!clienteId && input.leadId) {
+    const ensured = await ensureClienteFromLead(input.leadId);
+    if ("error" in ensured) {
+      return { tipo: "bloqueado", mensagem: ensured.error };
+    }
+    clienteId = ensured.clienteId;
+  }
+
+  if (!clienteId) {
+    return { tipo: "bloqueado", mensagem: "Pessoa não encontrada." };
+  }
+
+  return avaliarSelecaoPessoaProprietario(clienteId);
 }
 
 export async function createCliente(

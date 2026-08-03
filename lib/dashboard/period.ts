@@ -1,3 +1,4 @@
+import { getDbTimestampMs } from "@/lib/dates/format";
 import {
   endOfDay,
   startOfDay,
@@ -83,7 +84,7 @@ export function resolvePeriodRange(
 }
 
 export function isDateInRange(isoDate: string, start: Date, end: Date): boolean {
-  const time = new Date(isoDate).getTime();
+  const time = getDbTimestampMs(isoDate);
   return time >= start.getTime() && time <= end.getTime();
 }
 
@@ -100,7 +101,7 @@ export function buildSparklineBuckets(
   const buckets = Array.from({ length: bucketCount }, () => 0);
 
   for (const iso of dates) {
-    const time = new Date(iso).getTime();
+    const time = getDbTimestampMs(iso);
     if (time < start.getTime() || time > end.getTime()) continue;
     const index = Math.min(Math.floor((time - start.getTime()) / bucketMs), bucketCount - 1);
     buckets[index] += 1;

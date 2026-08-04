@@ -39,6 +39,8 @@ import {
 import { AgendarAtividadeForm } from "@/components/agenda/AgendarAtividadeForm";
 import { ActionMenuIcon, ActionMenuItem } from "@/components/ui/action-menu-item";
 import { Button } from "@/components/ui/button";
+import { AgendaCalendarSkeleton, AgendaPageSkeleton } from "@/components/ui/page-skeletons";
+import { useInstantTabs } from "@/hooks/use-instant-tabs";
 import {
   Dialog,
   DialogContent,
@@ -148,7 +150,12 @@ function statusLabel(status: StatusAgenda): string {
 export function AgendaPageClient({ initialItems }: AgendaPageClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const {
+    selectedTab: selectedView,
+    displayTab: displayView,
+    selectTab: selectView,
+    isContentPending: isViewPending,
+  } = useInstantTabs<ViewMode>("list");
   const [mesAtual, setMesAtual] = useState(new Date());
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<StatusAgenda | "all">("all");
@@ -172,7 +179,7 @@ export function AgendaPageClient({ initialItems }: AgendaPageClientProps) {
   const hoje = new Date();
 
   const itensFiltrados = useMemo(() => {
-    const range = viewMode === "list" ? resolvePeriodoRange(periodo, customInicio, customFim) : null;
+    const range = displayView === "list" ? resolvePeriodoRange(periodo, customInicio, customFim) : null;
 
     return initialItems.filter((item) => {
       if (filtroStatus !== "all" && item.status !== filtroStatus) return false;
@@ -209,7 +216,7 @@ export function AgendaPageClient({ initialItems }: AgendaPageClientProps) {
     periodo,
     customInicio,
     customFim,
-    viewMode,
+    displayView,
     hoje,
   ]);
 
@@ -354,17 +361,17 @@ export function AgendaPageClient({ initialItems }: AgendaPageClientProps) {
 
           <div className="flex rounded-lg border border-border p-0.5">
             <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
+              variant={selectedView === "list" ? "secondary" : "ghost"}
               size="icon-sm"
-              onClick={() => setViewMode("list")}
+              onClick={() => selectView("list")}
               aria-label="Lista"
             >
               <List className="size-4" />
             </Button>
             <Button
-              variant={viewMode === "calendar" ? "secondary" : "ghost"}
+              variant={selectedView === "calendar" ? "secondary" : "ghost"}
               size="icon-sm"
-              onClick={() => setViewMode("calendar")}
+              onClick={() => selectView("calendar")}
               aria-label="Calendário"
             >
               <CalendarDays className="size-4" />
@@ -373,7 +380,13 @@ export function AgendaPageClient({ initialItems }: AgendaPageClientProps) {
         </div>
       </div>
 
-      {viewMode === "list" ? (
+      {isViewPending ? (
+        selectedView === "calendar" ? (
+          <AgendaCalendarSkeleton />
+        ) : (
+          <AgendaPageSkeleton />
+        )
+      ) : displayView === "list" ? (
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Select value={periodo} onValueChange={(v) => setPeriodo(v as AgendaPeriodoFiltro)}>

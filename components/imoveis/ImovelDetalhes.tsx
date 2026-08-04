@@ -28,7 +28,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DeferredTabPanel } from "@/components/ui/deferred-tab-panel";
+import { TabPanelSkeleton } from "@/components/ui/page-skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInstantTabs } from "@/hooks/use-instant-tabs";
 import { toast } from "@/hooks/use-toast";
 import { aprovarImovel, reprovarImovel } from "@/lib/actions/imoveis";
 import { podeAprovarImovel } from "@/lib/imoveis/aprovacao";
@@ -102,6 +105,10 @@ export function ImovelDetalhes({
   const [toolbarHeight, setToolbarHeight] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [imovel, setImovel] = useState(initialImovel);
+  const { selectedTab, displayTab, selectTab, isContentPending } = useInstantTabs<
+    "detalhes" | "desempenho" | "auditoria"
+  >("detalhes");
+  const imovelTabSkeleton = <TabPanelSkeleton rows={6} />;
 
   useLayoutEffect(() => {
     const element = toolbarRef.current;
@@ -364,7 +371,12 @@ export function ImovelDetalhes({
           </p>
         ) : null}
 
-        <Tabs defaultValue="detalhes">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) =>
+            selectTab(value as "detalhes" | "desempenho" | "auditoria")
+          }
+        >
           <TabsList
             className={cn(
               "sticky top-[var(--imovel-toolbar-height,4.5rem)] z-20 -mx-4 h-auto w-auto justify-start overflow-x-auto rounded-none border-b border-border/80 bg-background/95 p-0 px-4 backdrop-blur md:-mx-6 md:px-6",
@@ -391,6 +403,13 @@ export function ImovelDetalhes({
           </TabsList>
 
           <TabsContent value="detalhes" className="space-y-6 pt-4">
+            <DeferredTabPanel
+              tabId="detalhes"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={imovelTabSkeleton}
+            >
             {imovel.descricao ? (
               <Card>
                 <CardHeader>
@@ -600,9 +619,17 @@ export function ImovelDetalhes({
                 </dl>
               </CardContent>
             </Card>
+            </DeferredTabPanel>
           </TabsContent>
 
           <TabsContent value="desempenho" className="pt-4">
+            <DeferredTabPanel
+              tabId="desempenho"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={imovelTabSkeleton}
+            >
             {desempenho ? (
               <ImovelDesempenhoTab desempenho={desempenho} />
             ) : (
@@ -610,10 +637,19 @@ export function ImovelDetalhes({
                 Não foi possível carregar o desempenho deste imóvel.
               </p>
             )}
+            </DeferredTabPanel>
           </TabsContent>
 
           <TabsContent value="auditoria" className="pt-4">
-            <ImovelAuditoriaTab registros={auditoria} />
+            <DeferredTabPanel
+              tabId="auditoria"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={imovelTabSkeleton}
+            >
+              <ImovelAuditoriaTab registros={auditoria} />
+            </DeferredTabPanel>
           </TabsContent>
         </Tabs>
       </div>

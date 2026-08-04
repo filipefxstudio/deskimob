@@ -22,7 +22,10 @@ import { Input } from "@/components/ui/input";
 import { TelefoneInput } from "@/components/ui/telefone-input";
 import { Label } from "@/components/ui/label";
 import { formatTelefoneBr } from "@/lib/imoveis/telefone";
+import { DeferredTabPanel } from "@/components/ui/deferred-tab-panel";
+import { ConfigTabSkeleton } from "@/components/ui/page-skeletons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInstantTabs } from "@/hooks/use-instant-tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizeSiteCorPrimaria, normalizeSiteCorSecundaria } from "@/lib/site/color";
 import type { Corretor } from "@/types";
@@ -392,6 +395,10 @@ function ContatoTab({ corretor }: { corretor: Corretor }) {
 
 export function AbaSite({ corretor }: AbaSiteProps) {
   const router = useRouter();
+  const { selectedTab, displayTab, selectTab, isContentPending } = useInstantTabs<
+    "identidade" | "inicial" | "sobre" | "contato"
+  >("identidade");
+  const siteTabSkeleton = <ConfigTabSkeleton />;
   const [slug, setSlug] = useState(corretor.slug);
   const [dominioCustom, setDominioCustom] = useState(corretor.dominio_custom ?? "");
   const [dominioFeedback, setDominioFeedback] = useState<string | null>(null);
@@ -449,17 +456,63 @@ export function AbaSite({ corretor }: AbaSiteProps) {
           <Button type="submit" size="sm" variant="outline" disabled={isDominioPending}>Salvar domínio</Button>
         </form>
 
-        <Tabs defaultValue="identidade" className="w-full">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(value) =>
+            selectTab(value as "identidade" | "inicial" | "sobre" | "contato")
+          }
+          className="w-full"
+        >
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
             <TabsTrigger value="identidade">Identidade Visual</TabsTrigger>
             <TabsTrigger value="inicial">Página Inicial</TabsTrigger>
             <TabsTrigger value="sobre">Página Sobre</TabsTrigger>
             <TabsTrigger value="contato">Página Contato</TabsTrigger>
           </TabsList>
-          <TabsContent value="identidade" className="mt-4"><IdentidadeVisualTab corretor={corretor} /></TabsContent>
-          <TabsContent value="inicial" className="mt-4"><PaginaInicialTab corretor={corretor} /></TabsContent>
-          <TabsContent value="sobre" className="mt-4"><SobreTab corretor={corretor} /></TabsContent>
-          <TabsContent value="contato" className="mt-4"><ContatoTab corretor={corretor} /></TabsContent>
+          <TabsContent value="identidade" className="mt-4">
+            <DeferredTabPanel
+              tabId="identidade"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={siteTabSkeleton}
+            >
+              <IdentidadeVisualTab corretor={corretor} />
+            </DeferredTabPanel>
+          </TabsContent>
+          <TabsContent value="inicial" className="mt-4">
+            <DeferredTabPanel
+              tabId="inicial"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={siteTabSkeleton}
+            >
+              <PaginaInicialTab corretor={corretor} />
+            </DeferredTabPanel>
+          </TabsContent>
+          <TabsContent value="sobre" className="mt-4">
+            <DeferredTabPanel
+              tabId="sobre"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={siteTabSkeleton}
+            >
+              <SobreTab corretor={corretor} />
+            </DeferredTabPanel>
+          </TabsContent>
+          <TabsContent value="contato" className="mt-4">
+            <DeferredTabPanel
+              tabId="contato"
+              selectedTab={selectedTab}
+              displayTab={displayTab}
+              isContentPending={isContentPending}
+              skeleton={siteTabSkeleton}
+            >
+              <ContatoTab corretor={corretor} />
+            </DeferredTabPanel>
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>

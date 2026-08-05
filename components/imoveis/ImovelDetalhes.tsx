@@ -42,7 +42,7 @@ import {
 } from "@/lib/imoveis/captador";
 import { getImovelCodigo, formatEnderecoCompleto } from "@/lib/imoveis/format";
 import { getPublicImovelShareUrlClient } from "@/lib/imoveis/share-url";
-import { buildTelLinkLocal, buildWhatsAppLink } from "@/lib/imoveis/telefone";
+import { buildTelLinkLocal, buildWhatsAppLink, formatTelefoneBr } from "@/lib/imoveis/telefone";
 import {
   formatCurrency,
   getFinalidadeLabel,
@@ -501,7 +501,14 @@ export function ImovelDetalhes({
                 <CardContent>
                   {cliente ? (
                     <div className="space-y-3">
-                      <p className="font-medium">{cliente.nome}</p>
+                      <div>
+                        <p className="font-medium">{cliente.nome}</p>
+                        {cliente.telefone ? (
+                          <p className="text-sm text-muted-foreground">
+                            {formatTelefoneBr(cliente.telefone)}
+                          </p>
+                        ) : null}
+                      </div>
                       <div className="flex flex-wrap gap-2">
                         {telLink ? (
                           <Button variant="outline" size="sm" asChild>

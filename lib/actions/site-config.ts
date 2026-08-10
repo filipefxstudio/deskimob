@@ -48,10 +48,12 @@ export type SaveContatoInput = {
   site_endereco: string;
 };
 
-export type SaveSiteDominioInput = {
-  dominio_custom: string;
+export type SaveSiteSlugInput = {
   slug?: string;
 };
+
+/** @deprecated Use SaveSiteSlugInput — domínio próprio usa site-domain.ts */
+export type SaveSiteDominioInput = SaveSiteSlugInput;
 
 function isValidHexColor(value: string): boolean {
   return isValidSiteHexColor(value);
@@ -535,7 +537,7 @@ async function resolveSiteSlugUpdate(
   return { slug: normalized };
 }
 
-export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteConfigActionResult> {
+export async function saveSiteSlug(data: SaveSiteSlugInput): Promise<SiteConfigActionResult> {
   const access = await requireSiteAdminCorretor();
 
   if ("error" in access) {
@@ -549,18 +551,14 @@ export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteC
     return { error: slugResult.error };
   }
 
-  const updatePayload: { dominio_custom: string | null; slug?: string } = {
-    dominio_custom: data.dominio_custom.trim() || null,
-  };
-
-  if ("slug" in slugResult && slugResult.slug) {
-    updatePayload.slug = slugResult.slug;
+  if (!("slug" in slugResult) || !slugResult.slug) {
+    return { success: true, message: "Nenhuma alteração no slug." };
   }
 
-  const updateResult = await updateCorretorSiteFields(corretor.id, updatePayload);
+  const updateResult = await updateCorretorSiteFields(corretor.id, { slug: slugResult.slug });
 
   if (updateResult.error) {
-    return { error: "Não foi possível salvar as configurações do site." };
+    return { error: "Não foi possível salvar o slug do site." };
   }
 
   revalidatePath("/dashboard/configuracoes");
@@ -570,14 +568,15 @@ export async function saveSiteDominio(data: SaveSiteDominioInput): Promise<SiteC
     revalidatePath(`/${corretor.slug}`);
   }
 
-  if ("slug" in slugResult && slugResult.slug) {
-    revalidatePath(`/${slugResult.slug}`);
-  }
-
-  const slugChanged = "slug" in slugResult && Boolean(slugResult.slug);
+  revalidatePath(`/${slugResult.slug}`);
 
   return {
     success: true,
-    message: slugChanged ? "Slug e domínio salvos." : "Domínio salvo.",
+    message: "Slug salvo.",
   };
+}
+
+/** Mantido por compatibilidade — salva apenas o slug. */
+export async function saveSiteDominio(data: SaveSiteSlugInput): Promise<SiteConfigActionResult> {
+  return saveSiteSlug(data);
 }

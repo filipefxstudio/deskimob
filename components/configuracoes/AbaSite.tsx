@@ -9,13 +9,14 @@ import {
   saveContatoPage,
   saveHeroPage,
   saveIdentidadeVisual,
-  saveSiteDominio,
+  saveSiteSlug,
   saveSobrePage,
   uploadFavicon,
   uploadHero,
   uploadLogo,
   uploadSobreFoto,
 } from "@/lib/actions/site-config";
+import { SiteDominioAssistente } from "@/components/configuracoes/SiteDominioAssistente";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ import type { Corretor } from "@/types";
 
 interface AbaSiteProps {
   corretor: Corretor;
+  siteDominioAutomationEnabled: boolean;
 }
 
 function FeedbackMessage({ error, message }: { error: string | null; message: string | null }) {
@@ -393,30 +395,26 @@ function ContatoTab({ corretor }: { corretor: Corretor }) {
   );
 }
 
-export function AbaSite({ corretor }: AbaSiteProps) {
+export function AbaSite({ corretor, siteDominioAutomationEnabled }: AbaSiteProps) {
   const router = useRouter();
   const { selectedTab, displayTab, selectTab, isContentPending } = useInstantTabs<
     "identidade" | "inicial" | "sobre" | "contato"
   >("identidade");
   const siteTabSkeleton = <ConfigTabSkeleton />;
   const [slug, setSlug] = useState(corretor.slug);
-  const [dominioCustom, setDominioCustom] = useState(corretor.dominio_custom ?? "");
-  const [dominioFeedback, setDominioFeedback] = useState<string | null>(null);
-  const [dominioError, setDominioError] = useState<string | null>(null);
-  const [isDominioPending, startDominioTransition] = useTransition();
+  const [slugFeedback, setSlugFeedback] = useState<string | null>(null);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [isSlugPending, startSlugTransition] = useTransition();
   const siteUrl = slug ? `/${slug}` : null;
 
-  function handleDominioSubmit(event: React.FormEvent) {
+  function handleSlugSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setDominioFeedback(null);
-    setDominioError(null);
-    startDominioTransition(async () => {
-      const result = await saveSiteDominio({
-        dominio_custom: dominioCustom,
-        slug,
-      });
-      if (result.error) { setDominioError(result.error); return; }
-      setDominioFeedback(result.message ?? "Domínio salvo.");
+    setSlugFeedback(null);
+    setSlugError(null);
+    startSlugTransition(async () => {
+      const result = await saveSiteSlug({ slug });
+      if (result.error) { setSlugError(result.error); return; }
+      setSlugFeedback(result.message ?? "Slug salvo.");
       router.refresh();
     });
   }
@@ -433,7 +431,7 @@ export function AbaSite({ corretor }: AbaSiteProps) {
         ) : null}
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={handleDominioSubmit} className="space-y-3 rounded-lg border bg-muted/20 p-4">
+        <form onSubmit={handleSlugSubmit} className="space-y-3 rounded-lg border bg-muted/20 p-4">
           <div className="space-y-2">
             <Label htmlFor="slug">Slug do site</Label>
             <Input
@@ -445,16 +443,20 @@ export function AbaSite({ corretor }: AbaSiteProps) {
               spellCheck={false}
             />
             <p className="text-xs text-muted-foreground">
-              Endereço do site: /{slug || "seu-slug"}
+              Endereço provisório: /{slug || "seu-slug"} no Deskimob (ex.: deskimob.com.br/
+              {slug || "seu-slug"})
             </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="dominio_custom">Domínio personalizado</Label>
-            <Input id="dominio_custom" value={dominioCustom} onChange={(e) => setDominioCustom(e.target.value)} placeholder="www.seudominio.com.br (em breve)" />
-          </div>
-          <FeedbackMessage error={dominioError} message={dominioFeedback} />
-          <Button type="submit" size="sm" variant="outline" disabled={isDominioPending}>Salvar domínio</Button>
+          <FeedbackMessage error={slugError} message={slugFeedback} />
+          <Button type="submit" size="sm" variant="outline" disabled={isSlugPending}>
+            Salvar slug
+          </Button>
         </form>
+
+        <SiteDominioAssistente
+          corretor={corretor}
+          automationEnabled={siteDominioAutomationEnabled}
+        />
 
         <Tabs
           value={selectedTab}

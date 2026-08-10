@@ -34,6 +34,24 @@ export type DestinacaoImovel = "residencial" | "comercial" | "rural";
 
 export type ExibirEnderecoModo = "completo" | "apenas_bairro" | "oculto";
 
+export type DominioCustomStatus = "none" | "pending_dns" | "active" | "error";
+
+export interface DominioDnsRecord {
+  type: "A" | "CNAME" | "TXT";
+  name: string;
+  value: string;
+  description?: string;
+}
+
+export interface SiteDominioStatusPayload {
+  domain: string | null;
+  status: DominioCustomStatus;
+  error: string | null;
+  verified: boolean;
+  misconfigured: boolean;
+  dnsRecords: DominioDnsRecord[];
+}
+
 export interface StatusImovel {
   id: string;
   corretor_id: string;
@@ -118,6 +136,9 @@ export interface Corretor {
   creci: string | null;
   slug: string;
   dominio_custom?: string | null;
+  dominio_custom_status?: DominioCustomStatus | null;
+  dominio_custom_erro?: string | null;
+  dominio_custom_verificacao?: DominioDnsRecord[] | null;
   foto_url?: string | null;
   logo_url?: string | null;
   logo_crm_url?: string | null;

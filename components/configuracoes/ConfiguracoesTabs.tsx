@@ -52,6 +52,7 @@ interface ConfiguracoesTabsProps {
   initialTab?: string;
   canManageEquipe?: boolean;
   isAdmin?: boolean;
+  siteDominioAutomationEnabled?: boolean;
 }
 
 function resolveDefaultTab(
@@ -80,6 +81,7 @@ export function ConfiguracoesTabs({
   initialTab = "perfil",
   canManageEquipe = false,
   isAdmin = false,
+  siteDominioAutomationEnabled = false,
 }: ConfiguracoesTabsProps) {
   const allowedTabs: TabValue[] = ["perfil", "whatsapp", "imoveis", "atendimentos"];
   if (canManageEquipe) {
@@ -212,7 +214,7 @@ export function ConfiguracoesTabs({
             isContentPending={isContentPending}
             skeleton={skeleton}
           >
-            <AbaSite corretor={corretor} />
+            <AbaSite corretor={corretor} siteDominioAutomationEnabled={siteDominioAutomationEnabled} />
           </DeferredTabPanel>
         </TabsContent>
       ) : null}

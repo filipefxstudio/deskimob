@@ -15,6 +15,7 @@ import {
   getTiposImovelCustom,
 } from "@/lib/actions/configuracoes";
 import { getEquipeAccessContext, getUsuarioLogadoDisplay } from "@/lib/auth/equipe-access";
+import { isSiteDominioAutomationEnabled } from "@/lib/actions/site-domain";
 import type { PlanoAssinatura } from "@/types";
 
 export const metadata: Metadata = {
@@ -39,9 +40,10 @@ export default async function ConfiguracoesPage({
   const params = await searchParams;
   const initialTab = typeof params.aba === "string" ? params.aba : "perfil";
 
-  const [planoResult, agenteConfigResult] = await Promise.all([
+  const [planoResult, agenteConfigResult, siteDominioAutomationEnabled] = await Promise.all([
     getPlanoCorretor(corretor.id),
     getAgenteConfig(corretor.id),
+    isSiteDominioAutomationEnabled(),
   ]);
 
   const plano: PlanoAssinatura =
@@ -94,6 +96,7 @@ export default async function ConfiguracoesPage({
           initialTab={initialTab}
           canManageEquipe={canManageEquipe}
           isAdmin={isAdmin}
+          siteDominioAutomationEnabled={siteDominioAutomationEnabled}
         />
     </div>
   );

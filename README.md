@@ -7,6 +7,9 @@ Copie `.env.example` para `.env.local` e preencha os valores:
 - `NEXT_PUBLIC_SITE_BASE_URL` — URL base do site em produção (ex.: `https://deskimob.vercel.app`)
 - `RESEND_API_KEY` — chave da API [Resend](https://resend.com) para e-mails de leads do site (configurada uma vez na Vercel; vale para todas as contas).
 - `RESEND_FROM_EMAIL` — remetente verificado no Resend (ex.: `Deskimob <noreply@seudominio.com.br>`). O destino é o e-mail da aba **Site → Contato** (ou e-mail da conta).
+- `VERCEL_API_TOKEN` — token da API Vercel (somente servidor) para domínio próprio self-service na aba **Meu site**.
+- `VERCEL_PROJECT_ID` — ID do projeto Vercel do Deskimob.
+- `VERCEL_TEAM_ID` — (opcional) ID do time Vercel, se o projeto estiver em uma team.
 
 ## Getting Started
 

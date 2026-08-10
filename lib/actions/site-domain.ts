@@ -157,7 +157,10 @@ async function buildStatusPayload(
     try {
       const projectDomain = await getProjectDomain(domain);
       const config = await getDomainConfig(domain);
-      dnsRecords = buildDnsRecordsFromVercel(domain, projectDomain, config);
+      const freshRecords = buildDnsRecordsFromVercel(domain, projectDomain, config);
+      if (freshRecords.length > 0) {
+        dnsRecords = freshRecords;
+      }
       verified = projectDomain.verified;
       misconfigured = config.misconfigured;
       const resolved = resolveDomainStatus(verified, misconfigured);

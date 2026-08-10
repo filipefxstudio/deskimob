@@ -208,9 +208,18 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
       }
       if (result.status) {
         setStatus(result.status);
+        setError(null);
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!automationEnabled || !corretor.dominio_custom?.trim()) {
+      return;
+    }
+
+    refreshStatus();
+  }, [automationEnabled, corretor.dominio_custom, refreshStatus]);
 
   useEffect(() => {
     if (status.status === "pending_dns" && automationEnabled) {
@@ -281,6 +290,7 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
 
   const hasDomain = Boolean(status.domain);
   const publicUrl = status.domain ? `https://${status.domain}` : null;
+  const showDnsRecords = hasDomain && status.dnsRecords.length > 0;
 
   return (
     <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
@@ -354,6 +364,15 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={refreshStatus}
+                >
+                  Ver registros DNS
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
                   variant="ghost"
                   disabled={isPending}
                   onClick={handleDisconnect}
@@ -366,13 +385,25 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
         </form>
       ) : null}
 
-      {status.status === "pending_dns" && status.dnsRecords.length > 0 ? (
+      {showDnsRecords ? (
         <div className="space-y-2">
           <p className="text-sm font-medium">Registros DNS</p>
           <p className="text-xs text-muted-foreground">
-            Adicione estes registros no painel do seu domínio. A propagação pode levar até 48 horas.
+            {status.status === "active"
+              ? "Domínio ativo. Se ainda não configurou o www, cadastre o registro CNAME abaixo no painel do seu domínio."
+              : "Adicione todos os registros abaixo no painel do seu domínio. A propagação pode levar até 48 horas."}
           </p>
           <DnsRecordsTable records={status.dnsRecords} />
+        </div>
+      ) : hasDomain && status.status !== "none" ? (
+        <div className="space-y-2 rounded-md border border-dashed px-3 py-3">
+          <p className="text-sm text-muted-foreground">
+            Não foi possível carregar os registros DNS automaticamente.
+          </p>
+          <Button type="button" size="sm" variant="outline" disabled={isPending} onClick={refreshStatus}>
+            <RefreshCw className={cn("mr-1 size-4", isPending && "animate-spin")} />
+            Ver registros DNS
+          </Button>
         </div>
       ) : null}
 

@@ -87,16 +87,19 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
   return (
     <SidebarContext.Provider value={{ open, setOpen, collapsed, toggleCollapsed }}>
       <TooltipProvider delayDuration={0}>
-        <div className="min-h-screen bg-background">
+        <div className="flex h-dvh flex-col overflow-hidden bg-background">
           <AppHeader nome={nome} slug={slug} logoUrl={logoUrl} />
           <SidebarPanel />
           <div
             className={cn(
-              "mt-10 flex h-[calc(100dvh-2.5rem)] min-h-0 flex-col transition-[margin] duration-200 ease-in-out",
+              "flex min-h-0 flex-1 flex-col pt-10 transition-[margin] duration-200 ease-in-out",
               collapsed ? "md:ml-[52px]" : "md:ml-60",
             )}
           >
-            <main className="min-h-0 flex-1 overflow-y-auto" data-dashboard-scroll>
+            <main
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+              data-dashboard-scroll
+            >
               {children}
             </main>
           </div>

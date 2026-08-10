@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInstantTabs } from "@/hooks/use-instant-tabs";
 import { toast } from "@/hooks/use-toast";
 import { aprovarImovel, reprovarImovel } from "@/lib/actions/imoveis";
+import { getLocalChavesLabel } from "@/lib/constants/imoveis";
 import { podeAprovarImovel } from "@/lib/imoveis/aprovacao";
 import {
   getCaptadorNome,
@@ -451,6 +452,24 @@ export function ImovelDetalhes({
                     <div className="flex justify-between gap-4 border-b border-border pb-2 sm:block">
                       <dt className="text-muted-foreground">Comissão</dt>
                       <dd className="font-medium">{imovel.comissao_percent}%</dd>
+                    </div>
+                  ) : null}
+                  {imovel.local_chaves ? (
+                    <div className="flex justify-between gap-4 border-b border-border pb-2 sm:block">
+                      <dt className="text-muted-foreground">Local das chaves</dt>
+                      <dd className="font-medium">{getLocalChavesLabel(imovel.local_chaves)}</dd>
+                    </div>
+                  ) : null}
+                  {imovel.local_chaves === "imobiliaria" && imovel.chaves_codigo ? (
+                    <div className="flex justify-between gap-4 border-b border-border pb-2 sm:block">
+                      <dt className="text-muted-foreground">Código/número da chave</dt>
+                      <dd className="font-medium">{imovel.chaves_codigo}</dd>
+                    </div>
+                  ) : null}
+                  {imovel.local_chaves === "outros" && imovel.chaves_descricao ? (
+                    <div className="flex justify-between gap-4 border-b border-border pb-2 sm:col-span-2 sm:block">
+                      <dt className="text-muted-foreground">Descrição do local</dt>
+                      <dd className="font-medium whitespace-pre-wrap">{imovel.chaves_descricao}</dd>
                     </div>
                   ) : null}
                 </dl>

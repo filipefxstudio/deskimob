@@ -149,6 +149,14 @@ export const LOCAL_CHAVES_OPCOES = [
   { value: "outros", label: "Outros" },
 ] as const;
 
+export function getLocalChavesLabel(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+
+  return LOCAL_CHAVES_OPCOES.find((item) => item.value === value)?.label ?? value;
+}
+
 export const VAGAS_TIPO_OPCOES = [
   { value: "paralela", label: "Paralela" },
   { value: "em_linha", label: "Em linha" },

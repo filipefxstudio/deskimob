@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CircleDashed, Copy, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, CircleDashed, Copy, ExternalLink, HelpCircle, Loader2, RefreshCw } from "lucide-react";
 
 import {
   connectSiteDominio,
@@ -11,6 +11,14 @@ import {
   verifySiteDominio,
 } from "@/lib/actions/site-domain";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -27,6 +35,87 @@ const STATUS_LABEL: Record<DominioCustomStatus, string> = {
   active: "Ativo",
   error: "Erro",
 };
+
+function SiteDominioAjudaDialog() {
+  const passos = [
+    {
+      titulo: "Tenha um domínio registrado",
+      texto:
+        "Você precisa ser dono de um endereço como imobiliaria.com.br. Se ainda não tiver, registre no Registro.br ou em outra empresa (GoDaddy, Hostinger, etc.).",
+    },
+    {
+      titulo: "Conecte aqui no Deskimob",
+      texto:
+        "Digite seu domínio no campo abaixo (sem https://) e clique em Conectar domínio. O sistema prepara tudo automaticamente.",
+    },
+    {
+      titulo: "Copie os registros DNS",
+      texto:
+        "Depois de conectar, aparece uma tabela com Tipo, Nome e Valor. Use o botão de copiar ao lado de cada valor — você vai colar isso no painel do seu domínio.",
+    },
+    {
+      titulo: "Abra o painel do seu domínio",
+      texto:
+        "Entre no site onde você comprou o domínio (Registro.br, GoDaddy, etc.) e procure por DNS, Zona DNS ou Apontamentos. Cada site chama de um jeito, mas a ideia é a mesma.",
+    },
+    {
+      titulo: "Cadastre cada registro",
+      texto:
+        "Crie um registro para cada linha da tabela, copiando exatamente o Tipo, o Nome e o Valor. Se o Nome for @, significa o domínio principal (ex.: imobiliaria.com.br). Salve as alterações.",
+    },
+    {
+      titulo: "Aguarde a propagação",
+      texto:
+        "As mudanças podem levar de alguns minutos até 48 horas para funcionar em todo o Brasil. Isso é normal — depende do Registro.br e do provedor.",
+    },
+    {
+      titulo: "Verifique no Deskimob",
+      texto:
+        'Volte aqui e clique em Verificar DNS. Quando o status mudar para Ativo, seu site já abre no domínio próprio (ex.: https://imobiliaria.com.br).',
+    },
+  ];
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 size-6 shrink-0 rounded-full"
+          aria-label="Como configurar domínio próprio — passo a passo"
+        >
+          <HelpCircle className="size-4 text-muted-foreground" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Como usar seu domínio no site</DialogTitle>
+          <DialogDescription>
+            Passo a passo simples. Você não precisa acessar a Vercel — só o painel onde comprou o domínio.
+          </DialogDescription>
+        </DialogHeader>
+        <ol className="space-y-4">
+          {passos.map((passo, index) => (
+            <li key={passo.titulo} className="flex gap-3 text-sm">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                {index + 1}
+              </span>
+              <div>
+                <p className="font-medium text-foreground">{passo.titulo}</p>
+                <p className="mt-1 leading-relaxed text-muted-foreground">{passo.texto}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <p className="text-xs text-muted-foreground">
+          Enquanto o domínio não fica ativo, seu site continua disponível pelo endereço provisório (slug)
+          do Deskimob.
+        </p>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function StatusBadge({ status }: { status: DominioCustomStatus }) {
   const styles: Record<DominioCustomStatus, string> = {
@@ -198,9 +287,12 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold">Domínio personalizado</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Use seu domínio (ex.: imobiliaria.com.br) no site público. Configure o DNS no Registro.br ou
-            no painel do seu provedor.
+          <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
+            <SiteDominioAjudaDialog />
+            <span>
+              Use seu domínio (ex.: imobiliaria.com.br) no site público. Configure o DNS no Registro.br ou
+              no painel do seu provedor.
+            </span>
           </p>
         </div>
         <StatusBadge status={status.status} />

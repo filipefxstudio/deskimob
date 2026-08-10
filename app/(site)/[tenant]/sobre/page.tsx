@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteSobreContent } from "@/components/site/SiteSobreContent";
+import { getSitePageTitle, getSiteSobreTitulo } from "@/lib/site/metadata";
 import { resolveSiteBasePath } from "@/lib/site/paths";
 import { getCorretorBySlug } from "@/lib/site/queries";
 
@@ -11,11 +12,11 @@ interface SobrePageProps {
 export async function generateMetadata({ params }: SobrePageProps): Promise<Metadata> {
   const { tenant } = await params;
   const corretor = await getCorretorBySlug(tenant);
-  const titulo = corretor?.sobre_titulo ?? (corretor ? `Sobre ${corretor.nome}` : "Sobre");
+  const titulo = corretor ? getSiteSobreTitulo(corretor) : "Sobre";
 
   return {
-    title: corretor ? `${titulo} | ${corretor.nome}` : "Sobre",
-    description: corretor?.sobre_texto ?? corretor?.sobre ?? undefined,
+    title: corretor ? getSitePageTitle(corretor, titulo) : "Sobre",
+    description: corretor?.site_sobre_texto ?? corretor?.sobre_texto ?? corretor?.sobre ?? undefined,
   };
 }
 

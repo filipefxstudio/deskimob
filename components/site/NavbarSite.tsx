@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useListingChromeHeader } from "@/lib/site/listing-chrome-header";
+import { getSiteNomeExibicao } from "@/lib/site/social";
 import { cn } from "@/lib/utils";
 
 import { useSite } from "./SiteProvider";
@@ -26,6 +27,7 @@ export function NavbarSite() {
   const navItems = BASE_NAV_ITEMS.filter(
     (item) => !("requiresLocacao" in item && item.requiresLocacao) || hasImoveisLocacao,
   );
+  const nomeExibicao = getSiteNomeExibicao(corretor);
 
   return (
     <header
@@ -50,22 +52,15 @@ export function NavbarSite() {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={corretor.logo_url}
-              alt={corretor.nome}
+              alt={nomeExibicao}
               className="max-h-14 max-w-[180px] object-contain"
-            />
-          ) : corretor.foto_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={corretor.foto_url}
-              alt={corretor.nome}
-              className="size-14 rounded-full object-cover"
             />
           ) : (
             <div
               className="flex size-14 items-center justify-center rounded-full text-lg font-semibold text-white"
               style={{ backgroundColor: "var(--color-secondary)" }}
             >
-              {corretor.nome.charAt(0).toUpperCase()}
+              {nomeExibicao.charAt(0).toUpperCase()}
             </div>
           )}
         </Link>

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { SiteImoveisListing } from "@/components/site/SiteImoveisListing";
 import { Button } from "@/components/ui/button";
+import { getSitePageTitle } from "@/lib/site/metadata";
 import { parseImoveisSearchParams, resolveSiteBasePath, sitePath } from "@/lib/site/paths";
 import { getCorretorByDominio, hasImoveisLocacao } from "@/lib/site/queries";
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: CustomAlugarPageProps): Promi
   const { hostname } = await params;
   const corretor = await getCorretorByDominio(decodeURIComponent(hostname));
   return {
-    title: corretor ? `Alugar | ${corretor.nome}` : "Alugar imóveis",
+    title: corretor ? getSitePageTitle(corretor, "Alugar") : "Alugar imóveis",
     description: "Imóveis para locação disponíveis.",
   };
 }

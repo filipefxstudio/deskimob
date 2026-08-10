@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SiteImoveisListing } from "@/components/site/SiteImoveisListing";
+import { getSitePageTitle } from "@/lib/site/metadata";
 import { parseImoveisSearchParams } from "@/lib/site/paths";
 import { getCorretorBySlug } from "@/lib/site/queries";
 
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: ComprarPageProps): Promise<Me
   const { tenant } = await params;
   const corretor = await getCorretorBySlug(tenant);
   return {
-    title: corretor ? `Comprar | ${corretor.nome}` : "Comprar imóveis",
+    title: corretor ? getSitePageTitle(corretor, "Comprar") : "Comprar imóveis",
     description: "Imóveis à venda disponíveis para compra.",
   };
 }

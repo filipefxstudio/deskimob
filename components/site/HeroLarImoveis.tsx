@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TIPOS_IMOVEL } from "@/lib/constants/imoveis";
+import { getSiteNomeExibicao } from "@/lib/site/social";
 import type { Corretor, FinalidadeImovel, TipoImovel } from "@/types";
 
 import { useSite } from "./SiteProvider";
@@ -33,8 +34,9 @@ export function HeroLarImoveis({ corretor, bairros }: HeroLarImoveisProps) {
   const [codigo, setCodigo] = useState("");
 
   const heroImage = corretor.hero_image_url;
+  const nomeExibicao = getSiteNomeExibicao(corretor);
   const titulo =
-    corretor.hero_titulo ?? `Encontre o imóvel ideal com ${corretor.nome}`;
+    corretor.hero_titulo ?? `Encontre o imóvel ideal com ${nomeExibicao}`;
   const subtitulo =
     corretor.hero_subtitulo ??
     "Apartamentos, casas e oportunidades para compra ou locação com atendimento personalizado.";

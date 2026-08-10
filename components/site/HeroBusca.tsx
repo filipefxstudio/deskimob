@@ -1,4 +1,5 @@
 import { FINALIDADES_IMOVEL, TIPOS_IMOVEL } from "@/lib/constants/imoveis";
+import { getSiteNomeExibicao } from "@/lib/site/social";
 import type { Corretor } from "@/types";
 
 import { FiltrosBusca } from "./FiltrosBusca";
@@ -11,6 +12,8 @@ interface HeroBuscaProps {
 }
 
 export function HeroBusca({ corretor, basePath, bairros }: HeroBuscaProps) {
+  const nomeExibicao = getSiteNomeExibicao(corretor);
+
   return (
     <section className="relative overflow-hidden bg-primary text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(241,143,1,0.25),transparent_55%)]" />
@@ -20,7 +23,7 @@ export function HeroBusca({ corretor, basePath, bairros }: HeroBuscaProps) {
             Imóveis selecionados
           </p>
           <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            Encontre o imóvel ideal com {corretor.nome}
+            Encontre o imóvel ideal com {nomeExibicao}
           </h1>
           <p className="mt-4 text-base leading-relaxed text-white/80 sm:text-lg">
             Apartamentos, casas e oportunidades para compra ou locação com atendimento

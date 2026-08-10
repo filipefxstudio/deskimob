@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${roboto.variable} h-full antialiased`}>
-      <body className={`${roboto.className} min-h-full flex flex-col font-sans`}>
+      <body className={`${roboto.className} flex min-h-full flex-col font-sans`}>
         {children}
         <Toaster />
       </body>

@@ -59,13 +59,13 @@ export function getSocialLinks(corretor: Corretor): SocialLink[] {
 }
 
 export function getSiteNomeExibicao(corretor: Corretor): string {
-  return corretor.site_nome_exibicao?.trim() || corretor.nome;
+  return corretor.site_nome_exibicao?.trim() || "Imobiliária";
 }
 
 export function getSiteCreci(corretor: Corretor): string | null {
-  return corretor.site_creci?.trim() || corretor.creci?.trim() || null;
+  return corretor.site_creci?.trim() || null;
 }
 
 export function getSiteEmail(corretor: Corretor): string {
-  return corretor.site_email?.trim() || corretor.contato_email?.trim() || corretor.email;
+  return corretor.site_email?.trim() || corretor.contato_email?.trim() || "";
 }

@@ -229,7 +229,12 @@ function PaginaInicialTab({ corretor }: { corretor: Corretor }) {
       <form onSubmit={handleSaveTextos} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="hero-titulo">Título do hero</Label>
-          <Input id="hero-titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={`Encontre o imóvel ideal com ${corretor.nome}`} />
+          <Input
+            id="hero-titulo"
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder={`Encontre o imóvel ideal com ${corretor.site_nome_exibicao?.trim() || "sua imobiliária"}`}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="hero-subtitulo">Subtítulo</Label>
@@ -303,7 +308,7 @@ function SobreTab({ corretor }: { corretor: Corretor }) {
 }
 
 function ContatoTab({ corretor }: { corretor: Corretor }) {
-  const [nomeExibicao, setNomeExibicao] = useState(corretor.site_nome_exibicao ?? corretor.nome);
+  const [nomeExibicao, setNomeExibicao] = useState(corretor.site_nome_exibicao ?? "");
   const [creci, setCreci] = useState(corretor.site_creci ?? corretor.creci ?? "");
   const [telVendas, setTelVendas] = useState(
     formatTelefoneBr(corretor.site_telefone_vendas ?? corretor.contato_telefone ?? corretor.telefone ?? ""),
@@ -349,6 +354,9 @@ function ContatoTab({ corretor }: { corretor: Corretor }) {
         <div className="space-y-2">
           <Label htmlFor="site-nome">Nome de exibição</Label>
           <Input id="site-nome" value={nomeExibicao} onChange={(e) => setNomeExibicao(e.target.value)} />
+          <p className="text-xs text-muted-foreground">
+            Nome da imobiliária no site: aba do navegador, rodapé, contato e demais áreas públicas.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="site-creci">CRECI</Label>

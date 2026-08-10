@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteImoveisListing } from "@/components/site/SiteImoveisListing";
+import { getSitePageTitle } from "@/lib/site/metadata";
 import { parseImoveisSearchParams } from "@/lib/site/paths";
 import { getCorretorByDominio } from "@/lib/site/queries";
 
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: CustomComprarPageProps): Prom
   const { hostname } = await params;
   const corretor = await getCorretorByDominio(decodeURIComponent(hostname));
   return {
-    title: corretor ? `Comprar | ${corretor.nome}` : "Comprar imóveis",
+    title: corretor ? getSitePageTitle(corretor, "Comprar") : "Comprar imóveis",
     description: "Imóveis à venda disponíveis para compra.",
   };
 }

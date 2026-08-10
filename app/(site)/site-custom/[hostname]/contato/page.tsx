@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { SiteContatoContent } from "@/components/site/SiteContatoContent";
+import { getSitePageTitle } from "@/lib/site/metadata";
+import { getSiteNomeExibicao } from "@/lib/site/social";
 import { getCorretorByDominio } from "@/lib/site/queries";
 
 interface CustomContatoPageProps {
@@ -12,8 +14,10 @@ export async function generateMetadata({ params }: CustomContatoPageProps): Prom
   const corretor = await getCorretorByDominio(decodeURIComponent(hostname));
 
   return {
-    title: corretor ? `Contato | ${corretor.nome}` : "Contato",
-    description: `Entre em contato com ${corretor?.nome ?? "o corretor"}.`,
+    title: corretor ? getSitePageTitle(corretor, "Contato") : "Contato",
+    description: corretor
+      ? `Entre em contato com ${getSiteNomeExibicao(corretor)}.`
+      : "Entre em contato.",
   };
 }
 

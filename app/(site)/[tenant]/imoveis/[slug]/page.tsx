@@ -11,6 +11,7 @@ import {
   getTipoLabel,
 } from "@/lib/site/format";
 import { resolveSiteBasePath, sitePath } from "@/lib/site/paths";
+import { getSitePageTitle } from "@/lib/site/metadata";
 import { getCorretorBySlug, getImovelPublico } from "@/lib/site/queries";
 
 interface ImovelDetailPageProps {
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: ImovelDetailPageProps): Promi
   const pagePath = sitePath(basePath, `/imoveis/${slug}`);
 
   return {
-    title: `${titulo} | ${corretor.nome}`,
+    title: getSitePageTitle(corretor, titulo),
     description: descricao,
     openGraph: {
       title: titulo,

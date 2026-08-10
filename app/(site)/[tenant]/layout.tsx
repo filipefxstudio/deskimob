@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { SiteLayoutShell } from "@/components/site/SiteLayoutShell";
 import { isReservedTenantSlug } from "@/lib/site/host";
+import { getSiteDefaultDescription, getSiteFavicon, getSitePageTitle } from "@/lib/site/metadata";
 import { resolveSiteBasePath } from "@/lib/site/paths";
 import { getCorretorBySlug } from "@/lib/site/queries";
 
@@ -26,12 +27,12 @@ export async function generateMetadata({ params }: TenantLayoutProps): Promise<M
     return { title: "Site não encontrado" };
   }
 
-  const faviconUrl = corretor.site_favicon_url?.trim();
+  const favicon = getSiteFavicon(corretor);
 
   return {
-    title: `${corretor.nome} — Imóveis`,
-    description: corretor.sobre_texto ?? corretor.sobre ?? `Imóveis disponíveis com ${corretor.nome}`,
-    ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
+    title: getSitePageTitle(corretor),
+    description: getSiteDefaultDescription(corretor),
+    ...(favicon ? { icons: favicon } : {}),
   };
 }
 

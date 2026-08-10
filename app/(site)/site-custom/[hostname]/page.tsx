@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteHomeContent } from "@/components/site/SiteHomeContent";
+import { getSiteDefaultDescription, getSitePageTitle } from "@/lib/site/metadata";
 import { getCorretorByDominio } from "@/lib/site/queries";
 
 interface CustomHomePageProps {
@@ -28,10 +29,7 @@ export async function generateMetadata({ params }: CustomHomePageProps): Promise
   }
 
   return {
-    title: `${corretor.nome} — Imóveis`,
-    description:
-      corretor.sobre_texto ??
-      corretor.sobre ??
-      `Imóveis disponíveis com ${corretor.nome}`,
+    title: getSitePageTitle(corretor),
+    description: getSiteDefaultDescription(corretor),
   };
 }

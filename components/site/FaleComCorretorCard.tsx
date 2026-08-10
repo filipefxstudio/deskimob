@@ -1,6 +1,7 @@
 "use client";
 
 import { formatCurrency, getValorExibicao } from "@/lib/site/format";
+import { getSiteCreci, getSiteNomeExibicao } from "@/lib/site/social";
 import { cn } from "@/lib/utils";
 import type { Corretor, Imovel } from "@/types";
 
@@ -13,6 +14,9 @@ interface FaleComCorretorCardProps {
 }
 
 export function FaleComCorretorCard({ corretor, imovel, className }: FaleComCorretorCardProps) {
+  const nomeExibicao = getSiteNomeExibicao(corretor);
+  const creci = getSiteCreci(corretor);
+
   return (
     <aside
       className={cn(
@@ -22,8 +26,8 @@ export function FaleComCorretorCard({ corretor, imovel, className }: FaleComCorr
     >
       <h2 className="text-lg font-semibold text-primary">Fale com o corretor</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        {corretor.nome}
-        {corretor.creci ? ` · CRECI ${corretor.creci}` : ""}
+        {nomeExibicao}
+        {creci ? ` · CRECI ${creci}` : ""}
       </p>
 
       <div className="mt-4 space-y-2 border-b border-border pb-4 text-sm">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteImoveisListing } from "@/components/site/SiteImoveisListing";
+import { getSitePageTitle } from "@/lib/site/metadata";
 import { parseImoveisSearchParams } from "@/lib/site/paths";
 import { getCorretorBySlug } from "@/lib/site/queries";
 
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: ImoveisListingPageProps): Pro
   const corretor = await getCorretorBySlug(tenant);
 
   return {
-    title: corretor ? `Imóveis | ${corretor.nome}` : "Imóveis",
+    title: corretor ? getSitePageTitle(corretor, "Imóveis") : "Imóveis",
     description: "Busque apartamentos, casas e oportunidades disponíveis.",
   };
 }

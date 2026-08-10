@@ -128,6 +128,15 @@
   html {
     @apply font-sans;
   }
+  /* Dashboard: uma única área de rolagem (main), sem scroll duplo no documento. */
+  html:has([data-dashboard-app]) {
+    height: 100%;
+    overflow: hidden;
+  }
+  html:has([data-dashboard-app]) body {
+    height: 100%;
+    overflow: hidden;
+  }
   input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
   textarea {
     cursor: text;

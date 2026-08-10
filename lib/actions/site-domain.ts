@@ -10,11 +10,13 @@ import { getVercelConfig, VercelNotConfiguredError } from "@/lib/vercel/config";
 import {
   addProjectDomain,
   buildDnsRecordsFromVercel,
+  ensureWwwDomainRedirect,
   getDomainConfig,
   getProjectDomain,
   mapVercelErrorMessage,
   removeProjectDomain,
   verifyProjectDomain,
+  type VercelProjectDomain,
 } from "@/lib/vercel/domains";
 import type {
   Corretor,
@@ -65,6 +67,47 @@ async function requireSiteAdminCorretorDomain(): Promise<
   return { corretor: data as CorretorDomainRow };
 }
 
+function apexFromConfiguredDomain(domain: string): string {
+  return domain.replace(/^www\./i, "").toLowerCase();
+}
+
+async function registerDomainOnVercel(domain: string): Promise<VercelProjectDomain> {
+  const apex = apexFromConfiguredDomain(domain);
+
+  try {
+    const projectDomain = await addProjectDomain(domain.startsWith("www.") ? domain : apex);
+    if (!domain.startsWith("www.")) {
+      await ensureWwwDomainRedirect(apex);
+    }
+    return projectDomain;
+  } catch (error) {
+    if (error instanceof Error && error.message.toLowerCase().includes("already")) {
+      const existing = await getProjectDomain(domain.startsWith("www.") ? domain : apex);
+      if (!domain.startsWith("www.")) {
+        await ensureWwwDomainRedirect(apex);
+      }
+      return existing;
+    }
+
+    throw error;
+  }
+}
+
+async function removeDomainFromVercel(domain: string): Promise<void> {
+  const apex = apexFromConfiguredDomain(domain);
+
+  try {
+    await removeProjectDomain(apex);
+  } catch {
+    // Domínio apex pode já ter sido removido manualmente.
+  }
+
+  try {
+    await removeProjectDomain(`www.${apex}`);
+  } catch {
+    // Subdomínio www pode não existir no projeto.
+  }
+}
 async function assertDomainNotUsedByOtherCorretor(domain: string, corretorId: string) {
   const admin = createServiceRoleClient();
   const candidates = domainLookupCandidates(domain);
@@ -218,23 +261,10 @@ export async function connectSiteDominio(domainInput: string): Promise<SiteDomai
 
   try {
     if (previousDomain && previousDomain !== domain) {
-      try {
-        await removeProjectDomain(previousDomain);
-      } catch {
-        // Domínio anterior pode já ter sido removido manualmente.
-      }
+      await removeDomainFromVercel(previousDomain);
     }
 
-    let projectDomain;
-    try {
-      projectDomain = await addProjectDomain(domain);
-    } catch (error) {
-      if (error instanceof Error && error.message.toLowerCase().includes("already")) {
-        projectDomain = await getProjectDomain(domain);
-      } else {
-        throw error;
-      }
-    }
+    const projectDomain = await registerDomainOnVercel(domain);
 
     const config = await getDomainConfig(domain);
     const dnsRecords = buildDnsRecordsFromVercel(domain, projectDomain, config);
@@ -304,6 +334,9 @@ export async function verifySiteDominio(): Promise<SiteDomainActionResult> {
 
   try {
     await verifyProjectDomain(domain);
+    if (!domain.startsWith("www.")) {
+      await ensureWwwDomainRedirect(apexFromConfiguredDomain(domain));
+    }
     const projectDomain = await getProjectDomain(domain);
     const config = await getDomainConfig(domain);
     const dnsRecords = buildDnsRecordsFromVercel(domain, projectDomain, config);
@@ -359,11 +392,7 @@ export async function disconnectSiteDominio(): Promise<SiteDomainActionResult> {
   const domain = access.corretor.dominio_custom?.trim();
 
   if (domain && getVercelConfig().configured) {
-    try {
-      await removeProjectDomain(domain);
-    } catch {
-      // Continua limpando no banco mesmo se já foi removido na Vercel.
-    }
+    await removeDomainFromVercel(domain);
   }
 
   const persist = await persistDomainState(access.corretor.id, {

@@ -27,11 +27,69 @@ function projectIdEncoded(): string {
   return encodeURIComponent(getVercelConfig().projectId);
 }
 
-export async function addProjectDomain(domain: string): Promise<VercelProjectDomain> {
+type AddProjectDomainOptions = {
+  redirect?: string;
+  redirectStatusCode?: 301 | 302 | 307 | 308;
+};
+
+export async function addProjectDomain(
+  domain: string,
+  options?: AddProjectDomainOptions,
+): Promise<VercelProjectDomain> {
   return vercelFetch<VercelProjectDomain>(`/v10/projects/${projectIdEncoded()}/domains`, {
     method: "POST",
-    body: JSON.stringify({ name: domain }),
+    body: JSON.stringify({
+      name: domain,
+      ...(options?.redirect ? { redirect: options.redirect } : {}),
+      ...(options?.redirectStatusCode ? { redirectStatusCode: options.redirectStatusCode } : {}),
+    }),
   });
+}
+
+function isDomainAlreadyOnProjectError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("already") || message.includes("exist");
+}
+
+/** Garante www.apex no projeto Vercel (certificado SSL + redirecionamento para o apex). */
+export async function ensureWwwDomainRedirect(apexDomain: string): Promise<void> {
+  const apex = apexDomain.replace(/^www\./i, "").toLowerCase();
+  if (!apex || apex.startsWith("www.")) {
+    return;
+  }
+
+  const wwwDomain = `www.${apex}`;
+  const redirectTarget = apex;
+
+  try {
+    await addProjectDomain(wwwDomain, {
+      redirect: redirectTarget,
+      redirectStatusCode: 308,
+    });
+  } catch (error) {
+    if (!isDomainAlreadyOnProjectError(error)) {
+      throw error;
+    }
+
+    try {
+      await vercelFetch<VercelProjectDomain>(
+        `/v9/projects/${projectIdEncoded()}/domains/${encodeURIComponent(wwwDomain)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            redirect: redirectTarget,
+            redirectStatusCode: 308,
+          }),
+        },
+      );
+    } catch {
+      // www já existe no projeto — segue com a configuração atual.
+    }
+  }
 }
 
 export async function getProjectDomain(domain: string): Promise<VercelProjectDomain> {

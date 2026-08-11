@@ -28,16 +28,17 @@ import {
 } from "@/components/ui/select";
 import {
   DEFAULT_DIAS_ALERTA_INATIVIDADE,
-  isAtendimentosSortMode,
   isLeadsViewMode,
+  normalizeAtendimentosSortMode,
   STORAGE_KEY_ATENDIMENTOS_SORT,
   STORAGE_KEY_DIAS_ALERTA_INATIVIDADE,
   STORAGE_KEY_LEADS_VIEW,
   type AtendimentosSortMode,
   type LeadsViewMode,
 } from "@/lib/constants/config";
+import { getDbTimestampMs } from "@/lib/dates/format";
 import { ETAPA_FUNIL_ORDEM } from "@/lib/leads/etapa-order";
-import { isLeadAtivo } from "@/lib/leads/format";
+import { getUltimaInteracaoEm, isLeadAtivo } from "@/lib/leads/format";
 import { marcarContatoFeito, qualificarLead } from "@/lib/actions/atendimentos";
 import { toast } from "@/hooks/use-toast";
 import { contemNormalizado } from "@/lib/utils/normalizar";
@@ -70,12 +71,30 @@ function matchesSearch(lead: Lead, query: string): boolean {
   );
 }
 
+function interacaoTimestampRecente(lead: Lead): number {
+  const ultima = getUltimaInteracaoEm(lead);
+  return ultima ? getDbTimestampMs(ultima) : 0;
+}
+
+function interacaoTimestampSemRegistro(lead: Lead): number {
+  const ultima = getUltimaInteracaoEm(lead);
+  return ultima ? getDbTimestampMs(ultima) : getDbTimestampMs(lead.criado_em);
+}
+
 function sortLeads(leads: Lead[], mode: AtendimentosSortMode): Lead[] {
   const sorted = [...leads];
   switch (mode) {
-    case "antigos":
+    case "interacao_antiga":
       return sorted.sort(
-        (a, b) => new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime(),
+        (a, b) => interacaoTimestampSemRegistro(a) - interacaoTimestampSemRegistro(b),
+      );
+    case "cadastro_recente":
+      return sorted.sort(
+        (a, b) => getDbTimestampMs(b.criado_em) - getDbTimestampMs(a.criado_em),
+      );
+    case "cadastro_antigo":
+      return sorted.sort(
+        (a, b) => getDbTimestampMs(a.criado_em) - getDbTimestampMs(b.criado_em),
       );
     case "nome_asc":
       return sorted.sort((a, b) =>
@@ -89,10 +108,10 @@ function sortLeads(leads: Lead[], mode: AtendimentosSortMode): Lead[] {
       return sorted.sort(
         (a, b) => ETAPA_FUNIL_ORDEM[a.etapa] - ETAPA_FUNIL_ORDEM[b.etapa],
       );
-    case "recentes":
+    case "interacao_recente":
     default:
       return sorted.sort(
-        (a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime(),
+        (a, b) => interacaoTimestampRecente(b) - interacaoTimestampRecente(a),
       );
   }
 }
@@ -114,7 +133,7 @@ export function AtendimentosPage({
   const [search, setSearch] = useState(initialBusca);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<LeadsViewMode>("kanban");
-  const [sortMode, setSortMode] = useState<AtendimentosSortMode>("recentes");
+  const [sortMode, setSortMode] = useState<AtendimentosSortMode>("interacao_recente");
   const [filters, setFilters] = useState<LeadsFilterState>({
     ...defaultLeadsFilters,
     ...initialFilters,
@@ -138,8 +157,9 @@ export function AtendimentosPage({
     }
 
     const storedSort = localStorage.getItem(STORAGE_KEY_ATENDIMENTOS_SORT);
-    if (storedSort && isAtendimentosSortMode(storedSort)) {
-      setSortMode(storedSort);
+    const normalizedSort = storedSort ? normalizeAtendimentosSortMode(storedSort) : null;
+    if (normalizedSort) {
+      setSortMode(normalizedSort);
     }
 
     const storedDias = localStorage.getItem(STORAGE_KEY_DIAS_ALERTA_INATIVIDADE);
@@ -245,12 +265,22 @@ export function AtendimentosPage({
         <div className="flex items-center gap-2">
           <ArrowUpDown className="size-4 text-muted-foreground" />
           <Select value={sortMode} onValueChange={(v) => handleSortChange(v as AtendimentosSortMode)}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-56">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="recentes">Mais recentes</SelectItem>
-              <SelectItem value="antigos">Mais antigos</SelectItem>
+              <SelectItem value="interacao_recente">
+                Interação mais recente
+              </SelectItem>
+              <SelectItem value="interacao_antiga">
+                Mais tempo sem interação
+              </SelectItem>
+              <SelectItem value="cadastro_recente">
+                Cadastro mais recente
+              </SelectItem>
+              <SelectItem value="cadastro_antigo">
+                Cadastro mais antigo
+              </SelectItem>
               <SelectItem value="nome_asc">Nome A–Z</SelectItem>
               <SelectItem value="nome_desc">Nome Z–A</SelectItem>
               <SelectItem value="etapa">Etapa do funil</SelectItem>

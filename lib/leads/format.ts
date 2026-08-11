@@ -50,6 +50,25 @@ export function getUltimaAtividadeEm(lead: Lead): string {
   return lead.ultima_mensagem_em ?? lead.atualizado_em ?? lead.criado_em;
 }
 
+/** Data do último registro de interação (WhatsApp, anotação, visita, etc.). */
+export function getUltimaInteracaoEm(lead: Lead): string | null {
+  if (lead.ultima_mensagem_em) {
+    return lead.ultima_mensagem_em;
+  }
+
+  if (lead.interacoes?.length) {
+    let latest = lead.interacoes[0].criado_em;
+    for (const interacao of lead.interacoes) {
+      if (new Date(interacao.criado_em).getTime() > new Date(latest).getTime()) {
+        latest = interacao.criado_em;
+      }
+    }
+    return latest;
+  }
+
+  return null;
+}
+
 export function isLeadAtivo(lead: Lead): boolean {
   if (lead.situacao === "descartado" || lead.situacao === "negocio_fechado") {
     return false;

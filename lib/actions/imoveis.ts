@@ -21,6 +21,7 @@ import { removeImovelFotosFromStorage, uploadFotoImovel } from "@/lib/imoveis/fo
 import { createClienteFromImovel } from "@/lib/actions/clientes";
 import { getMarcaDaguaConfigByCorretorId } from "@/lib/actions/configuracoes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
+import { geocodeAddress } from "@/lib/imoveis/geocode";
 import { isImovelIgnoradoNaDuplicidadeEndereco, isImovelRepublicavel } from "@/lib/imoveis/republicar";
 import {
   ensureStatusImovelDefaults,
@@ -1374,6 +1375,44 @@ function buildImovelFields(data: ImovelFormValues) {
   };
 }
 
+async function resolveImovelCoordinates(
+  data: ImovelFormValues,
+): Promise<{ latitude: number | null; longitude: number | null }> {
+  if (data.latitude != null && data.longitude != null) {
+    return { latitude: data.latitude, longitude: data.longitude };
+  }
+
+  const address = data.portal_endereco_diferente
+    ? {
+        logradouro: data.portal_logradouro ?? "",
+        numero: data.portal_numero ?? "",
+        bairro: data.portal_bairro ?? "",
+        cidade: data.portal_cidade ?? "",
+        estado: data.portal_estado ?? "",
+        cep: data.portal_cep,
+      }
+    : {
+        logradouro: data.logradouro,
+        numero: data.numero,
+        bairro: data.bairro,
+        cidade: data.cidade,
+        estado: data.estado,
+        cep: data.cep,
+      };
+
+  if (!address.logradouro.trim() || !address.cidade.trim()) {
+    return { latitude: data.latitude ?? null, longitude: data.longitude ?? null };
+  }
+
+  const result = await geocodeAddress(address);
+
+  if (!result) {
+    return { latitude: data.latitude ?? null, longitude: data.longitude ?? null };
+  }
+
+  return result;
+}
+
 function buildImovelInsert(
   corretorId: string,
   data: ImovelFormValues,
@@ -2224,7 +2263,10 @@ export async function createImovel(
     };
   }
 
-  const data = parsed.data;
+  const data = {
+    ...parsed.data,
+    ...(await resolveImovelCoordinates(parsed.data)),
+  };
 
   const complementoValor = buildComplementoString(data);
   const duplicidade = await verificarImovelExistente(
@@ -2448,7 +2490,10 @@ export async function updateImovel(
     };
   }
 
-  const data = parsed.data;
+  const data = {
+    ...parsed.data,
+    ...(await resolveImovelCoordinates(parsed.data)),
+  };
 
   const complementoValor = buildComplementoString(data);
   const duplicidade = await verificarImovelExistente(

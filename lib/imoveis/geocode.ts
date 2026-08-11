@@ -12,17 +12,75 @@ export interface GeocodeResult {
   longitude: number;
 }
 
-function buildAddressQuery(address: GeocodeAddress): string {
-  const parts = [
-    address.logradouro,
-    address.numero,
-    address.bairro,
-    address.cidade,
-    address.estado,
-    "Brasil",
-  ].filter(Boolean);
+const NOMINATIM_MIN_INTERVAL_MS = 1100;
 
-  return parts.join(", ");
+let lastNominatimRequestAt = 0;
+
+function sanitizeCep(cep: string | undefined): string {
+  return (cep ?? "").replace(/\D/g, "");
+}
+
+function joinAddressParts(parts: Array<string | undefined | null>): string {
+  return parts
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForNominatimSlot(): Promise<void> {
+  const elapsed = Date.now() - lastNominatimRequestAt;
+  if (elapsed < NOMINATIM_MIN_INTERVAL_MS) {
+    await sleep(NOMINATIM_MIN_INTERVAL_MS - elapsed);
+  }
+  lastNominatimRequestAt = Date.now();
+}
+
+/** Gera variações de busca — a primeira que retornar coordenadas é usada. */
+function buildAddressQueries(address: GeocodeAddress): string[] {
+  const logradouro = address.logradouro.trim();
+  const numero = address.numero.trim();
+  const bairro = address.bairro.trim();
+  const cidade = address.cidade.trim();
+  const estado = address.estado.trim();
+  const cep = sanitizeCep(address.cep);
+
+  if (!logradouro && !cidade && !cep) {
+    return [];
+  }
+
+  const queries: string[] = [];
+
+  if (cep && cidade && estado) {
+    queries.push(joinAddressParts([cep, bairro, cidade, estado, "Brasil"]));
+  }
+
+  if (logradouro && numero && cidade && estado) {
+    queries.push(joinAddressParts([logradouro, numero, bairro, cidade, estado, "Brasil"]));
+  }
+
+  if (cep && logradouro && numero && cidade && estado) {
+    queries.push(
+      joinAddressParts([logradouro, numero, bairro, cidade, estado, cep, "Brasil"]),
+    );
+  }
+
+  if (logradouro && cidade && estado) {
+    queries.push(joinAddressParts([logradouro, bairro, cidade, estado, "Brasil"]));
+  }
+
+  if (bairro && cidade && estado) {
+    queries.push(joinAddressParts([bairro, cidade, estado, "Brasil"]));
+  }
+
+  return [...new Set(queries.filter(Boolean))];
+}
+
+function resolveGoogleMapsKey(): string | undefined {
+  return process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? process.env.GOOGLE_MAPS_KEY ?? undefined;
 }
 
 async function geocodeWithGoogle(
@@ -33,6 +91,7 @@ async function geocodeWithGoogle(
   url.searchParams.set("address", query);
   url.searchParams.set("key", apiKey);
   url.searchParams.set("region", "br");
+  url.searchParams.set("language", "pt-BR");
 
   const response = await fetch(url.toString());
 
@@ -41,8 +100,13 @@ async function geocodeWithGoogle(
   }
 
   const data = (await response.json()) as {
+    status?: string;
     results?: { geometry?: { location?: { lat?: number; lng?: number } } }[];
   };
+
+  if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
+    console.warn("[geocodeWithGoogle] unexpected status", data.status, query);
+  }
 
   const location = data.results?.[0]?.geometry?.location;
 
@@ -54,6 +118,8 @@ async function geocodeWithGoogle(
 }
 
 async function geocodeWithNominatim(query: string): Promise<GeocodeResult | null> {
+  await waitForNominatimSlot();
+
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
@@ -61,7 +127,7 @@ async function geocodeWithNominatim(query: string): Promise<GeocodeResult | null
   url.searchParams.set("countrycodes", "br");
 
   const response = await fetch(url.toString(), {
-    headers: { "User-Agent": "Deskimob/1.0" },
+    headers: { "User-Agent": "Deskimob/1.0 (geocode@deskimob.com.br)" },
   });
 
   if (!response.ok) {
@@ -81,20 +147,29 @@ async function geocodeWithNominatim(query: string): Promise<GeocodeResult | null
 }
 
 export async function geocodeAddress(address: GeocodeAddress): Promise<GeocodeResult | null> {
-  const query = buildAddressQuery(address);
+  const queries = buildAddressQueries(address);
 
-  if (!query.trim()) {
+  if (queries.length === 0 && !sanitizeCep(address.cep)) {
     return null;
   }
 
-  const googleKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? process.env.GOOGLE_MAPS_KEY;
+  const googleKey = resolveGoogleMapsKey();
 
   if (googleKey) {
-    const googleResult = await geocodeWithGoogle(query, googleKey);
-    if (googleResult) {
-      return googleResult;
+    for (const query of queries) {
+      const googleResult = await geocodeWithGoogle(query, googleKey);
+      if (googleResult) {
+        return googleResult;
+      }
     }
   }
 
-  return geocodeWithNominatim(query);
+  for (const query of queries) {
+    const nominatimResult = await geocodeWithNominatim(query);
+    if (nominatimResult) {
+      return nominatimResult;
+    }
+  }
+
+  return null;
 }

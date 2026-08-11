@@ -67,7 +67,7 @@ import {
   VAGAS_COBERTURA_OPCOES,
   VAGAS_TIPO_OPCOES,
 } from "@/lib/constants/imoveis";
-import { geocodeAddress } from "@/lib/imoveis/geocode";
+import { geocodeImovelEndereco } from "@/lib/actions/geocode";
 import {
   buildComplementoString,
   buildImovelFormDefaultValues,
@@ -616,7 +616,7 @@ export function ImovelForm({
     }
 
     const timer = setTimeout(async () => {
-      const result = await geocodeAddress(address);
+      const result = await geocodeImovelEndereco(address);
       if (result) {
         setValue("latitude", result.latitude, { shouldValidate: true });
         setValue("longitude", result.longitude, { shouldValidate: true });

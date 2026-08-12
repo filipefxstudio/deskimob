@@ -128,6 +128,9 @@ function IdentidadeVisualTab({ corretor }: { corretor: Corretor }) {
 
       <div className="space-y-3">
         <Label>Favicon</Label>
+        <p className="text-xs text-muted-foreground">
+          Ícone da aba do navegador. PNG ou ICO, idealmente 32×32 ou 48×48 px (até 512×512).
+        </p>
         <div className="flex flex-wrap items-center gap-4">
           {faviconUrl ? (
             // eslint-disable-next-line @next/next/no-img-element

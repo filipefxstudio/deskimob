@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import type { Corretor } from "@/types";
 
 import { getSiteNomeExibicao } from "@/lib/site/social";
@@ -25,7 +27,21 @@ export function getSiteSobreTitulo(corretor: Corretor): string {
   );
 }
 
-export function getSiteFavicon(corretor: Corretor): { icon: string } | undefined {
+export function getSiteFavicon(corretor: Corretor): Metadata["icons"] | undefined {
   const faviconUrl = corretor.site_favicon_url?.trim();
-  return faviconUrl ? { icon: faviconUrl } : undefined;
+  if (!faviconUrl) {
+    return undefined;
+  }
+
+  const type = faviconUrl.toLowerCase().endsWith(".svg")
+    ? "image/svg+xml"
+    : faviconUrl.toLowerCase().endsWith(".ico")
+      ? "image/x-icon"
+      : "image/png";
+
+  return {
+    icon: [{ url: faviconUrl, type }],
+    shortcut: [{ url: faviconUrl, type }],
+    apple: [{ url: faviconUrl, type }],
+  };
 }

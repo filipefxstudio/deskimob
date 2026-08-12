@@ -2,8 +2,13 @@ import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/dashboard/Sidebar";
 import { requireImoviewImportAccessPage } from "@/lib/auth/imoview-import-access";
+import { deskimobFaviconMetadata } from "@/lib/site/deskimob-favicon";
 import { createClient } from "@/lib/supabase/server";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+
+export const metadata = {
+  icons: deskimobFaviconMetadata,
+};
 
 export default async function AdminLayout({
   children,

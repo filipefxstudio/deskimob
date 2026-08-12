@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+import { deskimobFaviconMetadata } from "@/lib/site/deskimob-favicon";
+
+export const metadata = {
+  icons: deskimobFaviconMetadata,
+};
+
 export default async function AuthLayout({
   children,
 }: Readonly<{

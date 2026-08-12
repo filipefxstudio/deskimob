@@ -2,7 +2,12 @@ import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/dashboard/Sidebar";
 import { getEquipeAccessContext, getUsuarioLogadoDisplay } from "@/lib/auth/equipe-access";
+import { deskimobFaviconMetadata } from "@/lib/site/deskimob-favicon";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata = {
+  icons: deskimobFaviconMetadata,
+};
 
 export default async function DashboardLayout({
   children,

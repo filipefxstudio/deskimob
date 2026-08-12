@@ -324,6 +324,13 @@ export async function uploadFavicon(formData: FormData): Promise<SiteConfigActio
   }
 
   revalidatePath("/dashboard/configuracoes");
+  if (corretor.slug) {
+    revalidatePath(`/${corretor.slug}`);
+  }
+  if (corretor.dominio_custom?.trim()) {
+    revalidatePath(`/site-custom/${corretor.dominio_custom.trim()}`);
+  }
+
   return { success: true, url: uploadResult.url, message: "Favicon enviado." };
 }
 

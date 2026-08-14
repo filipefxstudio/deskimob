@@ -7,12 +7,14 @@ import {
   podeExcluirAtendimento,
   podeTransferirAtendimento,
 } from "@/lib/actions/atendimentos";
+import { getDashboardConfig } from "@/lib/actions/dashboard-config";
 import { getTiposImovelCustom } from "@/lib/actions/configuracoes";
 import {
   getLeads,
   getMidiasOrigem,
   getPerfisForLeads,
 } from "@/lib/actions/leads";
+import { DEFAULT_DASHBOARD_CONFIG } from "@/lib/constants/dashboard";
 import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
 import {
   getCorretorForDashboardPage,
@@ -87,7 +89,7 @@ export default async function AtendimentosRoutePage({ searchParams }: PageProps)
 
   const initialBusca = typeof params.busca === "string" ? params.busca : "";
 
-  const [leads, midias, perfis, motivos, podeTransferir, podeExcluir, tiposImovel] =
+  const [leads, midias, perfis, motivos, podeTransferir, podeExcluir, tiposImovel, dashboardConfig] =
     await Promise.all([
     getLeads({ ativos_apenas: false }),
     getMidiasOrigem(),
@@ -96,7 +98,15 @@ export default async function AtendimentosRoutePage({ searchParams }: PageProps)
     podeTransferirAtendimento(),
     podeExcluirAtendimento(),
     getTiposImovelCustom(),
+    getDashboardConfig(),
   ]);
+
+  const alertConfig = {
+    leads_verde_dias:
+      dashboardConfig?.leads_verde_dias ?? DEFAULT_DASHBOARD_CONFIG.leads_verde_dias,
+    leads_amarelo_dias:
+      dashboardConfig?.leads_amarelo_dias ?? DEFAULT_DASHBOARD_CONFIG.leads_amarelo_dias,
+  };
 
   return (
     <div className="flex-1 p-4 md:p-6">
@@ -108,6 +118,7 @@ export default async function AtendimentosRoutePage({ searchParams }: PageProps)
         motivos={motivos}
         podeTransferir={podeTransferir}
         podeExcluir={podeExcluir}
+        alertConfig={alertConfig}
         initialFilters={initialFilters}
         initialBusca={initialBusca}
         tiposImovel={tiposImovel}

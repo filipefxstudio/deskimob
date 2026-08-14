@@ -8,8 +8,10 @@ import { Bot, Globe } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import type { CSSProperties } from "react";
 
+import { LeadInatividadeIndicador } from "@/components/leads/LeadInatividadeIndicador";
 import { TemperaturaBadge } from "@/components/leads/TemperaturaBadge";
 import { ORIGEM_LEAD_LABELS } from "@/lib/constants/leads";
+import type { LeadInatividadeAlertConfig } from "@/lib/leads/inatividade";
 import {
   formatTelefoneLead,
   getInteresseResumido,
@@ -21,6 +23,7 @@ interface LeadCardProps {
   lead: Lead;
   index: number;
   isUpdating?: boolean;
+  alertConfig?: LeadInatividadeAlertConfig;
 }
 
 function OrigemIcon({ origem }: { origem: string }) {
@@ -33,7 +36,12 @@ function OrigemIcon({ origem }: { origem: string }) {
 
 export { getInteresseResumido };
 
-export function LeadCard({ lead, index, isUpdating = false }: LeadCardProps) {
+export function LeadCard({
+  lead,
+  index,
+  isUpdating = false,
+  alertConfig,
+}: LeadCardProps) {
   const nome = lead.nome?.trim() || "Lead sem nome";
   const interesse = getInteresseResumido(lead);
   const origemLabel =
@@ -91,6 +99,10 @@ export function LeadCard({ lead, index, isUpdating = false }: LeadCardProps) {
           </div>
 
           <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{interesse}</p>
+
+          <div className="mt-2">
+            <LeadInatividadeIndicador lead={lead} config={alertConfig} variant="compact" />
+          </div>
 
           <div className="mt-2 flex items-center justify-between gap-2">
             <span

@@ -9,8 +9,10 @@ import {
   IconVagas,
 } from "@/components/icons/ImovelStatIcons";
 import { TemperaturaBadge } from "@/components/leads/TemperaturaBadge";
+import { LeadInatividadeIndicador } from "@/components/leads/LeadInatividadeIndicador";
 import { ImovelStatItem, ImovelStatsRow } from "@/components/imoveis/ImovelStatsRow";
 import { ETAPA_LEAD_LABELS } from "@/lib/constants/leads";
+import type { LeadInatividadeAlertConfig } from "@/lib/leads/inatividade";
 import { formatTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import { etapaParaSelectAtendimento, formatTelefoneLead } from "@/lib/leads/format";
 import { formatCurrency } from "@/lib/site/format";
@@ -19,6 +21,7 @@ import type { Lead } from "@/types";
 interface AtendimentoCardContentProps {
   lead: Lead;
   perfis?: { id: string; nome: string }[];
+  alertConfig?: LeadInatividadeAlertConfig;
   footer?: ReactNode;
 }
 
@@ -62,6 +65,7 @@ function LeadInteresseStats({ lead }: { lead: Lead }) {
 export function AtendimentoCardContent({
   lead,
   perfis = [],
+  alertConfig,
   footer,
 }: AtendimentoCardContentProps) {
   const responsavelNome =
@@ -96,6 +100,10 @@ export function AtendimentoCardContent({
       )}
 
       <LeadInteresseStats lead={lead} />
+
+      <div className="mt-2">
+        <LeadInatividadeIndicador lead={lead} config={alertConfig} />
+      </div>
 
       <p className="mt-2 truncate text-xs text-muted-foreground">
         {lead.codigo_atendimento ? (

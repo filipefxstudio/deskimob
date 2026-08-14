@@ -42,6 +42,7 @@ import { getUltimaInteracaoEm, isLeadAtivo } from "@/lib/leads/format";
 import { marcarContatoFeito, qualificarLead } from "@/lib/actions/atendimentos";
 import { toast } from "@/hooks/use-toast";
 import { contemNormalizado } from "@/lib/utils/normalizar";
+import type { LeadInatividadeAlertConfig } from "@/lib/leads/inatividade";
 import type { Lead, MidiaOrigem, MotivoDescarte, TipoImovelCustom } from "@/types";
 
 interface AtendimentosPageProps {
@@ -52,6 +53,7 @@ interface AtendimentosPageProps {
   motivos: MotivoDescarte[];
   podeTransferir: boolean;
   podeExcluir: boolean;
+  alertConfig: LeadInatividadeAlertConfig;
   initialFilters?: Partial<LeadsFilterState>;
   initialBusca?: string;
   tiposImovel?: TipoImovelCustom[];
@@ -124,6 +126,7 @@ export function AtendimentosPage({
   motivos,
   podeTransferir,
   podeExcluir,
+  alertConfig,
   initialFilters,
   initialBusca = "",
   tiposImovel = [],
@@ -302,7 +305,12 @@ export function AtendimentosPage({
       ) : null}
 
       {viewMode === "kanban" ? (
-        <FunilKanban initialLeads={filteredLeads} corretorId={corretorId} hideHeader />
+        <FunilKanban
+          initialLeads={filteredLeads}
+          corretorId={corretorId}
+          hideHeader
+          alertConfig={alertConfig}
+        />
       ) : null}
 
       {viewMode === "grade" ? (
@@ -310,6 +318,7 @@ export function AtendimentosPage({
           leads={filteredLeads}
           basePath="/dashboard/atendimentos"
           perfis={perfis}
+          alertConfig={alertConfig}
         >
           {(lead) => (
             <AtendimentoCardActions
@@ -332,6 +341,7 @@ export function AtendimentosPage({
           leads={filteredLeads}
           basePath="/dashboard/atendimentos"
           perfis={perfis}
+          alertConfig={alertConfig}
         >
           {(lead) => (
             <AtendimentoCardActions

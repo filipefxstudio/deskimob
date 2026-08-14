@@ -17,6 +17,7 @@ import {
   isEtapaLead,
 } from "@/lib/constants/leads";
 import { resolveKanbanEtapa } from "@/lib/leads/etapa-order";
+import type { LeadInatividadeAlertConfig } from "@/lib/leads/inatividade";
 import { createClient } from "@/lib/supabase/client";
 import type { EtapaLead, Lead } from "@/types";
 
@@ -24,6 +25,7 @@ interface FunilKanbanProps {
   initialLeads: Lead[];
   corretorId: string;
   hideHeader?: boolean;
+  alertConfig?: LeadInatividadeAlertConfig;
 }
 
 function getColumnAccent(etapa: EtapaLead): "default" | "success" | "danger" {
@@ -66,7 +68,12 @@ function mergeLeadFromPayload(
   return next;
 }
 
-export function FunilKanban({ initialLeads, corretorId, hideHeader }: FunilKanbanProps) {
+export function FunilKanban({
+  initialLeads,
+  corretorId,
+  hideHeader,
+  alertConfig,
+}: FunilKanbanProps) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [pendingLeadIds, setPendingLeadIds] = useState<Set<string>>(() => new Set());
   const pendingUpdates = useRef<Set<string>>(new Set());
@@ -217,6 +224,7 @@ export function FunilKanban({ initialLeads, corretorId, hideHeader }: FunilKanba
                 leads={leadsByEtapa[etapa]}
                 accent={getColumnAccent(etapa)}
                 pendingLeadIds={pendingLeadIds}
+                alertConfig={alertConfig}
               />
             ))}
           </div>

@@ -4,6 +4,7 @@ import { Droppable } from "@hello-pangea/dnd";
 
 import { LeadCard } from "@/components/dashboard/LeadCard";
 import { cn } from "@/lib/utils";
+import type { LeadInatividadeAlertConfig } from "@/lib/leads/inatividade";
 import type { EtapaLead, Lead } from "@/types";
 
 interface KanbanColumnProps {
@@ -12,6 +13,7 @@ interface KanbanColumnProps {
   leads: Lead[];
   accent?: "default" | "success" | "danger";
   pendingLeadIds?: Set<string>;
+  alertConfig?: LeadInatividadeAlertConfig;
 }
 
 const accentStyles = {
@@ -32,6 +34,7 @@ export function KanbanColumn({
   leads,
   accent = "default",
   pendingLeadIds,
+  alertConfig,
 }: KanbanColumnProps) {
   return (
     <div
@@ -68,6 +71,7 @@ export function KanbanColumn({
                 lead={lead}
                 index={index}
                 isUpdating={pendingLeadIds?.has(lead.id)}
+                alertConfig={alertConfig}
               />
             ))}
             {provided.placeholder}

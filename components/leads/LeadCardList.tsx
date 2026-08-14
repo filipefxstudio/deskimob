@@ -4,12 +4,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AtendimentoCardContent } from "@/components/atendimentos/AtendimentoCardContent";
+import type { LeadInatividadeAlertConfig } from "@/lib/leads/inatividade";
 import type { Lead } from "@/types";
 
 interface LeadCardListProps {
   leads: Lead[];
   basePath?: string;
   perfis?: { id: string; nome: string }[];
+  alertConfig?: LeadInatividadeAlertConfig;
   renderActions?: (lead: Lead) => ReactNode;
   children?: (lead: Lead) => ReactNode;
 }
@@ -18,6 +20,7 @@ export function LeadCardList({
   leads,
   basePath = "/dashboard/atendimentos",
   perfis = [],
+  alertConfig,
   renderActions,
   children,
 }: LeadCardListProps) {
@@ -42,7 +45,12 @@ export function LeadCardList({
               href={href}
               className="block bg-card p-4 transition-colors hover:bg-muted/30"
             >
-              <AtendimentoCardContent lead={lead} perfis={perfis} footer={actions} />
+              <AtendimentoCardContent
+                lead={lead}
+                perfis={perfis}
+                alertConfig={alertConfig}
+                footer={actions}
+              />
             </Link>
           );
         })}

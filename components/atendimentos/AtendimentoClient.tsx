@@ -10,6 +10,7 @@ import { NegocioFechadoTab } from "@/components/atendimentos/NegocioFechadoTab";
 import { PropostasTab } from "@/components/atendimentos/PropostasTab";
 import { RadarImoveisTab } from "@/components/atendimentos/RadarImoveisTab";
 import { VisitasTab } from "@/components/atendimentos/VisitasTab";
+import type { CorretorShareHost } from "@/lib/imoveis/share-url";
 import type {
   AuditoriaAtendimento,
   Imovel,
@@ -37,6 +38,7 @@ interface AtendimentoClientProps {
   podeTransferir: boolean;
   tiposImovel: TipoImovelCustom[];
   corretorSlug: string;
+  corretorShareHost: CorretorShareHost;
   statusList: StatusImovel[];
   faixaValorPercent?: number;
 }
@@ -55,6 +57,7 @@ export function AtendimentoClient({
   podeTransferir,
   tiposImovel,
   corretorSlug,
+  corretorShareHost,
   statusList,
   faixaValorPercent = 20,
 }: AtendimentoClientProps) {
@@ -91,6 +94,7 @@ export function AtendimentoClient({
                 selecionados={imoveisSelecionados}
                 visitas={visitas}
                 corretorSlug={corretorSlug}
+                corretorShareHost={corretorShareHost}
                 statusList={statusList}
               />
             ),

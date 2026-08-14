@@ -31,6 +31,7 @@ import {
   selecionarImovel,
 } from "@/lib/actions/atendimentos";
 import { getPreviewImovelShareUrl } from "@/lib/atendimentos/share-url";
+import type { CorretorShareHost } from "@/lib/imoveis/share-url";
 import { contemNormalizado } from "@/lib/utils/normalizar";
 import { toast } from "@/hooks/use-toast";
 import type { Imovel, LeadImovelSelecionado, StatusImovel, Visita } from "@/types";
@@ -40,6 +41,7 @@ interface ImoveisSelecionadosTabProps {
   selecionados: LeadImovelSelecionado[];
   visitas: Visita[];
   corretorSlug: string;
+  corretorShareHost: CorretorShareHost;
   statusList: StatusImovel[];
 }
 
@@ -48,6 +50,7 @@ export function ImoveisSelecionadosTab({
   selecionados,
   visitas,
   corretorSlug,
+  corretorShareHost,
   statusList,
 }: ImoveisSelecionadosTabProps) {
   const router = useRouter();
@@ -103,7 +106,7 @@ export function ImoveisSelecionadosTab({
   }
 
   function copiarLink(token: string) {
-    const url = getPreviewImovelShareUrl(token);
+    const url = getPreviewImovelShareUrl(token, corretorShareHost);
     void navigator.clipboard.writeText(url);
     toast({ title: "Link copiado!" });
   }

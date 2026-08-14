@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -22,6 +23,7 @@ import { createClienteFromImovel } from "@/lib/actions/clientes";
 import { getMarcaDaguaConfigByCorretorId } from "@/lib/actions/configuracoes";
 import { buildComplementoString, getCaptadorPrincipalId, imovelToFormValues } from "@/lib/imoveis/form";
 import { geocodeAddress } from "@/lib/imoveis/geocode";
+import { buildImovelSharePreviewUrl } from "@/lib/imoveis/share-url";
 import { isImovelIgnoradoNaDuplicidadeEndereco, isImovelRepublicavel } from "@/lib/imoveis/republicar";
 import {
   ensureStatusImovelDefaults,
@@ -229,6 +231,7 @@ const IMOVEL_DB_COLUMNS = [
   "codigo_personalizado",
   "titulo",
   "slug",
+  "token_compartilhamento",
   "tipo",
   "finalidade",
   "destinacao",
@@ -1987,6 +1990,51 @@ export async function getImovelById(id: string): Promise<Imovel | null> {
     console.error("[getImovelById] service role fallback unavailable", error);
     return null;
   }
+}
+
+export async function getImovelShareUrl(
+  imovelId: string,
+): Promise<{ url?: string; error?: string }> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return { error: "Sessão expirada. Faça login novamente." };
+  }
+
+  const supabase = await createClient();
+  const { data: imovel, error } = await supabase
+    .from("imoveis")
+    .select("id, token_compartilhamento")
+    .eq("id", imovelId)
+    .eq("corretor_id", corretor.id)
+    .maybeSingle();
+
+  if (error || !imovel) {
+    return { error: "Imóvel não encontrado." };
+  }
+
+  let token = imovel.token_compartilhamento as string | null;
+
+  if (!token) {
+    token = randomUUID();
+    const { data: updated, error: updateError } = await supabase
+      .from("imoveis")
+      .update({ token_compartilhamento: token })
+      .eq("id", imovelId)
+      .eq("corretor_id", corretor.id)
+      .select("token_compartilhamento")
+      .maybeSingle();
+
+    if (updateError || !updated?.token_compartilhamento) {
+      return { error: "Não foi possível gerar o link de compartilhamento." };
+    }
+
+    token = updated.token_compartilhamento as string;
+  }
+
+  return {
+    url: buildImovelSharePreviewUrl(token, corretor),
+  };
 }
 
 export async function updatePublicadoSite(

@@ -22,6 +22,8 @@ interface SiteImovelDetalheContentProps {
   imovel: Imovel;
   basePath: string;
   absolutePageUrl: string;
+  /** Preview de compartilhamento: sem barra de voltar / breadcrumb para listagem. */
+  shareMode?: boolean;
 }
 
 function buildAbsoluteUrl(path: string): string {
@@ -34,6 +36,7 @@ export async function SiteImovelDetalheContent({
   imovel,
   basePath,
   absolutePageUrl,
+  shareMode = false,
 }: SiteImovelDetalheContentProps) {
   const endereco = formatEndereco(imovel);
   const preco = imovel.finalidade === "venda" ? imovel.valor_venda : imovel.valor_locacao;
@@ -102,10 +105,12 @@ export async function SiteImovelDetalheContent({
         }
       />
 
-      <SiteImovelDetalheStickyBar
-        imoveisHref={sitePath(basePath, "/imoveis")}
-        titulo={titulo}
-      />
+      {!shareMode ? (
+        <SiteImovelDetalheStickyBar
+          imoveisHref={sitePath(basePath, "/imoveis")}
+          titulo={titulo}
+        />
+      ) : null}
 
       <div className="mx-auto min-w-0 max-w-7xl px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-8">
         <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ImovelDetalhes } from "@/components/imoveis/ImovelDetalhes";
 import { getAuditoriaImovel, getImovelDesempenho } from "@/lib/actions/imovel-desempenho";
-import { getImovelById, getStatusImovelList } from "@/lib/actions/imoveis";
+import { getImovelById, getImovelShareUrl, getStatusImovelList } from "@/lib/actions/imoveis";
 import { getAlertaRepublicacaoImovel } from "@/lib/imoveis/republicacao-alerta";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
@@ -32,7 +32,7 @@ export default async function ImovelDetailPage({ params }: ImovelDetailPageProps
   }
 
   const { id } = await params;
-  const [imovel, statusList, auditoria, desempenho, perfil, alertaRepublicacao] =
+  const [imovel, statusList, auditoria, desempenho, perfil, alertaRepublicacao, shareResult] =
     await Promise.all([
     getImovelById(id),
     getStatusImovelList(corretor.id),
@@ -40,6 +40,7 @@ export default async function ImovelDetailPage({ params }: ImovelDetailPageProps
     getImovelDesempenho(id),
     getPerfilForUser(),
     getAlertaRepublicacaoImovel(id),
+    getImovelShareUrl(id),
   ]);
 
   if (!imovel) {
@@ -51,6 +52,7 @@ export default async function ImovelDetailPage({ params }: ImovelDetailPageProps
       <ImovelDetalhes
         imovel={imovel}
         corretorSlug={corretor.slug}
+        shareUrl={shareResult.url ?? null}
         statusList={statusList}
         auditoria={auditoria}
         desempenho={desempenho}

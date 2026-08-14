@@ -68,6 +68,11 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
         podeTransferir={podeTransferir}
         tiposImovel={tiposImovel}
         corretorSlug={corretor.slug}
+        corretorShareHost={{
+          slug: corretor.slug,
+          dominio_custom: corretor.dominio_custom,
+          dominio_custom_status: corretor.dominio_custom_status,
+        }}
         statusList={statusList}
         faixaValorPercent={atendimentoConfig?.faixa_valor_percent ?? 20}
       />

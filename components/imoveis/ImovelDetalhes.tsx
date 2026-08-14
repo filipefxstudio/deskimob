@@ -42,7 +42,6 @@ import {
   getCaptadoresLista,
 } from "@/lib/imoveis/captador";
 import { getImovelCodigo, formatEnderecoCompleto } from "@/lib/imoveis/format";
-import { getPublicImovelShareUrlClient } from "@/lib/imoveis/share-url";
 import { buildTelLinkLocal, buildWhatsAppLink, formatTelefoneBr } from "@/lib/imoveis/telefone";
 import {
   formatCurrency,
@@ -57,6 +56,7 @@ import type { AuditoriaImovel, Imovel, ImovelDesempenho, Perfil, StatusImovel } 
 interface ImovelDetalhesProps {
   imovel: Imovel;
   corretorSlug: string;
+  shareUrl?: string | null;
   statusList: StatusImovel[];
   auditoria: AuditoriaImovel[];
   desempenho: ImovelDesempenho | null;
@@ -95,6 +95,7 @@ const INFO_ADICIONAL_FIELDS: {
 export function ImovelDetalhes({
   imovel: initialImovel,
   corretorSlug,
+  shareUrl = null,
   statusList,
   auditoria,
   desempenho,
@@ -145,9 +146,6 @@ export function ImovelDetalhes({
   const cadastradoPor = imovel.cadastrado_por;
   const telLink = buildTelLinkLocal(cliente?.telefone);
   const waLink = buildWhatsAppLink(cliente?.telefone);
-  const shareUrl = imovel.slug
-    ? getPublicImovelShareUrlClient(corretorSlug, imovel.slug)
-    : null;
   const aguardandoAprovacao = imovel.status_aprovacao === "aguardando_aprovacao";
 
   const infoAdicional = INFO_ADICIONAL_FIELDS.filter(
@@ -368,7 +366,7 @@ export function ImovelDetalhes({
 
         {shareUrl ? (
           <p className="text-xs text-muted-foreground break-all">
-            Link público: {shareUrl}
+            Link de compartilhamento: {shareUrl}
           </p>
         ) : null}
 

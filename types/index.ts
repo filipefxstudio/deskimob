@@ -324,6 +324,7 @@ export interface Imovel {
   codigo_personalizado?: string | null;
   titulo?: string | null;
   slug?: string | null;
+  token_compartilhamento?: string | null;
   tipo: TipoImovel;
   finalidade: FinalidadeImovel;
   destinacao?: DestinacaoImovel | null;

@@ -19,11 +19,10 @@ import {
   ImovelDesativarModal,
 } from "@/components/imoveis/ImovelStatusModals";
 import { toast } from "@/hooks/use-toast";
-import { aprovarImovel, reprovarImovel, republicarImovel, validarAtualizacao } from "@/lib/actions/imoveis";
+import { aprovarImovel, getImovelShareUrl, reprovarImovel, republicarImovel, validarAtualizacao } from "@/lib/actions/imoveis";
 import { STATUS_IMOVEL_SISTEMA } from "@/lib/constants/imoveis";
 import { podeAprovarImovel, podeAlterarStatusImovel } from "@/lib/imoveis/aprovacao";
 import { isImovelDuplicavel, isImovelRepublicavel } from "@/lib/imoveis/republicar";
-import { getPublicImovelShareUrlClient } from "@/lib/imoveis/share-url";
 import { cn } from "@/lib/utils";
 import type { Imovel, Perfil, StatusImovel } from "@/types";
 
@@ -51,7 +50,7 @@ function formatValidacaoDate(iso: string): string {
 
 export function ImovelAcoesDropdown({
   imovel,
-  corretorSlug,
+  corretorSlug: _corretorSlug,
   statusList,
   perfil = null,
   variant = "card",
@@ -151,22 +150,31 @@ export function ImovelAcoesDropdown({
     stopCardNav(event);
     closeMenu();
 
-    if (!imovel.slug) {
-      toast({
-        variant: "destructive",
-        title: "Link indisponível",
-        description: "Este imóvel ainda não possui slug para compartilhamento.",
-      });
-      return;
-    }
+    startTransition(async () => {
+      const result = await getImovelShareUrl(imovel.id);
 
-    const url = getPublicImovelShareUrlClient(corretorSlug, imovel.slug);
+      if (result.error || !result.url) {
+        toast({
+          variant: "destructive",
+          title: "Link indisponível",
+          description: result.error ?? "Não foi possível gerar o link de compartilhamento.",
+        });
+        return;
+      }
 
-    void navigator.clipboard.writeText(url).then(() => {
-      toast({
-        title: "Link copiado",
-        description: "O link público do imóvel foi copiado para a área de transferência.",
-      });
+      try {
+        await navigator.clipboard.writeText(result.url);
+        toast({
+          title: "Link copiado",
+          description: "O link exclusivo do imóvel foi copiado para a área de transferência.",
+        });
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Erro ao copiar",
+          description: result.url,
+        });
+      }
     });
   }
 

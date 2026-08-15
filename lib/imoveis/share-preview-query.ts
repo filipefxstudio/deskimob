@@ -7,7 +7,7 @@ type ImovelRow = Imovel & {
 };
 
 const CORRETOR_PREVIEW_COLUMNS =
-  "id, user_id, nome, email, telefone, creci, slug, dominio_custom, dominio_custom_status, foto_url, logo_url, site_cor_primaria, site_cor_secundaria, site_favicon_url, site_tarja_cor, site_nome_exibicao, hero_image_url, hero_titulo, hero_subtitulo, sobre, sobre_titulo, sobre_texto, sobre_foto_url, site_sobre_titulo, site_sobre_texto, site_sobre_foto_url, site_creci, site_telefone_vendas, site_telefone_locacao, site_email, site_instagram, site_youtube, site_tiktok, site_linkedin, site_facebook, site_horario, site_endereco, contato_email, contato_telefone, contato_endereco, contato_horario, whatsapp, criado_em, atualizado_em";
+  "id, user_id, nome, email, telefone, creci, slug, dominio_custom, dominio_custom_status, foto_url, logo_url, site_cor_primaria, site_cor_secundaria, site_favicon_url, site_tarja_cor, site_nome_exibicao, hero_image_url, hero_titulo, hero_subtitulo, sobre, sobre_titulo, sobre_texto, sobre_foto_url, site_sobre_titulo, site_sobre_texto, site_sobre_foto_url, site_creci, site_telefone_vendas, site_telefone_locacao, site_email, site_instagram, site_youtube, site_tiktok, site_linkedin, site_facebook, site_horario, site_endereco, site_gtm_id, contato_email, contato_telefone, contato_endereco, contato_horario, whatsapp, criado_em, atualizado_em";
 
 export async function resolveImovelSharePreview(
   token: string,

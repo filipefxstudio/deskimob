@@ -168,6 +168,7 @@ export interface Corretor {
   site_facebook?: string | null;
   site_horario?: string | null;
   site_endereco?: string | null;
+  site_gtm_id?: string | null;
   contato_email?: string | null;
   contato_telefone?: string | null;
   contato_endereco?: string | null;

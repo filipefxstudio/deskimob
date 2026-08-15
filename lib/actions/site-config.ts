@@ -6,6 +6,7 @@ import { STORAGE_BUCKET_SITE_ASSETS } from "@/lib/constants/site";
 import { requireSiteAdmin } from "@/lib/auth/equipe-access";
 import { isReservedTenantSlug } from "@/lib/site/host";
 import { normalizeSiteCorPrimaria, normalizeSiteCorSecundaria, isValidSiteHexColor } from "@/lib/site/color";
+import { normalizeSiteGtmId } from "@/lib/site/gtm";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/utils";
@@ -52,6 +53,10 @@ export type SaveSiteSlugInput = {
   slug?: string;
 };
 
+export type SaveSiteGtmInput = {
+  site_gtm_id: string;
+};
+
 /** @deprecated Use SaveSiteSlugInput — domínio próprio usa site-domain.ts */
 export type SaveSiteDominioInput = SaveSiteSlugInput;
 
@@ -90,6 +95,19 @@ async function requireSiteAdminCorretor(): Promise<
   return { corretor: ctx.corretor };
 }
 
+function revalidatePublicSitePaths(corretor: Corretor) {
+  revalidatePath("/dashboard/configuracoes");
+
+  if (corretor.slug) {
+    revalidatePath(`/${corretor.slug}`);
+  }
+
+  const dominio = corretor.dominio_custom?.trim();
+  if (dominio) {
+    revalidatePath(`/site-custom/${dominio}`);
+  }
+}
+
 type CorretorSiteUpdatePayload = Partial<
   Pick<
     Corretor,
@@ -115,6 +133,7 @@ type CorretorSiteUpdatePayload = Partial<
     | "site_facebook"
     | "site_horario"
     | "site_endereco"
+    | "site_gtm_id"
     | "dominio_custom"
     | "slug"
   >
@@ -505,6 +524,36 @@ export async function saveContatoPage(data: SaveContatoInput): Promise<SiteConfi
   }
 
   return { success: true, message: "Página Contato salva." };
+}
+
+export async function saveSiteGtmId(data: SaveSiteGtmInput): Promise<SiteConfigActionResult> {
+  const access = await requireSiteAdminCorretor();
+
+  if ("error" in access) {
+    return access;
+  }
+
+  const { corretor } = access;
+  const normalized = normalizeSiteGtmId(data.site_gtm_id);
+
+  if (data.site_gtm_id.trim() && !normalized) {
+    return { error: "Informe um ID válido do Google Tag Manager, ex.: GTM-XXXXXXX." };
+  }
+
+  const updateResult = await updateCorretorSiteFields(corretor.id, {
+    site_gtm_id: normalized,
+  });
+
+  if (updateResult.error) {
+    return { error: updateResult.error };
+  }
+
+  revalidatePublicSitePaths(corretor);
+
+  return {
+    success: true,
+    message: normalized ? "Google Tag Manager configurado." : "Google Tag Manager removido.",
+  };
 }
 
 async function resolveSiteSlugUpdate(

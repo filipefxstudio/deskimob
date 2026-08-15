@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 
 import { FooterSite } from "@/components/site/FooterSite";
+import { SiteGoogleTagManager } from "@/components/site/SiteGoogleTagManager";
 import { NavbarSite } from "@/components/site/NavbarSite";
 import { SiteProvider } from "@/components/site/SiteProvider";
 import { WhatsAppWidget } from "@/components/site/WhatsAppWidget";
@@ -68,6 +69,7 @@ export async function SiteLayoutShell({ corretor, basePath, children }: SiteLayo
           } as CSSProperties
         }
       >
+        <SiteGoogleTagManager corretor={corretor} />
         <div className="flex min-h-full flex-1 flex-col">
           <NavbarSite />
           <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>

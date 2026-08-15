@@ -9,6 +9,7 @@ import {
   saveContatoPage,
   saveHeroPage,
   saveIdentidadeVisual,
+  saveSiteGtmId,
   saveSiteSlug,
   saveSobrePage,
   uploadFavicon,
@@ -406,6 +407,60 @@ function ContatoTab({ corretor }: { corretor: Corretor }) {
   );
 }
 
+function IntegracoesSiteCard({ corretor }: { corretor: Corretor }) {
+  const router = useRouter();
+  const [gtmId, setGtmId] = useState(corretor.site_gtm_id ?? "");
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setFeedback(null);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await saveSiteGtmId({ site_gtm_id: gtmId });
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setFeedback(result.message ?? "Integrações salvas.");
+      router.refresh();
+    });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg border bg-muted/20 p-4">
+      <div>
+        <h3 className="text-sm font-semibold">Integrações</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Ferramentas de analytics e marketing no site público.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="site-gtm-id">Google Tag Manager</Label>
+        <Input
+          id="site-gtm-id"
+          value={gtmId}
+          onChange={(event) => setGtmId(event.target.value.toUpperCase())}
+          placeholder="GTM-XXXXXXX"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <p className="text-xs text-muted-foreground">
+          Cole o ID do container GTM. Deixe em branco para desativar. O script será inserido em todas as
+          páginas do seu site.
+        </p>
+      </div>
+      <FeedbackMessage error={error} message={feedback} />
+      <Button type="submit" size="sm" variant="outline" disabled={isPending}>
+        Salvar integrações
+      </Button>
+    </form>
+  );
+}
+
 export function AbaSite({ corretor, siteDominioAutomationEnabled }: AbaSiteProps) {
   const router = useRouter();
   const { selectedTab, displayTab, selectTab, isContentPending } = useInstantTabs<
@@ -468,6 +523,8 @@ export function AbaSite({ corretor, siteDominioAutomationEnabled }: AbaSiteProps
           corretor={corretor}
           automationEnabled={siteDominioAutomationEnabled}
         />
+
+        <IntegracoesSiteCard corretor={corretor} />
 
         <Tabs
           value={selectedTab}

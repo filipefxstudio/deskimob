@@ -40,6 +40,7 @@ import {
 import { normalizar } from "@/lib/utils/normalizar";
 import { isValidUuid } from "@/lib/utils/uuid";
 import { parseTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
+import { IMOVEL_LIST_LIMIT } from "@/lib/constants/listings";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -516,18 +517,6 @@ function imovelCompativelBairros(imovel: Imovel, bairrosInteresse: string[]): bo
     const alvo = normalizar(bairro);
     return bairroImovel.includes(alvo) || alvo.includes(bairroImovel);
   });
-}
-
-function imovelCompativelValor(
-  imovel: Imovel,
-  valorMinimo?: number | null,
-  valorMaximo?: number | null,
-): boolean {
-  const valor = imovel.finalidade === "venda" ? imovel.valor_venda : imovel.valor_locacao;
-  if (valor == null) return false;
-  if (numeroFiltroAtivo(valorMinimo) && valor < valorMinimo!) return false;
-  if (numeroFiltroAtivo(valorMaximo) && valor > valorMaximo!) return false;
-  return true;
 }
 
 export async function podeExcluirAtendimento(): Promise<boolean> {
@@ -1344,7 +1333,20 @@ export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
     query = query.gte("vagas", lead.vagas_minimas!);
   }
 
-  const { data, error } = await query.order("atualizado_em", { ascending: false }).limit(50);
+  const isVenda =
+    !campoTextoPreenchido(lead.finalidade_busca) || lead.finalidade_busca === "compra";
+  const valorColumn = isVenda ? "valor_venda" : "valor_locacao";
+
+  if (numeroFiltroAtivo(lead.valor_minimo)) {
+    query = query.gte(valorColumn, lead.valor_minimo!);
+  }
+  if (numeroFiltroAtivo(lead.valor_maximo)) {
+    query = query.lte(valorColumn, lead.valor_maximo!);
+  }
+
+  const { data, error } = await query
+    .order("atualizado_em", { ascending: false })
+    .limit(IMOVEL_LIST_LIMIT);
 
   if (error) {
     logPostgrestError("Radar", error);
@@ -1355,12 +1357,6 @@ export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
 
   if (lead.bairros_interesse?.length) {
     imoveis = imoveis.filter((imovel) => imovelCompativelBairros(imovel, lead.bairros_interesse!));
-  }
-
-  if (numeroFiltroAtivo(lead.valor_minimo) || numeroFiltroAtivo(lead.valor_maximo)) {
-    imoveis = imoveis.filter((imovel) =>
-      imovelCompativelValor(imovel, lead.valor_minimo, lead.valor_maximo),
-    );
   }
 
   return imoveis;

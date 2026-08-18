@@ -46,9 +46,10 @@ function atendimentoTabSkeleton(tabId: AtendimentoTabId) {
 
 interface AtendimentoTabsProps {
   panels: Record<AtendimentoTabId, ReactNode>;
+  headerActions?: ReactNode;
 }
 
-export function AtendimentoTabs({ panels }: AtendimentoTabsProps) {
+export function AtendimentoTabs({ panels, headerActions }: AtendimentoTabsProps) {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const initialTab = isAtendimentoTabId(tabParam) ? tabParam : "dados";
@@ -98,13 +99,16 @@ export function AtendimentoTabs({ panels }: AtendimentoTabsProps) {
       onValueChange={(value) => handleTabChange(value as AtendimentoTabId)}
     >
       <div className="sticky top-0 z-30 -mx-4 space-y-3 border-b border-border/80 bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
-        <Link
-          href="/dashboard/atendimentos"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
-        >
-          <ChevronLeft className="size-4" />
-          Voltar para atendimentos
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/dashboard/atendimentos"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+          >
+            <ChevronLeft className="size-4" />
+            Voltar para atendimentos
+          </Link>
+          {headerActions ? <div className="shrink-0">{headerActions}</div> : null}
+        </div>
 
         <div className="md:hidden">
           <Select

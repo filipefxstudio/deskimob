@@ -24,6 +24,7 @@ interface AtendimentoCardActionsProps {
   onDescartar: () => void;
   onTransferir: () => void;
   onExcluir: () => void;
+  showAbrirAtendimento?: boolean;
 }
 
 export function AtendimentoCardActions({
@@ -36,6 +37,7 @@ export function AtendimentoCardActions({
   onDescartar,
   onTransferir,
   onExcluir,
+  showAbrirAtendimento = true,
 }: AtendimentoCardActionsProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -181,19 +183,21 @@ export function AtendimentoCardActions({
                 Excluir atendimento
               </button>
             ) : null}
-            <button
-              type="button"
-              className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                router.push(`/dashboard/atendimentos/${lead.id}`);
-              }}
-            >
-              <ActionMenuIcon action="abrirAtendimento" className="size-3.5" />
-              Abrir atendimento
-            </button>
+            {showAbrirAtendimento ? (
+              <button
+                type="button"
+                className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  router.push(`/dashboard/atendimentos/${lead.id}`);
+                }}
+              >
+                <ActionMenuIcon action="abrirAtendimento" className="size-3.5" />
+                Abrir atendimento
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

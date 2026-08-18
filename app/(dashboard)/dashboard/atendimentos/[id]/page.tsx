@@ -7,6 +7,7 @@ import {
   getAtendimentoConfig,
   getImoveisRadar,
   getMotivosDescarte,
+  podeExcluirAtendimento,
   podeTransferirAtendimento,
 } from "@/lib/actions/atendimentos";
 import { getTiposImovelCustom } from "@/lib/actions/configuracoes";
@@ -40,12 +41,13 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
 
   const { lead, visitas, propostas, negocios, imoveisSelecionados, auditoria } = data;
 
-  const [perfis, imoveisRadar, motivos, podeTransferir, tiposImovel, statusList, perfilAtual, atendimentoConfig] =
+  const [perfis, imoveisRadar, motivos, podeTransferir, podeExcluir, tiposImovel, statusList, perfilAtual, atendimentoConfig] =
     await Promise.all([
     getPerfisForLeads(),
     getImoveisRadar(id),
     getMotivosDescarte(),
     podeTransferirAtendimento(),
+    podeExcluirAtendimento(),
     getTiposImovelCustom(),
     getStatusImovelList(corretor.id),
     getPerfilForUser(),
@@ -66,6 +68,7 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
         auditoria={auditoria}
         motivos={motivos}
         podeTransferir={podeTransferir}
+        podeExcluir={podeExcluir}
         tiposImovel={tiposImovel}
         corretorSlug={corretor.slug}
         corretorShareHost={{

@@ -41,20 +41,40 @@ export function ImovelDesativarModal({
 }: ImovelDesativarModalProps) {
   const [motivo, setMotivo] = useState("");
   const [infoAdicional, setInfoAdicional] = useState("");
-  const [motivos, setMotivos] = useState<string[]>([...MOTIVOS_DESATIVACAO]);
+  const [motivos, setMotivos] = useState<MotivoDesativacao[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!open) return;
-    void getMotivosDesativacao().then((items: MotivoDesativacao[]) => {
-      const ativos = items.filter((item) => item.ativo).map((item) => item.nome);
+    if (!open) {
+      setMotivo("");
+      setInfoAdicional("");
+      return;
+    }
+
+    void getMotivosDesativacao().then((items) => {
+      const ativos = items.filter((item) => item.ativo);
       if (ativos.length > 0) {
         setMotivos(ativos);
+        return;
       }
+
+      setMotivos(
+        MOTIVOS_DESATIVACAO.map((nome, index) => ({
+          id: `default-${index}`,
+          corretor_id: "",
+          nome,
+          ativo: true,
+          ordem: index,
+        })),
+      );
     });
   }, [open]);
 
   function handleSubmit() {
+    if (!motivo) {
+      return;
+    }
+
     startTransition(async () => {
       const result = await desativarImovel(imovelId, motivo, infoAdicional);
 
@@ -83,40 +103,49 @@ export function ImovelDesativarModal({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Motivo *</Label>
+            <Label htmlFor="motivo-desativacao">Motivo *</Label>
             <Select value={motivo} onValueChange={setMotivo}>
-              <SelectTrigger>
+              <SelectTrigger id="motivo-desativacao">
                 <SelectValue placeholder="Selecione o motivo" />
               </SelectTrigger>
               <SelectContent>
                 {motivos.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
+                  <SelectItem key={item.id} value={item.nome}>
+                    {item.nome}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {motivo === "Outro" ? (
-            <div className="space-y-2">
-              <Label htmlFor="info-desativacao">Informações adicionais *</Label>
-              <Textarea
-                id="info-desativacao"
-                rows={3}
-                value={infoAdicional}
-                onChange={(event) => setInfoAdicional(event.target.value)}
-                placeholder="Descreva o motivo da desativação"
-              />
-            </div>
-          ) : null}
+          <div className="space-y-2">
+            <Label htmlFor="info-desativacao">
+              Informações adicionais
+              {motivo === "Outro" ? " *" : null}
+            </Label>
+            <Textarea
+              id="info-desativacao"
+              rows={3}
+              value={infoAdicional}
+              onChange={(event) => setInfoAdicional(event.target.value)}
+              placeholder="Detalhes complementares sobre a desativação (opcional)"
+            />
+          </div>
         </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button type="button" onClick={handleSubmit} disabled={isPending || !motivo}>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={
+              isPending ||
+              !motivo ||
+              (motivo === "Outro" && !infoAdicional.trim())
+            }
+          >
             Desativar
           </Button>
         </DialogFooter>

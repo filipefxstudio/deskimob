@@ -609,10 +609,9 @@ export async function desativarImovel(
     return { error: formatStatusImovelResolveError("Desativado", statusResult) };
   }
 
-  const motivoCompleto =
-    motivo === "Outro" && infoAdicional?.trim()
-      ? `${motivo}: ${infoAdicional.trim()}`
-      : motivo.trim();
+  const motivoCompleto = infoAdicional?.trim()
+    ? `${motivo.trim()} — ${infoAdicional.trim()}`
+    : motivo.trim();
 
   const { error } = await persistImovelRowUpdate(scopedClient, id, corretor.id, {
     status_imovel_id: statusResult.status.id,

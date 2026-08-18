@@ -94,6 +94,7 @@ export function AtendimentoClient({
     <AtendimentoCardActions
       lead={lead}
       disabled={isPending}
+      variant="header"
       podeTransferir={podeTransferir}
       podeExcluir={podeExcluir}
       showAbrirAtendimento={false}

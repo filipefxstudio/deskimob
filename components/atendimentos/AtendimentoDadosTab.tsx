@@ -320,12 +320,7 @@ export function AtendimentoDadosTab({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
-        <AtendimentoClienteSection
-          lead={lead}
-          perfis={perfis}
-          motivos={motivos}
-          podeTransferir={podeTransferir}
-        />
+        <AtendimentoClienteSection lead={lead} />
 
       <section className="space-y-4 rounded-xl border border-border p-4">
         <h3 className="font-semibold text-primary">Status</h3>

@@ -1,12 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { MoreVertical, Phone } from "lucide-react";
+import { ChevronDown, MoreVertical, Phone } from "lucide-react";
 
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
-import { ActionMenuIcon } from "@/components/ui/action-menu-item";
-import { ACTION_MENU_DESTRUCTIVE_CLASS } from "@/lib/ui/action-menu-icons";
+import { ActionMenuItem } from "@/components/ui/action-menu-item";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { buildTelLink, buildWhatsAppLink } from "@/lib/leads/format";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
@@ -25,6 +29,11 @@ interface AtendimentoCardActionsProps {
   onTransferir: () => void;
   onExcluir: () => void;
   showAbrirAtendimento?: boolean;
+  variant?: "card" | "header";
+}
+
+function stopCardNavigation(event: Event) {
+  event.preventDefault();
 }
 
 export function AtendimentoCardActions({
@@ -38,29 +47,16 @@ export function AtendimentoCardActions({
   onTransferir,
   onExcluir,
   showAbrirAtendimento = true,
+  variant = "card",
 }: AtendimentoCardActionsProps) {
   const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const telLink = buildTelLink(lead.telefone);
   const waLink = buildWhatsAppLink(lead.telefone);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
+  const showContactButtons = variant === "card";
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      {telLink ? (
+      {showContactButtons && telLink ? (
         <button
           type="button"
           aria-label="Ligar"
@@ -74,7 +70,7 @@ export function AtendimentoCardActions({
           <Phone className="size-4" />
         </button>
       ) : null}
-      {waLink ? (
+      {showContactButtons && waLink ? (
         <button
           type="button"
           aria-label="WhatsApp"
@@ -91,116 +87,106 @@ export function AtendimentoCardActions({
           <WhatsAppIcon className="size-4" />
         </button>
       ) : null}
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          aria-label="Ações"
-          className={iconButtonClass}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setMenuOpen((open) => !open);
-          }}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {variant === "header" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <MoreVertical data-icon="inline-start" />
+              Ações
+              <ChevronDown className="size-3.5 opacity-60" />
+            </Button>
+          ) : (
+            <button
+              type="button"
+              aria-label="Ações"
+              className={iconButtonClass}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <MoreVertical className="size-4" />
+            </button>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align={variant === "header" ? "end" : "start"}
+          className="min-w-44"
+          onClick={(e) => e.stopPropagation()}
         >
-          <MoreVertical className="size-4" />
-        </button>
-        {menuOpen ? (
-          <div className="absolute right-0 z-10 mt-1 min-w-36 rounded-lg border border-border bg-card py-1 shadow-lg">
-            <button
-              type="button"
-              disabled={disabled}
-              className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                onContatoFeito();
+          <ActionMenuItem
+            action="contatoFeito"
+            disabled={disabled}
+            onSelect={(event) => {
+              stopCardNavigation(event);
+              onContatoFeito();
+            }}
+          >
+            Contato feito
+          </ActionMenuItem>
+          <ActionMenuItem
+            action="qualificar"
+            disabled={disabled}
+            onSelect={(event) => {
+              stopCardNavigation(event);
+              onQualificar();
+            }}
+          >
+            Qualificar
+          </ActionMenuItem>
+          {podeTransferir ? (
+            <ActionMenuItem
+              action="transferir"
+              onSelect={(event) => {
+                stopCardNavigation(event);
+                onTransferir();
               }}
             >
-              <ActionMenuIcon action="contatoFeito" className="size-3.5" />
-              Contato feito
-            </button>
-            <button
-              type="button"
-              disabled={disabled}
-              className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                onQualificar();
+              Transferir
+            </ActionMenuItem>
+          ) : null}
+          <ActionMenuItem
+            action="descartar"
+            destructive
+            onSelect={(event) => {
+              stopCardNavigation(event);
+              onDescartar();
+            }}
+          >
+            Descartar
+          </ActionMenuItem>
+          {podeExcluir ? (
+            <ActionMenuItem
+              action="excluir"
+              destructive
+              onSelect={(event) => {
+                stopCardNavigation(event);
+                onExcluir();
               }}
             >
-              <ActionMenuIcon action="qualificar" className="size-3.5" />
-              Qualificar
-            </button>
-            {podeTransferir ? (
-              <button
-                type="button"
-                className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onTransferir();
-                }}
-              >
-                <ActionMenuIcon action="transferir" className="size-3.5" />
-                Transferir
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className={cn(
-                "flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted",
-                ACTION_MENU_DESTRUCTIVE_CLASS,
-              )}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMenuOpen(false);
-                onDescartar();
+              Excluir atendimento
+            </ActionMenuItem>
+          ) : null}
+          {showAbrirAtendimento ? (
+            <ActionMenuItem
+              action="abrirAtendimento"
+              onSelect={(event) => {
+                stopCardNavigation(event);
+                router.push(`/dashboard/atendimentos/${lead.id}`);
               }}
             >
-              <ActionMenuIcon action="descartar" className="size-3.5" />
-              Descartar
-            </button>
-            {podeExcluir ? (
-              <button
-                type="button"
-                className={cn(
-                  "flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted",
-                  ACTION_MENU_DESTRUCTIVE_CLASS,
-                )}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onExcluir();
-                }}
-              >
-                <ActionMenuIcon action="excluir" className="size-3.5" />
-                Excluir atendimento
-              </button>
-            ) : null}
-            {showAbrirAtendimento ? (
-              <button
-                type="button"
-                className="flex w-full items-center gap-1 px-3 py-2 text-left text-xs hover:bg-muted"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  router.push(`/dashboard/atendimentos/${lead.id}`);
-                }}
-              >
-                <ActionMenuIcon action="abrirAtendimento" className="size-3.5" />
-                Abrir atendimento
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+              Abrir atendimento
+            </ActionMenuItem>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

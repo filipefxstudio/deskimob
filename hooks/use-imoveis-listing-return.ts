@@ -7,6 +7,7 @@ import {
   queueListingScrollRestore,
   readListingReturnState,
 } from "@/lib/site/listing-return";
+import { queueListingStateRestore } from "@/lib/imoveis/listing-return-state";
 
 export function useImoveisListingReturn(fallbackHref = "/dashboard/imoveis") {
   const router = useRouter();
@@ -15,6 +16,9 @@ export function useImoveisListingReturn(fallbackHref = "/dashboard/imoveis") {
     const stored = readListingReturnState();
 
     if (stored?.url) {
+      if (stored.listing) {
+        queueListingStateRestore(stored.listing);
+      }
       queueListingScrollRestore(stored.scrollY);
       router.push(stored.url);
       return;

@@ -1,3 +1,6 @@
+import type { DashboardListingSnapshot } from "@/lib/imoveis/listing-return-state";
+import { readListingSnapshot } from "@/lib/imoveis/listing-return-state";
+
 export const LISTING_RETURN_STORAGE_KEY = "deskimob:listing-return";
 export const LISTING_SCROLL_RESTORE_KEY = "deskimob:listing-scroll-restore";
 export const DASHBOARD_SCROLL_SELECTOR = "[data-dashboard-scroll]";
@@ -5,6 +8,7 @@ export const DASHBOARD_SCROLL_SELECTOR = "[data-dashboard-scroll]";
 export type ListingReturnState = {
   url: string;
   scrollY: number;
+  listing?: DashboardListingSnapshot;
 };
 
 export function saveListingReturnState(url: string, scrollY: number): void {
@@ -12,7 +16,12 @@ export function saveListingReturnState(url: string, scrollY: number): void {
     return;
   }
 
-  const payload: ListingReturnState = { url, scrollY };
+  const listing = readListingSnapshot();
+  const payload: ListingReturnState = {
+    url,
+    scrollY,
+    ...(listing ? { listing } : {}),
+  };
   sessionStorage.setItem(LISTING_RETURN_STORAGE_KEY, JSON.stringify(payload));
 }
 

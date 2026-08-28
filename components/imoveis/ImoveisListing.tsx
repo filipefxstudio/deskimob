@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, X } from "lucide-react";
 
 import { ImovelCardGrid } from "@/components/imoveis/ImovelCardGrid";
@@ -11,6 +10,7 @@ import type { ImovelListingBadge } from "@/lib/actions/imoveis";
 import { ImovelCardList } from "@/components/imoveis/ImovelCardList";
 import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import {
+  buildDefaultImoveisFilters,
   buildImoveisFilterTags,
   countActiveFilters,
   ImoveisFilters,
@@ -31,9 +31,9 @@ import {
 } from "@/components/ui/card";
 import { getImovelCodigo, getValorNumerico } from "@/lib/imoveis/format";
 import {
-  buildDashboardImoveisListingParams,
-  parseDashboardImoveisListingState,
-} from "@/lib/imoveis/listing-url";
+  consumeListingStateRestore,
+  persistListingSnapshot,
+} from "@/lib/imoveis/listing-return-state";
 import { contemNormalizado } from "@/lib/utils/normalizar";
 import type { Imovel, StatusImovel } from "@/types";
 
@@ -175,72 +175,45 @@ function sortImoveis(imoveis: Imovel[], sort: ImoveisSortOption): Imovel[] {
   return sorted;
 }
 
-export function ImoveisListing(props: ImoveisListingProps) {
-  return (
-    <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
-      <ImoveisListingContent {...props} />
-    </Suspense>
-  );
-}
-
-function ImoveisListingContent({
+export function ImoveisListing({
   imoveis,
   corretorSlug,
   statusList,
   workflowBadges = {},
 }: ImoveisListingProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const urlState = useMemo(
-    () => parseDashboardImoveisListingState(searchParams, statusList),
-    [searchParams, statusList],
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<ImoveisFilterState>(() =>
+    buildDefaultImoveisFilters(statusList),
   );
-
-  const [search, setSearch] = useState(urlState.search);
-  const [filters, setFilters] = useState<ImoveisFilterState>(urlState.filters);
-  const [filtersOpen, setFiltersOpen] = useState(urlState.filtersOpen);
-  const [viewMode, setViewMode] = useState<ImoveisViewMode>(urlState.viewMode);
-  const [sort, setSort] = useState<ImoveisSortOption>(urlState.sort);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ImoveisViewMode>("grid");
+  const [sort, setSort] = useState<ImoveisSortOption>("cadastro_desc");
 
   useEffect(() => {
-    setSearch(urlState.search);
-    setFilters(urlState.filters);
-    setFiltersOpen(urlState.filtersOpen);
-    setViewMode(urlState.viewMode);
-    setSort(urlState.sort);
-  }, [urlState]);
+    const restored = consumeListingStateRestore();
+    if (restored) {
+      setSearch(restored.search);
+      setFilters(restored.filters);
+      setFiltersOpen(restored.filtersOpen);
+      setViewMode(restored.viewMode);
+      setSort(restored.sort);
+      return;
+    }
+
+    const storedView = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (storedView === "grid" || storedView === "list") {
+      setViewMode(storedView);
+    }
+
+    const storedSort = localStorage.getItem(SORT_STORAGE_KEY) as ImoveisSortOption | null;
+    if (storedSort) {
+      setSort(storedSort);
+    }
+  }, [statusList]);
 
   useEffect(() => {
-    if (!searchParams.has("sort")) {
-      const storedSort = localStorage.getItem(SORT_STORAGE_KEY) as ImoveisSortOption | null;
-      if (storedSort) {
-        setSort(storedSort);
-      }
-    }
-
-    if (!searchParams.has("view")) {
-      const storedView = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-      if (storedView === "grid" || storedView === "list") {
-        setViewMode(storedView);
-      }
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    const params = buildDashboardImoveisListingParams(
-      { search, filters, sort, viewMode, filtersOpen },
-      statusList,
-    );
-    const nextQuery = params.toString();
-    const currentQuery = searchParams.toString();
-
-    if (nextQuery !== currentQuery) {
-      const href = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-      router.replace(href, { scroll: false });
-    }
-  }, [search, filters, sort, viewMode, filtersOpen, statusList, pathname, router, searchParams]);
+    persistListingSnapshot({ search, filters, sort, viewMode, filtersOpen });
+  }, [search, filters, sort, viewMode, filtersOpen]);
 
   function handleViewModeChange(mode: ImoveisViewMode) {
     setViewMode(mode);

@@ -21,7 +21,15 @@ import {
   resolveValorReferenciaImovel,
   type PreferenciasInteresseFromImovel,
 } from "@/lib/atendimentos/interesse-from-imovel";
-import { atualizarStatusImovelAutomatico } from "@/lib/actions/imoveis";
+async function atualizarStatusImovelAutomatico(
+  imovelId: string,
+  statusNome: "Disponível" | "Reservado" | "Vendido" | "Locado",
+  motivo: string,
+  detalhes?: Record<string, unknown>,
+): Promise<void> {
+  const { atualizarStatusImovelAutomatico: updateStatus } = await import("@/lib/actions/imoveis");
+  return updateStatus(imovelId, statusNome, motivo, detalhes);
+}
 import {
   avaliarSelecaoPessoaAtendimento,
   verificarDuplicidadeContatoLead,

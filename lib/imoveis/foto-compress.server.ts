@@ -1,7 +1,5 @@
 import "server-only";
 
-import sharp from "sharp";
-
 import {
   FOTO_MAX_BYTES,
   FOTO_MAX_HEIGHT,
@@ -11,6 +9,11 @@ import {
   isValidImageBuffer,
   looksLikeUtf8CorruptedBinary,
 } from "@/lib/supabase/storage-upload";
+
+async function getSharp() {
+  const { default: sharp } = await import("sharp");
+  return sharp;
+}
 
 export async function compressImageBufferForStorage(
   buffer: Buffer,
@@ -25,6 +28,7 @@ export async function compressImageBufferForStorage(
     return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
   }
 
+  const sharp = await getSharp();
   let quality = 85;
   let result: Buffer | null = null;
 

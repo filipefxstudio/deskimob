@@ -1,6 +1,9 @@
-import sharp from "sharp";
-
 import type { MarcaDaguaConfig } from "@/types";
+
+async function getSharp() {
+  const { default: sharp } = await import("sharp");
+  return sharp;
+}
 
 const POSITION_MAP: Record<
   string,
@@ -36,6 +39,7 @@ export async function applyWatermark(
   config: Pick<MarcaDaguaConfig, "tamanho_percent" | "opacidade_percent" | "posicao">,
   logoBuffer: Buffer,
 ): Promise<Buffer> {
+  const sharp = await getSharp();
   const image = sharp(imageBuffer);
   const { width = 800, height = 600 } = await image.metadata();
 

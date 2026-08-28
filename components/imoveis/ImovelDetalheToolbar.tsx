@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode, Ref } from "react";
 
 import { ImovelDetalheBackButton } from "@/components/imoveis/ImovelDetalheBackButton";
-import { useImoveisListingReturn } from "@/hooks/use-imoveis-listing-return";
 import { cn } from "@/lib/utils";
 
 interface ImovelDetalheToolbarProps {
@@ -19,8 +19,6 @@ export function ImovelDetalheToolbar({
   toolbarRef,
   className,
 }: ImovelDetalheToolbarProps) {
-  const returnToListing = useImoveisListingReturn();
-
   return (
     <div
       ref={toolbarRef}
@@ -33,13 +31,9 @@ export function ImovelDetalheToolbar({
         <div className="min-w-0 space-y-2">
           <ImovelDetalheBackButton />
           <nav className="text-sm text-muted-foreground">
-            <button
-              type="button"
-              onClick={returnToListing}
-              className="hover:text-primary"
-            >
+            <Link href="/dashboard/imoveis" className="hover:text-primary">
               Imóveis
-            </button>
+            </Link>
             <span className="mx-2">›</span>
             <span className="text-foreground">Detalhes do imóvel {codigo}</span>
           </nav>

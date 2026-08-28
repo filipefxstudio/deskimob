@@ -10,7 +10,7 @@ import type { ImovelListingBadge } from "@/lib/actions/imoveis";
 import { ImovelCardList } from "@/components/imoveis/ImovelCardList";
 import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import {
-  buildDefaultImoveisFilters,
+  buildInitialImoveisFilters,
   buildImoveisFilterTags,
   countActiveFilters,
   ImoveisFilters,
@@ -30,12 +30,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getImovelCodigo, getValorNumerico } from "@/lib/imoveis/format";
-import {
-  consumeListingStateRestore,
-  persistListingSnapshot,
-} from "@/lib/imoveis/listing-return-state";
 import { contemNormalizado } from "@/lib/utils/normalizar";
-import type { Imovel, StatusImovel } from "@/types";
+import type { Imovel, StatusImovel, StatusImovelSlug } from "@/types";
 
 const VIEW_MODE_STORAGE_KEY = "deskimob-imoveis-view";
 const SORT_STORAGE_KEY = "fx-imoveis-sort";
@@ -45,6 +41,9 @@ interface ImoveisListingProps {
   corretorSlug: string;
   statusList: StatusImovel[];
   workflowBadges?: Record<string, ImovelListingBadge>;
+  initialBusca?: string;
+  initialBairro?: string;
+  initialStatusSlug?: StatusImovelSlug;
 }
 
 function matchesMinimo(
@@ -180,26 +179,40 @@ export function ImoveisListing({
   corretorSlug,
   statusList,
   workflowBadges = {},
+  initialBusca = "",
+  initialBairro = "",
+  initialStatusSlug,
 }: ImoveisListingProps) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialBusca);
   const [filters, setFilters] = useState<ImoveisFilterState>(() =>
-    buildDefaultImoveisFilters(statusList),
+    buildInitialImoveisFilters(statusList, {
+      bairro: initialBairro || undefined,
+      statusSlug: initialStatusSlug,
+    }),
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ImoveisViewMode>("grid");
   const [sort, setSort] = useState<ImoveisSortOption>("cadastro_desc");
 
   useEffect(() => {
-    const restored = consumeListingStateRestore();
-    if (restored) {
-      setSearch(restored.search);
-      setFilters(restored.filters);
-      setFiltersOpen(restored.filtersOpen);
-      setViewMode(restored.viewMode);
-      setSort(restored.sort);
-      return;
+    if (initialBusca) {
+      setSearch(initialBusca);
     }
+  }, [initialBusca]);
 
+  useEffect(() => {
+    if (initialBairro || initialStatusSlug) {
+      setFilters(
+        buildInitialImoveisFilters(statusList, {
+          bairro: initialBairro || undefined,
+          statusSlug: initialStatusSlug,
+        }),
+      );
+      setFiltersOpen(true);
+    }
+  }, [initialBairro, initialStatusSlug, statusList]);
+
+  useEffect(() => {
     const storedView = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
     if (storedView === "grid" || storedView === "list") {
       setViewMode(storedView);
@@ -209,11 +222,7 @@ export function ImoveisListing({
     if (storedSort) {
       setSort(storedSort);
     }
-  }, [statusList]);
-
-  useEffect(() => {
-    persistListingSnapshot({ search, filters, sort, viewMode, filtersOpen });
-  }, [search, filters, sort, viewMode, filtersOpen]);
+  }, []);
 
   function handleViewModeChange(mode: ImoveisViewMode) {
     setViewMode(mode);

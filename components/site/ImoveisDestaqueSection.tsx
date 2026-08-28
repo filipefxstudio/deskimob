@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { ImovelPublico } from "@/lib/site/imovel-publico";
-import type { FinalidadeImovel } from "@/types";
+import type { FinalidadeImovel, Imovel } from "@/types";
 
 import { ImovelCardPublico } from "./ImovelCardPublico";
 import { useSite } from "./SiteProvider";
 
 interface ImoveisDestaqueSectionProps {
-  imoveis: ImovelPublico[];
+  imoveis: Imovel[];
 }
 
 export function ImoveisDestaqueSection({ imoveis }: ImoveisDestaqueSectionProps) {

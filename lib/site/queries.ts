@@ -2,21 +2,20 @@ import { cache } from "react";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import {
-  mapImovelPublicoRow,
-  PUBLIC_IMOVEL_SELECT,
-  type ImovelPublico,
-} from "@/lib/site/imovel-publico";
+import { getImovelFotoPublicUrl } from "@/lib/imoveis/foto-url";
 import {
   applyImoveisPublicosFilters,
   applyImoveisPublicosOrdenacao,
   PUBLIC_IMOVEIS_PAGE_SIZE,
   type ImoveisPublicosFilters,
 } from "@/lib/site/imovel-filters";
-import type { Corretor, ImovelFoto } from "@/types";
+import type {
+  Corretor,
+  Imovel,
+  ImovelFoto,
+} from "@/types";
 
 export type { ImoveisPublicosFilters } from "@/lib/site/imovel-filters";
-export type { ImovelPublico } from "@/lib/site/imovel-publico";
 export { PUBLIC_IMOVEIS_PAGE_SIZE } from "@/lib/site/imovel-filters";
 
 const CORRETOR_PUBLIC_COLUMNS =
@@ -30,16 +29,31 @@ async function createSiteReadClient() {
   }
 }
 
-type ImovelPublicoRow = ImovelPublico & {
+type ImovelRow = Imovel & {
   imovel_fotos: ImovelFoto[] | null;
 };
 
 export interface ImoveisPublicosPaginatedResult {
-  imoveis: ImovelPublico[];
+  imoveis: Imovel[];
   total: number;
   pagina: number;
   pageSize: number;
   totalPaginas: number;
+}
+
+export function mapImovelRow(row: ImovelRow): Imovel {
+  const { imovel_fotos, ...rest } = row;
+  const fotos = imovel_fotos ?? row.fotos ?? [];
+
+  return {
+    ...rest,
+    fotos: [...fotos]
+      .sort((a, b) => a.ordem - b.ordem)
+      .map((foto) => ({
+        ...foto,
+        url: getImovelFotoPublicUrl(foto.url),
+      })),
+  };
 }
 
 function normalizeHostname(hostname: string): string {
@@ -87,7 +101,7 @@ export const getImoveisPublicos = cache(
   async (
     corretorId: string,
     filters: ImoveisPublicosFilters = {},
-  ): Promise<ImovelPublico[]> => {
+  ): Promise<Imovel[]> => {
     const result = await getImoveisPublicosPaginados(corretorId, {
       ...filters,
       pagina: 1,
@@ -132,7 +146,7 @@ export const getImoveisPublicosPaginados = cache(
 
     let query = supabase
       .from("imoveis")
-      .select(PUBLIC_IMOVEL_SELECT)
+      .select("*, imovel_fotos(*)")
       .eq("corretor_id", corretorId)
       .eq("publicado_site", true)
       .eq("status", "disponivel")
@@ -152,7 +166,7 @@ export const getImoveisPublicosPaginados = cache(
     }
 
     return {
-      imoveis: (data as unknown as ImovelPublicoRow[]).map(mapImovelPublicoRow),
+      imoveis: (data as ImovelRow[]).map(mapImovelRow),
       total,
       pagina,
       pageSize,
@@ -167,12 +181,12 @@ export const getImoveisSimilaresPublicos = cache(
     filters: ImoveisPublicosFilters,
     excludeIds: string[],
     limit = 6,
-  ): Promise<ImovelPublico[]> => {
+  ): Promise<Imovel[]> => {
     const supabase = await createSiteReadClient();
 
     let query = supabase
       .from("imoveis")
-      .select(PUBLIC_IMOVEL_SELECT)
+      .select("*, imovel_fotos(*)")
       .eq("corretor_id", corretorId)
       .eq("publicado_site", true)
       .eq("status", "disponivel")
@@ -192,17 +206,17 @@ export const getImoveisSimilaresPublicos = cache(
       return [];
     }
 
-    return (data as unknown as ImovelPublicoRow[]).map(mapImovelPublicoRow);
+    return (data as ImovelRow[]).map(mapImovelRow);
   },
 );
 
 export const getImoveisDestaquePublicos = cache(
-  async (corretorId: string): Promise<ImovelPublico[]> => {
+  async (corretorId: string): Promise<Imovel[]> => {
     const supabase = await createSiteReadClient();
 
     const { data: destaques, error: destaquesError } = await supabase
       .from("imoveis")
-      .select(PUBLIC_IMOVEL_SELECT)
+      .select("*, imovel_fotos(*)")
       .eq("corretor_id", corretorId)
       .eq("publicado_site", true)
       .eq("destaque_site", true)
@@ -211,7 +225,7 @@ export const getImoveisDestaquePublicos = cache(
       .limit(50);
 
     if (!destaquesError && destaques && destaques.length > 0) {
-      return (destaques as unknown as ImovelPublicoRow[]).map(mapImovelPublicoRow);
+      return (destaques as ImovelRow[]).map(mapImovelRow);
     }
 
     return getImoveisPublicos(corretorId);
@@ -219,12 +233,12 @@ export const getImoveisDestaquePublicos = cache(
 );
 
 export const getImovelPublico = cache(
-  async (corretorId: string, slug: string): Promise<ImovelPublico | null> => {
+  async (corretorId: string, slug: string): Promise<Imovel | null> => {
     const supabase = await createSiteReadClient();
 
     const { data, error } = await supabase
       .from("imoveis")
-      .select(PUBLIC_IMOVEL_SELECT)
+      .select("*, imovel_fotos(*)")
       .eq("corretor_id", corretorId)
       .eq("slug", slug)
       .eq("publicado_site", true)
@@ -235,7 +249,7 @@ export const getImovelPublico = cache(
       return null;
     }
 
-    return mapImovelPublicoRow(data as unknown as ImovelPublicoRow);
+    return mapImovelRow(data as ImovelRow);
   },
 );
 

@@ -16,12 +16,12 @@ import {
   getTipoFinalidadeCardLabel,
   getValorExibicao,
 } from "@/lib/site/format";
-import type { ImovelPublico } from "@/lib/site/imovel-publico";
+import type { Imovel } from "@/types";
 
 import { useSite } from "./SiteProvider";
 
 interface ImovelCardPublicoProps {
-  imovel: ImovelPublico;
+  imovel: Imovel;
 }
 
 export function ImovelCardPublico({ imovel }: ImovelCardPublicoProps) {

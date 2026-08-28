@@ -1,8 +1,8 @@
 import { ImovelCardPublico } from "@/components/site/ImovelCardPublico";
-import type { ImovelPublico } from "@/lib/site/imovel-publico";
+import type { Imovel } from "@/types";
 
 interface ImoveisSimilaresSectionProps {
-  imoveis: ImovelPublico[];
+  imoveis: Imovel[];
 }
 
 export function ImoveisSimilaresSection({ imoveis }: ImoveisSimilaresSectionProps) {

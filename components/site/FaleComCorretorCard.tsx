@@ -3,34 +3,19 @@
 import { formatCurrency, getValorExibicao } from "@/lib/site/format";
 import { getSiteCreci, getSiteNomeExibicao } from "@/lib/site/social";
 import { cn } from "@/lib/utils";
-import type { Corretor, FinalidadeImovel } from "@/types";
+import type { Corretor, Imovel } from "@/types";
 
 import { FormularioLeadSite } from "./FormularioLeadSite";
 
 interface FaleComCorretorCardProps {
   corretor: Corretor;
-  imovelId: string;
-  finalidade: FinalidadeImovel;
-  valorVenda?: number | null;
-  valorLocacao?: number | null;
-  valorCondominio?: number | null;
-  valorIptu?: number | null;
+  imovel: Imovel;
   className?: string;
 }
 
-export function FaleComCorretorCard({
-  corretor,
-  imovelId,
-  finalidade,
-  valorVenda,
-  valorLocacao,
-  valorCondominio,
-  valorIptu,
-  className,
-}: FaleComCorretorCardProps) {
+export function FaleComCorretorCard({ corretor, imovel, className }: FaleComCorretorCardProps) {
   const nomeExibicao = getSiteNomeExibicao(corretor);
   const creci = getSiteCreci(corretor);
-  const valorImovel = { finalidade, valor_venda: valorVenda, valor_locacao: valorLocacao };
 
   return (
     <aside
@@ -48,25 +33,25 @@ export function FaleComCorretorCard({
       <div className="mt-4 space-y-2 border-b border-border pb-4 text-sm">
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Valor</span>
-          <span className="font-semibold text-primary">{getValorExibicao(valorImovel)}</span>
+          <span className="font-semibold text-primary">{getValorExibicao(imovel)}</span>
         </div>
-        {valorCondominio ? (
+        {imovel.valor_condominio ? (
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Condomínio</span>
-            <span>{formatCurrency(valorCondominio)}</span>
+            <span>{formatCurrency(imovel.valor_condominio)}</span>
           </div>
         ) : null}
-        {valorIptu ? (
+        {imovel.valor_iptu ? (
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">IPTU</span>
-            <span>{formatCurrency(valorIptu)}</span>
+            <span>{formatCurrency(imovel.valor_iptu)}</span>
           </div>
         ) : null}
       </div>
 
       <div className="mt-4">
         <FormularioLeadSite
-          imovelId={imovelId}
+          imovelId={imovel.id}
           submitLabel="Enviar mensagem"
           observacoesPlaceholder="Tenho interesse neste imóvel..."
           showPreferenciaContato

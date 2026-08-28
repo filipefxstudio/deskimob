@@ -10,18 +10,12 @@ import {
   getFinalidadeLabel,
   getValorExibicao,
 } from "@/lib/site/format";
-import type { FinalidadeImovel } from "@/types";
+import type { Imovel } from "@/types";
 
 interface SiteImovelDetalheValoresLocalizacaoProps {
-  finalidade: FinalidadeImovel;
-  valorVenda?: number | null;
-  valorLocacao?: number | null;
-  valorCondominio?: number | null;
-  valorIptu?: number | null;
+  imovel: Imovel;
   endereco: string;
   hasMap: boolean;
-  mapLatitude?: number;
-  mapLongitude?: number;
 }
 
 function formatValorSecundario(value: number | null | undefined): string {
@@ -33,15 +27,9 @@ function formatValorSecundario(value: number | null | undefined): string {
 }
 
 export function SiteImovelDetalheValoresLocalizacao({
-  finalidade,
-  valorVenda,
-  valorLocacao,
-  valorCondominio,
-  valorIptu,
+  imovel,
   endereco,
   hasMap,
-  mapLatitude,
-  mapLongitude,
 }: SiteImovelDetalheValoresLocalizacaoProps) {
   const valoresRef = useRef<HTMLDivElement>(null);
   const [localizacaoHeight, setLocalizacaoHeight] = useState<number | undefined>();
@@ -72,12 +60,6 @@ export function SiteImovelDetalheValoresLocalizacao({
     };
   }, []);
 
-  const valorImovel = {
-    finalidade,
-    valor_venda: valorVenda,
-    valor_locacao: valorLocacao,
-  };
-
   return (
     <div className="grid min-w-0 gap-6 lg:grid-cols-2 lg:items-start">
       <div ref={valoresRef}>
@@ -88,22 +70,22 @@ export function SiteImovelDetalheValoresLocalizacao({
           <CardContent>
             <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
               <div>
-                <p className="text-sm text-muted-foreground">{getFinalidadeLabel(finalidade)}</p>
+                <p className="text-sm text-muted-foreground">{getFinalidadeLabel(imovel.finalidade)}</p>
                 <p className="text-3xl font-black tracking-tight text-primary md:text-4xl">
-                  {getValorExibicao(valorImovel)}
+                  {getValorExibicao(imovel)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-x-8 gap-y-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Condomínio</p>
                   <p className="text-lg font-semibold text-foreground">
-                    {formatValorSecundario(valorCondominio)}
+                    {formatValorSecundario(imovel.valor_condominio)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">IPTU</p>
                   <p className="text-lg font-semibold text-foreground">
-                    {formatValorSecundario(valorIptu)}
+                    {formatValorSecundario(imovel.valor_iptu)}
                   </p>
                 </div>
               </div>
@@ -124,12 +106,12 @@ export function SiteImovelDetalheValoresLocalizacao({
             <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <p>{endereco || "Endereço não informado"}</p>
           </div>
-          {hasMap && mapLatitude != null && mapLongitude != null ? (
+          {hasMap ? (
             <div className="min-h-0 flex-1 max-lg:h-36">
               <ImovelMapa
                 fill
-                latitude={mapLatitude}
-                longitude={mapLongitude}
+                latitude={imovel.latitude!}
+                longitude={imovel.longitude!}
                 endereco={endereco}
               />
             </div>

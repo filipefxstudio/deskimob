@@ -22,8 +22,7 @@ import {
   useListingChromeHeader,
 } from "@/lib/site/listing-chrome-header";
 import { getSiteThemeStyle } from "@/lib/site/theme-style";
-import type { ImovelPublico } from "@/lib/site/imovel-publico";
-import type { FinalidadeImovel } from "@/types";
+import type { FinalidadeImovel, Imovel } from "@/types";
 
 import { useSite } from "./SiteProvider";
 
@@ -32,8 +31,8 @@ interface SiteImoveisListingViewProps {
   cidades: string[];
   filters: ImoveisPublicosFilters;
   fixedFinalidade?: FinalidadeImovel;
-  imoveis: ImovelPublico[];
-  similares: ImovelPublico[];
+  imoveis: Imovel[];
+  similares: Imovel[];
   pagina: number;
   totalPaginas: number;
   title: string;

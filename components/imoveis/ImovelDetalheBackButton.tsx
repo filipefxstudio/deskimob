@@ -1,13 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  queueListingScrollRestore,
-  readListingReturnState,
-} from "@/lib/site/listing-return";
+import { useImoveisListingReturn } from "@/hooks/use-imoveis-listing-return";
 
 interface ImovelDetalheBackButtonProps {
   fallbackHref?: string;
@@ -16,24 +12,7 @@ interface ImovelDetalheBackButtonProps {
 export function ImovelDetalheBackButton({
   fallbackHref = "/dashboard/imoveis",
 }: ImovelDetalheBackButtonProps) {
-  const router = useRouter();
-
-  function handleBack() {
-    const stored = readListingReturnState();
-
-    if (stored?.url) {
-      queueListingScrollRestore(stored.scrollY);
-      router.push(stored.url);
-      return;
-    }
-
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-
-    router.push(fallbackHref);
-  }
+  const handleBack = useImoveisListingReturn(fallbackHref);
 
   return (
     <Button

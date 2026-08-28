@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, X } from "lucide-react";
 
 import { ImovelCardGrid } from "@/components/imoveis/ImovelCardGrid";
@@ -10,7 +11,6 @@ import type { ImovelListingBadge } from "@/lib/actions/imoveis";
 import { ImovelCardList } from "@/components/imoveis/ImovelCardList";
 import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import {
-  buildInitialImoveisFilters,
   buildImoveisFilterTags,
   countActiveFilters,
   ImoveisFilters,
@@ -30,8 +30,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getImovelCodigo, getValorNumerico } from "@/lib/imoveis/format";
+import {
+  buildDashboardImoveisListingParams,
+  parseDashboardImoveisListingState,
+} from "@/lib/imoveis/listing-url";
 import { contemNormalizado } from "@/lib/utils/normalizar";
-import type { Imovel, StatusImovel, StatusImovelSlug } from "@/types";
+import type { Imovel, StatusImovel } from "@/types";
 
 const VIEW_MODE_STORAGE_KEY = "deskimob-imoveis-view";
 const SORT_STORAGE_KEY = "fx-imoveis-sort";
@@ -41,9 +45,6 @@ interface ImoveisListingProps {
   corretorSlug: string;
   statusList: StatusImovel[];
   workflowBadges?: Record<string, ImovelListingBadge>;
-  initialBusca?: string;
-  initialBairro?: string;
-  initialStatusSlug?: StatusImovelSlug;
 }
 
 function matchesMinimo(
@@ -174,55 +175,72 @@ function sortImoveis(imoveis: Imovel[], sort: ImoveisSortOption): Imovel[] {
   return sorted;
 }
 
-export function ImoveisListing({
+export function ImoveisListing(props: ImoveisListingProps) {
+  return (
+    <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
+      <ImoveisListingContent {...props} />
+    </Suspense>
+  );
+}
+
+function ImoveisListingContent({
   imoveis,
   corretorSlug,
   statusList,
   workflowBadges = {},
-  initialBusca = "",
-  initialBairro = "",
-  initialStatusSlug,
 }: ImoveisListingProps) {
-  const [search, setSearch] = useState(initialBusca);
-  const [filters, setFilters] = useState<ImoveisFilterState>(() =>
-    buildInitialImoveisFilters(statusList, {
-      bairro: initialBairro || undefined,
-      statusSlug: initialStatusSlug,
-    }),
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const urlState = useMemo(
+    () => parseDashboardImoveisListingState(searchParams, statusList),
+    [searchParams, statusList],
   );
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ImoveisViewMode>("grid");
-  const [sort, setSort] = useState<ImoveisSortOption>("cadastro_desc");
+
+  const [search, setSearch] = useState(urlState.search);
+  const [filters, setFilters] = useState<ImoveisFilterState>(urlState.filters);
+  const [filtersOpen, setFiltersOpen] = useState(urlState.filtersOpen);
+  const [viewMode, setViewMode] = useState<ImoveisViewMode>(urlState.viewMode);
+  const [sort, setSort] = useState<ImoveisSortOption>(urlState.sort);
 
   useEffect(() => {
-    if (initialBusca) {
-      setSearch(initialBusca);
-    }
-  }, [initialBusca]);
+    setSearch(urlState.search);
+    setFilters(urlState.filters);
+    setFiltersOpen(urlState.filtersOpen);
+    setViewMode(urlState.viewMode);
+    setSort(urlState.sort);
+  }, [urlState]);
 
   useEffect(() => {
-    if (initialBairro || initialStatusSlug) {
-      setFilters(
-        buildInitialImoveisFilters(statusList, {
-          bairro: initialBairro || undefined,
-          statusSlug: initialStatusSlug,
-        }),
-      );
-      setFiltersOpen(true);
+    if (!searchParams.has("sort")) {
+      const storedSort = localStorage.getItem(SORT_STORAGE_KEY) as ImoveisSortOption | null;
+      if (storedSort) {
+        setSort(storedSort);
+      }
     }
-  }, [initialBairro, initialStatusSlug, statusList]);
+
+    if (!searchParams.has("view")) {
+      const storedView = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+      if (storedView === "grid" || storedView === "list") {
+        setViewMode(storedView);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
-    const storedView = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-    if (storedView === "grid" || storedView === "list") {
-      setViewMode(storedView);
-    }
+    const params = buildDashboardImoveisListingParams(
+      { search, filters, sort, viewMode, filtersOpen },
+      statusList,
+    );
+    const nextQuery = params.toString();
+    const currentQuery = searchParams.toString();
 
-    const storedSort = localStorage.getItem(SORT_STORAGE_KEY) as ImoveisSortOption | null;
-    if (storedSort) {
-      setSort(storedSort);
+    if (nextQuery !== currentQuery) {
+      const href = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+      router.replace(href, { scroll: false });
     }
-  }, []);
+  }, [search, filters, sort, viewMode, filtersOpen, statusList, pathname, router, searchParams]);
 
   function handleViewModeChange(mode: ImoveisViewMode) {
     setViewMode(mode);

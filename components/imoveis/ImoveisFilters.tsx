@@ -56,6 +56,7 @@ const MINIMO_OPCOES: { value: MinimoNumericoFilter; label: string }[] = [
 interface ImoveisFiltersProps {
   filters: ImoveisFilterState;
   onChange: (filters: ImoveisFilterState) => void;
+  onClear?: () => void;
   bairros: string[];
   statusList: StatusImovel[];
 }
@@ -63,6 +64,7 @@ interface ImoveisFiltersProps {
 export function ImoveisFilters({
   filters,
   onChange,
+  onClear,
   bairros,
   statusList,
 }: ImoveisFiltersProps) {
@@ -82,6 +84,7 @@ export function ImoveisFilters({
   function handleClear() {
     onChange(buildDefaultImoveisFilters(statusList));
     setAdvancedOpen(false);
+    onClear?.();
   }
 
   const hasActiveFilters =

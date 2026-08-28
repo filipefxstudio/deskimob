@@ -1,6 +1,6 @@
 "use client";
 
-import { Filter, LayoutGrid, List, Search } from "lucide-react";
+import { Filter, LayoutGrid, List, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +31,7 @@ interface ImoveisToolbarProps {
   onViewModeChange: (mode: ImoveisViewMode) => void;
   sort: ImoveisSortOption;
   onSortChange: (sort: ImoveisSortOption) => void;
+  onClearFilters?: () => void;
 }
 
 export function ImoveisToolbar({
@@ -43,6 +44,7 @@ export function ImoveisToolbar({
   onViewModeChange,
   sort,
   onSortChange,
+  onClearFilters,
 }: ImoveisToolbarProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -53,9 +55,21 @@ export function ImoveisToolbar({
           placeholder="Buscar por código, bairro, rua ou título..."
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          className="pl-9"
+          className={cn("pl-9", search && "pr-9")}
           aria-label="Buscar imóveis"
         />
+        {search ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => onSearchChange("")}
+            aria-label="Limpar busca"
+          >
+            <X className="size-4" />
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -74,6 +88,13 @@ export function ImoveisToolbar({
             </span>
           ) : null}
         </Button>
+
+        {activeFilterCount > 0 && onClearFilters ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+            <X className="size-4" data-icon="inline-start" />
+            Limpar filtros
+          </Button>
+        ) : null}
 
         <Select value={sort} onValueChange={(value) => onSortChange(value as ImoveisSortOption)}>
           <SelectTrigger className="w-full sm:w-48" aria-label="Ordenar por">

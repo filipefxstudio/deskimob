@@ -10,8 +10,9 @@ import type { ImovelListingBadge } from "@/lib/actions/imoveis";
 import { ImovelCardList } from "@/components/imoveis/ImovelCardList";
 import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import {
-  buildInitialImoveisFilters,
+  buildDefaultImoveisFilters,
   buildImoveisFilterTags,
+  buildInitialImoveisFilters,
   countActiveFilters,
   ImoveisFilters,
   type ImoveisFilterState,
@@ -248,6 +249,10 @@ export function ImoveisListing({
     localStorage.setItem(SORT_STORAGE_KEY, nextSort);
   }
 
+  function handleClearFilters() {
+    setFilters(buildDefaultImoveisFilters(statusList));
+  }
+
   const bairros = useMemo(() => {
     const unique = new Set<string>();
     for (const imovel of imoveis) {
@@ -326,6 +331,7 @@ export function ImoveisListing({
         onViewModeChange={handleViewModeChange}
         sort={sort}
         onSortChange={handleSortChange}
+        onClearFilters={handleClearFilters}
       />
 
       {filterTags.length > 0 ? (
@@ -348,6 +354,7 @@ export function ImoveisListing({
         <ImoveisFilters
           filters={filters}
           onChange={setFilters}
+          onClear={handleClearFilters}
           bairros={bairros}
           statusList={statusList}
         />

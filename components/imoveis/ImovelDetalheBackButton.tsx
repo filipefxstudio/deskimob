@@ -5,6 +5,10 @@ import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  queueListingStateRestore,
+  readListingSnapshot,
+} from "@/lib/imoveis/listing-return-state";
+import {
   queueListingScrollRestore,
   readListingReturnState,
 } from "@/lib/site/listing-return";
@@ -22,6 +26,10 @@ export function ImovelDetalheBackButton({
     const stored = readListingReturnState();
 
     if (stored?.url) {
+      const snapshot = readListingSnapshot();
+      if (snapshot) {
+        queueListingStateRestore(snapshot);
+      }
       queueListingScrollRestore(stored.scrollY);
       router.push(stored.url);
       return;

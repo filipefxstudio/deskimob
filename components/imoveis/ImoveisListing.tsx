@@ -30,6 +30,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getImovelCodigo, getValorNumerico } from "@/lib/imoveis/format";
+import {
+  consumeListingStateRestore,
+  persistListingSnapshot,
+} from "@/lib/imoveis/listing-return-state";
 import { contemNormalizado } from "@/lib/utils/normalizar";
 import type { Imovel, StatusImovel, StatusImovelSlug } from "@/types";
 
@@ -195,12 +199,20 @@ export function ImoveisListing({
   const [sort, setSort] = useState<ImoveisSortOption>("cadastro_desc");
 
   useEffect(() => {
+    const restored = consumeListingStateRestore();
+    if (restored) {
+      setSearch(restored.search);
+      setFilters(restored.filters);
+      setFiltersOpen(restored.filtersOpen);
+      setViewMode(restored.viewMode);
+      setSort(restored.sort);
+      return;
+    }
+
     if (initialBusca) {
       setSearch(initialBusca);
     }
-  }, [initialBusca]);
 
-  useEffect(() => {
     if (initialBairro || initialStatusSlug) {
       setFilters(
         buildInitialImoveisFilters(statusList, {
@@ -210,9 +222,7 @@ export function ImoveisListing({
       );
       setFiltersOpen(true);
     }
-  }, [initialBairro, initialStatusSlug, statusList]);
 
-  useEffect(() => {
     const storedView = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
     if (storedView === "grid" || storedView === "list") {
       setViewMode(storedView);
@@ -222,7 +232,11 @@ export function ImoveisListing({
     if (storedSort) {
       setSort(storedSort);
     }
-  }, []);
+  }, [initialBusca, initialBairro, initialStatusSlug, statusList]);
+
+  useEffect(() => {
+    persistListingSnapshot({ search, filters, sort, viewMode, filtersOpen });
+  }, [search, filters, sort, viewMode, filtersOpen]);
 
   function handleViewModeChange(mode: ImoveisViewMode) {
     setViewMode(mode);

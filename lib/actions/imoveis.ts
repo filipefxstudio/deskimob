@@ -904,54 +904,6 @@ export async function reprovarImovel(id: string, motivo?: string): Promise<Imove
   return { success: true, imovelId: id };
 }
 
-export async function atualizarStatusImovelAutomatico(
-  imovelId: string,
-  statusNome: "Disponível" | "Reservado" | "Vendido" | "Locado",
-  motivo: string,
-  detalhes?: Record<string, unknown>,
-): Promise<void> {
-  const corretor = await getCorretorForUser();
-  if (!corretor) {
-    return;
-  }
-
-  const supabase = await createClient();
-  const { data: status } = await supabase
-    .from("status_imovel")
-    .select("*")
-    .eq("corretor_id", corretor.id)
-    .eq("nome", statusNome)
-    .maybeSingle();
-
-  if (!status) {
-    return;
-  }
-
-  const slug = slugFromStatusRecord(status as StatusImovel);
-  const updatePayload: Record<string, unknown> = {
-    status_imovel_id: status.id,
-    status: slug,
-  };
-
-  if (slug === "vendido" || slug === "locado") {
-    updatePayload.data_desativacao = new Date().toISOString();
-  }
-
-  await supabase
-    .from("imoveis")
-    .update(updatePayload)
-    .eq("id", imovelId)
-    .eq("corretor_id", corretor.id);
-
-  await registrarAuditoriaImovel(imovelId, "status_automatico", {
-    motivo,
-    detalhes: { status: statusNome, ...detalhes },
-  });
-
-  revalidatePath("/dashboard/imoveis");
-  revalidatePath(`/dashboard/imoveis/${imovelId}`);
-}
-
 export async function validarAtualizacao(id: string): Promise<ImovelActionResult & { data?: string }> {
   const corretor = await getCorretorForUser();
 

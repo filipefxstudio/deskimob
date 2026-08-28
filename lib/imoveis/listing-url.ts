@@ -1,10 +1,13 @@
-import type { ImoveisFilterState } from "@/components/imoveis/ImoveisFilters";
 import {
   buildDefaultImoveisFilters,
   getStatusIdBySlug,
-} from "@/components/imoveis/ImoveisFilters";
-import type { ImoveisSortOption, ImoveisViewMode } from "@/components/imoveis/ImoveisToolbar";
-import { IMOVEIS_SORT_OPTIONS } from "@/components/imoveis/ImoveisToolbar";
+  type ImoveisFilterState,
+} from "@/lib/imoveis/filter-state";
+import {
+  IMOVEIS_SORT_VALUES,
+  type ImoveisSortOption,
+  type ImoveisViewMode,
+} from "@/lib/imoveis/sort-options";
 import { TIPOS_IMOVEL } from "@/lib/constants/imoveis";
 import type { StatusImovel, StatusImovelSlug, TipoImovel } from "@/types";
 
@@ -15,8 +18,6 @@ export interface DashboardImoveisListingState {
   viewMode: ImoveisViewMode;
   filtersOpen: boolean;
 }
-
-const SORT_VALUES = new Set(IMOVEIS_SORT_OPTIONS.map((item) => item.value));
 
 function getParam(params: URLSearchParams, key: string): string | undefined {
   const value = params.get(key)?.trim();
@@ -71,7 +72,7 @@ function parseTipos(values: string[]): TipoImovel[] {
 }
 
 function parseSort(value: string | undefined): ImoveisSortOption {
-  if (value && SORT_VALUES.has(value as ImoveisSortOption)) {
+  if (value && IMOVEIS_SORT_VALUES.has(value as ImoveisSortOption)) {
     return value as ImoveisSortOption;
   }
 
@@ -225,3 +226,5 @@ export function buildDashboardImoveisListingHref(
   const query = params.toString();
   return query ? `/dashboard/imoveis?${query}` : "/dashboard/imoveis";
 }
+
+export type { ImoveisFilterState, ImoveisSortOption, ImoveisViewMode };

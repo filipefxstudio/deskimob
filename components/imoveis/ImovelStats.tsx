@@ -12,7 +12,10 @@ import {
 import { ImovelStatItem, ImovelStatsRow, type ImovelStatsVariant } from "@/components/imoveis/ImovelStatsRow";
 
 interface ImovelStatsProps {
-  imovel: Imovel;
+  imovel: Pick<
+    Imovel,
+    "area_total" | "area_util" | "quartos" | "suites" | "banheiros" | "vagas"
+  >;
   variant?: ImovelStatsVariant;
   /** Exibe área total (somente em detalhes). */
   showAreaTotal?: boolean;

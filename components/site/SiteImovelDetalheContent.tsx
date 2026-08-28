@@ -14,12 +14,13 @@ import {
   getImovelCodigoSite,
   getTipoLabel,
 } from "@/lib/site/format";
+import type { ImovelPublico } from "@/lib/site/imovel-publico";
 import { sitePath } from "@/lib/site/paths";
-import type { Corretor, Imovel } from "@/types";
+import type { Corretor } from "@/types";
 
 interface SiteImovelDetalheContentProps {
   corretor: Corretor;
-  imovel: Imovel;
+  imovel: ImovelPublico;
   basePath: string;
   absolutePageUrl: string;
   /** Preview de compartilhamento: sem barra de voltar / breadcrumb para listagem. */
@@ -55,13 +56,8 @@ export async function SiteImovelDetalheContent({
     address: exibirLocalizacao
       ? {
           "@type": "PostalAddress",
-          streetAddress:
-            imovel.exibir_endereco_site === "completo"
-              ? [imovel.logradouro, imovel.numero].filter(Boolean).join(", ") || undefined
-              : undefined,
           addressLocality: imovel.cidade ?? undefined,
           addressRegion: imovel.estado ?? undefined,
-          postalCode: imovel.cep ?? undefined,
           addressCountry: "BR",
         }
       : undefined,
@@ -95,7 +91,7 @@ export async function SiteImovelDetalheContent({
         titulo={imovel.titulo ?? "Imóvel"}
         videoUrl={imovel.video_url}
         mapa={
-          deveExibirMapaPublico(imovel) && imovel.latitude && imovel.longitude
+          hasMap && imovel.latitude && imovel.longitude
             ? {
                 latitude: imovel.latitude,
                 longitude: imovel.longitude,
@@ -135,9 +131,15 @@ export async function SiteImovelDetalheContent({
               </Card>
 
               <SiteImovelDetalheValoresLocalizacao
-                imovel={imovel}
+                finalidade={imovel.finalidade}
+                valorVenda={imovel.valor_venda}
+                valorLocacao={imovel.valor_locacao}
+                valorCondominio={imovel.valor_condominio}
+                valorIptu={imovel.valor_iptu}
                 endereco={endereco}
                 hasMap={hasMap}
+                mapLatitude={imovel.latitude ?? undefined}
+                mapLongitude={imovel.longitude ?? undefined}
               />
             </div>
 
@@ -169,7 +171,12 @@ export async function SiteImovelDetalheContent({
 
           <FaleComCorretorCard
             corretor={corretor}
-            imovel={imovel}
+            imovelId={imovel.id}
+            finalidade={imovel.finalidade}
+            valorVenda={imovel.valor_venda}
+            valorLocacao={imovel.valor_locacao}
+            valorCondominio={imovel.valor_condominio}
+            valorIptu={imovel.valor_iptu}
             className="min-w-0 lg:top-44"
           />
         </div>

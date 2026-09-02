@@ -39,6 +39,7 @@ import {
 import { getDbTimestampMs } from "@/lib/dates/format";
 import { ETAPA_FUNIL_ORDEM } from "@/lib/leads/etapa-order";
 import { getUltimaInteracaoEm, isLeadAtivo } from "@/lib/leads/format";
+import { getLeadMidiaNome } from "@/lib/leads/midia-origem";
 import { marcarContatoFeito, qualificarLead } from "@/lib/actions/atendimentos";
 import { toast } from "@/hooks/use-toast";
 import { contemNormalizado } from "@/lib/utils/normalizar";
@@ -146,6 +147,7 @@ export function AtendimentosPage({
   const [descartarOpen, setDescartarOpen] = useState(false);
   const [transferirOpen, setTransferirOpen] = useState(false);
   const [excluirOpen, setExcluirOpen] = useState(false);
+  const [editarOpen, setEditarOpen] = useState(false);
 
   useEffect(() => {
     if (initialBusca) {
@@ -241,6 +243,11 @@ export function AtendimentosPage({
     setExcluirOpen(true);
   }
 
+  function openEditar(lead: Lead) {
+    setModalLead(lead);
+    setEditarOpen(true);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -331,6 +338,7 @@ export function AtendimentosPage({
               onDescartar={() => openDescartar(lead)}
               onTransferir={() => openTransferir(lead)}
               onExcluir={() => openExcluir(lead)}
+              onEditar={() => openEditar(lead)}
             />
           )}
         </LeadCardGrid>
@@ -354,6 +362,7 @@ export function AtendimentosPage({
               onDescartar={() => openDescartar(lead)}
               onTransferir={() => openTransferir(lead)}
               onExcluir={() => openExcluir(lead)}
+              onEditar={() => openEditar(lead)}
             />
           )}
         </LeadCardList>
@@ -362,14 +371,22 @@ export function AtendimentosPage({
       {modalLead ? (
         <AtendimentoModals
           leadId={modalLead.id}
+          leadClienteId={modalLead.cliente_id}
           leadNome={modalLead.nome}
+          leadTelefone={modalLead.telefone}
+          leadEmail={modalLead.email}
+          leadMidiaNome={getLeadMidiaNome(modalLead)}
+          leadPerfilId={modalLead.perfil_id}
           perfis={perfis}
+          midias={midias}
           motivos={motivos}
           podeTransferir={podeTransferir}
           podeExcluir={podeExcluir}
+          editarOpen={editarOpen}
           descartarOpen={descartarOpen}
           transferirOpen={transferirOpen}
           excluirOpen={excluirOpen}
+          onEditarOpenChange={setEditarOpen}
           onDescartarOpenChange={setDescartarOpen}
           onTransferirOpenChange={setTransferirOpen}
           onExcluirOpenChange={setExcluirOpen}

@@ -129,13 +129,18 @@ export function NovoAtendimentoForm({
     event.preventDefault();
     setError(null);
 
+    if (!midiaNome.trim()) {
+      setError("Selecione a mídia de origem.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await createAtendimento({
         nome,
         telefone,
         email: email || undefined,
         cliente_id: clienteId,
-        midia_nome: midiaNome || undefined,
+        midia_nome: midiaNome,
         perfil_id: perfilId || undefined,
         imovel_id: imovelSelecionado?.id,
         finalidade_busca: finalidade || undefined,
@@ -210,8 +215,8 @@ export function NovoAtendimentoForm({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Mídia de origem</Label>
-                <Select value={midiaNome} onValueChange={setMidiaNome}>
+                <Label>Mídia de origem *</Label>
+                <Select value={midiaNome} onValueChange={setMidiaNome} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>

@@ -11,9 +11,9 @@ import {
   buildTelLink,
   buildWhatsAppLink,
   etapaParaSelectAtendimento,
-  formatOrigemDisplay,
   formatTelefoneLead,
 } from "@/lib/leads/format";
+import { formatMidiaOrigemLead } from "@/lib/leads/midia-origem";
 import type { Lead } from "@/types";
 
 interface AtendimentoClienteSectionProps {
@@ -50,7 +50,7 @@ export function AtendimentoClienteSection({ lead }: AtendimentoClienteSectionPro
           {ETAPA_LEAD_LABELS[etapaExibicao]}
         </span>
         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-          {formatOrigemDisplay(lead.origem)}
+          {formatMidiaOrigemLead(lead)}
         </span>
         <SituacaoBadge situacao={lead.situacao} />
       </div>

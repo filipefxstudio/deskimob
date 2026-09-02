@@ -22,7 +22,7 @@ import {
   getListingScrollPosition,
   saveListingReturnState,
 } from "@/lib/site/listing-return";
-import type { Imovel, StatusImovel } from "@/types";
+import type { Imovel, MotivoDesativacao, StatusImovel } from "@/types";
 
 function formatCaptadorLinha(imovel: Imovel, codigo: string): string {
   const captador = getCaptadorPrincipalNome(imovel);
@@ -36,6 +36,7 @@ interface ImovelCardItemProps {
   imovel: Imovel;
   corretorSlug: string;
   statusList: StatusImovel[];
+  motivosDesativacao?: MotivoDesativacao[];
   linkTarget?: "_blank" | "_self";
   renderCardActions?: (imovel: Imovel) => ReactNode;
   cardBadge?: ReactNode;
@@ -45,6 +46,7 @@ function ImovelCardItem({
   imovel,
   corretorSlug,
   statusList,
+  motivosDesativacao,
   linkTarget = "_self",
   renderCardActions,
   cardBadge,
@@ -123,6 +125,7 @@ function ImovelCardItem({
             imovel={imovel}
             corretorSlug={corretorSlug}
             statusList={statusList}
+            motivosDesativacao={motivosDesativacao}
             variant="card"
             className="shrink-0"
           />
@@ -136,6 +139,7 @@ interface ImovelCardGridProps {
   imoveis: Imovel[];
   corretorSlug: string;
   statusList: StatusImovel[];
+  motivosDesativacao?: MotivoDesativacao[];
   linkTarget?: "_blank" | "_self";
   renderCardActions?: (imovel: Imovel) => ReactNode;
   getCardBadge?: (imovel: Imovel) => ReactNode;
@@ -145,6 +149,7 @@ export function ImovelCardGrid({
   imoveis,
   corretorSlug,
   statusList,
+  motivosDesativacao,
   linkTarget,
   renderCardActions,
   getCardBadge,
@@ -157,6 +162,7 @@ export function ImovelCardGrid({
           imovel={imovel}
           corretorSlug={corretorSlug}
           statusList={statusList}
+          motivosDesativacao={motivosDesativacao}
           linkTarget={linkTarget}
           renderCardActions={renderCardActions}
           cardBadge={getCardBadge?.(imovel)}

@@ -15,12 +15,14 @@ import { RadarImoveisTab } from "@/components/atendimentos/RadarImoveisTab";
 import { VisitasTab } from "@/components/atendimentos/VisitasTab";
 import { toast } from "@/hooks/use-toast";
 import { marcarContatoFeito, qualificarLead } from "@/lib/actions/atendimentos";
+import { getLeadMidiaNome } from "@/lib/leads/midia-origem";
 import type { CorretorShareHost } from "@/lib/imoveis/share-url";
 import type {
   AuditoriaAtendimento,
   Imovel,
   Lead,
   LeadImovelSelecionado,
+  MidiaOrigem,
   MotivoDescarte,
   Negocio,
   Proposta,
@@ -40,6 +42,7 @@ interface AtendimentoClientProps {
   imoveisSelecionados: LeadImovelSelecionado[];
   auditoria: AuditoriaAtendimento[];
   motivos: MotivoDescarte[];
+  midias: MidiaOrigem[];
   podeTransferir: boolean;
   podeExcluir: boolean;
   tiposImovel: TipoImovelCustom[];
@@ -60,6 +63,7 @@ export function AtendimentoClient({
   imoveisSelecionados,
   auditoria,
   motivos,
+  midias,
   podeTransferir,
   podeExcluir,
   tiposImovel,
@@ -73,6 +77,7 @@ export function AtendimentoClient({
   const [descartarOpen, setDescartarOpen] = useState(false);
   const [transferirOpen, setTransferirOpen] = useState(false);
   const [excluirOpen, setExcluirOpen] = useState(false);
+  const [editarOpen, setEditarOpen] = useState(false);
 
   const imoveisParaAcao = imoveisSelecionados
     .map((s) => s.imovel)
@@ -103,6 +108,7 @@ export function AtendimentoClient({
       onDescartar={() => setDescartarOpen(true)}
       onTransferir={() => setTransferirOpen(true)}
       onExcluir={() => setExcluirOpen(true)}
+      onEditar={() => setEditarOpen(true)}
     />
   );
 
@@ -174,14 +180,22 @@ export function AtendimentoClient({
 
       <AtendimentoModals
         leadId={lead.id}
+        leadClienteId={lead.cliente_id}
         leadNome={lead.nome}
+        leadTelefone={lead.telefone}
+        leadEmail={lead.email}
+        leadMidiaNome={getLeadMidiaNome(lead)}
+        leadPerfilId={lead.perfil_id}
         perfis={perfis}
+        midias={midias}
         motivos={motivos}
         podeTransferir={podeTransferir}
         podeExcluir={podeExcluir}
+        editarOpen={editarOpen}
         descartarOpen={descartarOpen}
         transferirOpen={transferirOpen}
         excluirOpen={excluirOpen}
+        onEditarOpenChange={setEditarOpen}
         onDescartarOpenChange={setDescartarOpen}
         onTransferirOpenChange={setTransferirOpen}
         onExcluirOpenChange={setExcluirOpen}

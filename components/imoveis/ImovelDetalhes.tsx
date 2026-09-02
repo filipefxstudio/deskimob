@@ -51,13 +51,14 @@ import {
 } from "@/lib/site/format";
 import { cn } from "@/lib/utils";
 import type { AlertaRepublicacaoImovel } from "@/lib/imoveis/republicacao-alerta";
-import type { AuditoriaImovel, Imovel, ImovelDesempenho, Perfil, StatusImovel } from "@/types";
+import type { AuditoriaImovel, Imovel, ImovelDesempenho, MotivoDesativacao, Perfil, StatusImovel } from "@/types";
 
 interface ImovelDetalhesProps {
   imovel: Imovel;
   corretorSlug: string;
   shareUrl?: string | null;
   statusList: StatusImovel[];
+  motivosDesativacao?: MotivoDesativacao[];
   auditoria: AuditoriaImovel[];
   desempenho: ImovelDesempenho | null;
   perfil?: Perfil | null;
@@ -97,6 +98,7 @@ export function ImovelDetalhes({
   corretorSlug,
   shareUrl = null,
   statusList,
+  motivosDesativacao,
   auditoria,
   desempenho,
   perfil = null,
@@ -213,6 +215,7 @@ export function ImovelDetalhes({
         imovel={imovel}
         corretorSlug={corretorSlug}
         statusList={statusList}
+        motivosDesativacao={motivosDesativacao}
         perfil={perfil}
         variant="header"
         onValidarAtualizacao={(data) =>

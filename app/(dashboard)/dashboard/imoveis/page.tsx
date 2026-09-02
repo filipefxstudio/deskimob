@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ImoveisListing } from "@/components/imoveis/ImoveisListing";
 import { getImoveis, getImoveisWorkflowBadges, getStatusImovelList } from "@/lib/actions/imoveis";
+import { getMotivosDesativacao } from "@/lib/actions/configuracoes";
 import { STATUS_IMOVEL } from "@/lib/constants/imoveis";
 import { CorretorUnavailableMessage } from "@/components/dashboard/CorretorUnavailableMessage";
 import {
@@ -36,10 +37,11 @@ export default async function ImoveisPage({
     ? (statusParam as StatusImovelSlug)
     : undefined;
 
-  const [imoveis, statusList, workflowBadges] = await Promise.all([
+  const [imoveis, statusList, workflowBadges, motivosDesativacao] = await Promise.all([
     getImoveis(),
     getStatusImovelList(corretor.id),
     getImoveisWorkflowBadges(),
+    getMotivosDesativacao(),
   ]);
 
   return (
@@ -48,6 +50,7 @@ export default async function ImoveisPage({
         imoveis={imoveis}
         corretorSlug={corretor.slug}
         statusList={statusList}
+        motivosDesativacao={motivosDesativacao}
         workflowBadges={workflowBadges}
         initialBusca={initialBusca}
         initialBairro={initialBairro}

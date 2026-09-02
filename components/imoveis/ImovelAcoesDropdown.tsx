@@ -24,12 +24,13 @@ import { STATUS_IMOVEL_SISTEMA } from "@/lib/constants/imoveis";
 import { podeAprovarImovel, podeAlterarStatusImovel } from "@/lib/imoveis/aprovacao";
 import { isImovelDuplicavel, isImovelRepublicavel } from "@/lib/imoveis/republicar";
 import { cn } from "@/lib/utils";
-import type { Imovel, Perfil, StatusImovel } from "@/types";
+import type { Imovel, MotivoDesativacao, Perfil, StatusImovel } from "@/types";
 
 interface ImovelAcoesDropdownProps {
   imovel: Imovel;
   corretorSlug: string;
   statusList: StatusImovel[];
+  motivosDesativacao?: MotivoDesativacao[];
   perfil?: Perfil | null;
   variant?: "card" | "header";
   className?: string;
@@ -52,6 +53,7 @@ export function ImovelAcoesDropdown({
   imovel,
   corretorSlug: _corretorSlug,
   statusList,
+  motivosDesativacao,
   perfil = null,
   variant = "card",
   className,
@@ -485,6 +487,7 @@ export function ImovelAcoesDropdown({
         imovelId={imovel.id}
         open={desativarOpen}
         onOpenChange={setDesativarOpen}
+        motivosDesativacao={motivosDesativacao}
         onSuccess={() => router.refresh()}
       />
 

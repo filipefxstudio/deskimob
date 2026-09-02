@@ -15,7 +15,8 @@ import {
   parseLocalDateTimeInput,
 } from "@/lib/dates/format";
 import { podeAvancarEtapa } from "@/lib/leads/etapa-order";
-import { parseLeadObservacoes, mergeLeadObservacoesMeta } from "@/lib/leads/observacoes";
+import { mergeLeadObservacoesMeta, parseLeadObservacoes, serializeLeadObservacoes } from "@/lib/leads/observacoes";
+import { mapMidiaToOrigem } from "@/lib/leads/midia-origem";
 import {
   fetchPreferenciasInteresseFromImovel,
   resolveValorReferenciaImovel,
@@ -442,7 +443,7 @@ export interface CreateAtendimentoInput {
   telefone: string;
   email?: string;
   cliente_id?: string;
-  midia_nome?: string;
+  midia_nome: string;
   perfil_id?: string;
   imovel_id?: string;
   finalidade_busca?: string;
@@ -455,16 +456,6 @@ export interface CreateAtendimentoInput {
   valor_minimo?: number;
   valor_maximo?: number;
   observacoes?: string;
-}
-
-function mapMidiaToOrigem(midiaNome?: string): string {
-  if (!midiaNome?.trim()) return "manual";
-  const normalized = midiaNome.trim().toLowerCase();
-  if (normalized.includes("whatsapp")) return "whatsapp";
-  if (normalized.includes("site")) return "site";
-  if (normalized.includes("indica")) return "indicacao";
-  if (normalized.includes("portal")) return "portal";
-  return "manual";
 }
 
 async function garantirImovelInteresseSelecionado(
@@ -572,8 +563,10 @@ export async function createAtendimento(
 
   const nome = input.nome.trim();
   const telefone = input.telefone.trim();
+  const midiaNome = input.midia_nome.trim();
   if (!nome) return { error: "Informe o nome." };
   if (!telefone) return { error: "Informe o telefone." };
+  if (!midiaNome) return { error: "Selecione a mídia de origem." };
 
   const perfil = await getPerfilForUser(corretor.id);
   const perfilInformado = input.perfil_id?.trim();
@@ -648,6 +641,10 @@ export async function createAtendimento(
     }
 
     const leadId = randomUUID();
+    const observacoesCadastro = serializeLeadObservacoes(
+      { midia_nome: midiaNome },
+      input.observacoes?.trim() ?? "",
+    );
     const result = await persistLeadInsert({
       id: leadId,
       corretor_id: corretor.id,
@@ -675,12 +672,12 @@ export async function createAtendimento(
       vagas_minimas: input.vagas_minimas ?? preferenciasImovel?.vagas_minimas ?? null,
       valor_minimo: input.valor_minimo ?? preferenciasImovel?.valor_minimo ?? null,
       valor_maximo: input.valor_maximo ?? preferenciasImovel?.valor_maximo ?? null,
-      origem: mapMidiaToOrigem(input.midia_nome),
+      origem: mapMidiaToOrigem(midiaNome),
       etapa: "novo",
       temperatura: "indefinido",
       atendido_por: "corretor",
       data_entrada: agora,
-      observacoes: input.observacoes?.trim() || null,
+      observacoes: observacoesCadastro,
     });
 
     if (!result.error && result.leadId) {
@@ -1570,6 +1567,8 @@ export interface UpdateAtendimentoCadastroInput {
   nome: string;
   telefone: string;
   email?: string;
+  midia_nome: string;
+  perfil_id?: string | null;
 }
 
 export async function updateAtendimentoCadastro(
@@ -1581,14 +1580,20 @@ export async function updateAtendimentoCadastro(
 
   const nome = input.nome.trim();
   const telefone = input.telefone.trim();
+  const midiaNome = input.midia_nome.trim();
 
   if (!nome) return { error: "Informe o nome." };
   if (!telefone) return { error: "Informe o telefone." };
+  if (!midiaNome) return { error: "Selecione a mídia de origem." };
+
+  const perfilInformado = input.perfil_id?.trim();
+  const perfilId =
+    perfilInformado && isValidUuid(perfilInformado) ? perfilInformado : null;
 
   const supabase = await createClient();
   const { data: leadAtual, error: leadError } = await supabase
     .from("leads")
-    .select("id, cliente_id, telefone, email")
+    .select("id, cliente_id, telefone, email, observacoes")
     .eq("id", leadId)
     .eq("corretor_id", corretor.id)
     .maybeSingle();
@@ -1626,6 +1631,11 @@ export async function updateAtendimentoCadastro(
 
   const agora = new Date().toISOString();
   const emailNormalizado = input.email?.trim() || null;
+  const { meta, texto } = parseLeadObservacoes(leadAtual.observacoes);
+  const observacoes = serializeLeadObservacoes(
+    { ...meta, midia_nome: midiaNome },
+    texto,
+  );
 
   const { error } = await supabase
     .from("leads")
@@ -1633,6 +1643,9 @@ export async function updateAtendimentoCadastro(
       nome,
       telefone,
       email: emailNormalizado,
+      origem: mapMidiaToOrigem(midiaNome),
+      perfil_id: perfilId,
+      observacoes,
       atualizado_em: agora,
     })
     .eq("id", leadId)

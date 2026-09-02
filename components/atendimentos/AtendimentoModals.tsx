@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ import {
 import { formatTelefoneBr } from "@/lib/imoveis/telefone";
 import { isValidUuid } from "@/lib/utils/uuid";
 import { toast } from "@/hooks/use-toast";
-import type { MotivoDescarte } from "@/types";
+import type { MidiaOrigem, MotivoDescarte } from "@/types";
 
 interface AtendimentoModalsProps {
   leadId: string;
@@ -40,7 +40,10 @@ interface AtendimentoModalsProps {
   leadNome?: string | null;
   leadTelefone?: string | null;
   leadEmail?: string | null;
+  leadMidiaNome?: string | null;
+  leadPerfilId?: string | null;
   perfis: { id: string; nome: string }[];
+  midias: MidiaOrigem[];
   motivos: MotivoDescarte[];
   podeTransferir: boolean;
   podeExcluir?: boolean;
@@ -60,7 +63,10 @@ export function AtendimentoModals({
   leadNome,
   leadTelefone,
   leadEmail,
+  leadMidiaNome,
+  leadPerfilId,
   perfis,
+  midias,
   motivos,
   podeTransferir,
   podeExcluir,
@@ -82,16 +88,22 @@ export function AtendimentoModals({
   const [nome, setNome] = useState(leadNome ?? "");
   const [telefone, setTelefone] = useState(leadTelefone ?? "");
   const [email, setEmail] = useState(leadEmail ?? "");
+  const [midiaNome, setMidiaNome] = useState(leadMidiaNome ?? "");
+  const [perfilId, setPerfilId] = useState(leadPerfilId ?? "");
   const [duplicidadeAtiva, setDuplicidadeAtiva] = useState(false);
+
+  const midiasAtivas = useMemo(() => midias.filter((m) => m.ativo), [midias]);
 
   useEffect(() => {
     if (editarOpen) {
       setNome(leadNome ?? "");
       setTelefone(leadTelefone ? formatTelefoneBr(leadTelefone) : "");
       setEmail(leadEmail ?? "");
+      setMidiaNome(leadMidiaNome ?? "");
+      setPerfilId(leadPerfilId ?? "");
       setDuplicidadeAtiva(false);
     }
-  }, [editarOpen, leadNome, leadTelefone, leadEmail]);
+  }, [editarOpen, leadNome, leadTelefone, leadEmail, leadMidiaNome, leadPerfilId]);
 
   function handleDescartar() {
     if (!isValidUuid(motivoId)) {
@@ -140,12 +152,18 @@ export function AtendimentoModals({
       toast({ variant: "destructive", title: "Informe o telefone." });
       return;
     }
+    if (!midiaNome.trim()) {
+      toast({ variant: "destructive", title: "Selecione a mídia de origem." });
+      return;
+    }
 
     startTransition(async () => {
       const result = await updateAtendimentoCadastro(leadId, {
         nome,
         telefone,
         email: email || undefined,
+        midia_nome: midiaNome,
+        perfil_id: perfilId || null,
       });
       if (result.error) {
         toast({ variant: "destructive", title: "Erro", description: result.error });
@@ -178,7 +196,7 @@ export function AtendimentoModals({
   return (
     <>
       <Dialog open={editarOpen} onOpenChange={(open) => onEditarOpenChange?.(open)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Editar cadastro</DialogTitle>
           </DialogHeader>
@@ -210,6 +228,38 @@ export function AtendimentoModals({
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Mídia de origem *</Label>
+              <Select value={midiaNome} onValueChange={setMidiaNome}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {midiasAtivas.map((m) => (
+                    <SelectItem key={m.id} value={m.nome}>
+                      {m.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {perfis.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Corretor responsável</Label>
+                <Select value={perfilId} onValueChange={setPerfilId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {perfis.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <PessoaDuplicidadeAviso
               telefone={telefone}
               email={email}
@@ -243,122 +293,3 @@ export function AtendimentoModals({
       </Dialog>
 
       <Dialog open={descartarOpen} onOpenChange={onDescartarOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Descartar atendimento</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {leadNome ? `Descartar ${leadNome}?` : "Este atendimento será marcado como descartado."}
-          </p>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label>Motivo</Label>
-              <Select value={motivoId} onValueChange={setMotivoId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {motivos.filter((m) => m.ativo).map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Informações adicionais *</Label>
-              <Textarea
-                value={obsDescarte}
-                onChange={(e) => setObsDescarte(e.target.value)}
-                rows={2}
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                disabled={isPending}
-                onClick={() => onDescartarOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                disabled={isPending}
-                onClick={handleDescartar}
-              >
-                {isPending ? <Loader2 className="size-4 animate-spin" /> : "Confirmar descarte"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={transferirOpen} onOpenChange={onTransferirOpenChange}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Transferir atendimento</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Novo responsável</Label>
-                <Select value={perfilDestino} onValueChange={setPerfilDestino}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {perfis.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full" disabled={isPending} onClick={handleTransferir}>
-                {isPending ? <Loader2 className="size-4 animate-spin" /> : "Transferir"}
-              </Button>
-            </div>
-          </DialogContent>
-      </Dialog>
-
-      {podeExcluir ? (
-        <Dialog open={excluirOpen} onOpenChange={(open) => onExcluirOpenChange?.(open)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Excluir atendimento</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              {leadNome
-                ? `Excluir permanentemente o atendimento de ${leadNome}?`
-                : "Esta ação não pode ser desfeita."}
-            </p>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Motivo *</Label>
-                <Textarea
-                  value={motivoExclusao}
-                  onChange={(e) => setMotivoExclusao(e.target.value)}
-                  rows={3}
-                  required
-                />
-              </div>
-              <Button
-                variant="destructive"
-                className="w-full"
-                disabled={isPending}
-                onClick={handleExcluir}
-              >
-                {isPending ? <Loader2 className="size-4 animate-spin" /> : "Confirmar exclusão"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
-    </>
-  );
-}

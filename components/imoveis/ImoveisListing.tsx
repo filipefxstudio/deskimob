@@ -36,7 +36,7 @@ import {
   persistListingSnapshot,
 } from "@/lib/imoveis/listing-return-state";
 import { contemNormalizado } from "@/lib/utils/normalizar";
-import type { Imovel, StatusImovel, StatusImovelSlug } from "@/types";
+import type { Imovel, MotivoDesativacao, StatusImovel, StatusImovelSlug } from "@/types";
 
 const VIEW_MODE_STORAGE_KEY = "deskimob-imoveis-view";
 const SORT_STORAGE_KEY = "fx-imoveis-sort";
@@ -45,6 +45,7 @@ interface ImoveisListingProps {
   imoveis: Imovel[];
   corretorSlug: string;
   statusList: StatusImovel[];
+  motivosDesativacao?: MotivoDesativacao[];
   workflowBadges?: Record<string, ImovelListingBadge>;
   initialBusca?: string;
   initialBairro?: string;
@@ -183,6 +184,7 @@ export function ImoveisListing({
   imoveis,
   corretorSlug,
   statusList,
+  motivosDesativacao,
   workflowBadges = {},
   initialBusca = "",
   initialBairro = "",
@@ -373,6 +375,7 @@ export function ImoveisListing({
           imoveis={filteredImoveis}
           corretorSlug={corretorSlug}
           statusList={statusList}
+          motivosDesativacao={motivosDesativacao}
           getCardBadge={(imovel) => {
             const badge = workflowBadges[imovel.id];
             if (!badge) return null;
@@ -388,6 +391,7 @@ export function ImoveisListing({
           imoveis={filteredImoveis}
           corretorSlug={corretorSlug}
           statusList={statusList}
+          motivosDesativacao={motivosDesativacao}
           getCardBadge={(imovel) => {
             const badge = workflowBadges[imovel.id];
             if (!badge) return null;

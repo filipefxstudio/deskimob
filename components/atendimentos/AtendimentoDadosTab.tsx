@@ -59,11 +59,11 @@ import {
 } from "@/lib/constants/leads";
 import {
   etapaParaSelectAtendimento,
-  formatOrigemDisplay,
   formatTempoPrimeiraResposta,
   isLeadContatoFeito,
   isLeadQualificado,
 } from "@/lib/leads/format";
+import { formatMidiaOrigemLead } from "@/lib/leads/midia-origem";
 import { formatDateTimeBrasilia } from "@/lib/dates/format";
 import { parseLeadObservacoes, serializeLeadObservacoes } from "@/lib/leads/observacoes";
 import { toast } from "@/hooks/use-toast";
@@ -549,7 +549,7 @@ export function AtendimentoDadosTab({
           </div>
           <div>
             <dt className="text-muted-foreground">Mídia</dt>
-            <dd>{formatOrigemDisplay(lead.origem)}</dd>
+            <dd>{formatMidiaOrigemLead(lead)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Cadastro</dt>

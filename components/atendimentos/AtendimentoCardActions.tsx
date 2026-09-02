@@ -28,6 +28,7 @@ interface AtendimentoCardActionsProps {
   onDescartar: () => void;
   onTransferir: () => void;
   onExcluir: () => void;
+  onEditar: () => void;
   showAbrirAtendimento?: boolean;
   variant?: "card" | "header";
 }
@@ -46,6 +47,7 @@ export function AtendimentoCardActions({
   onDescartar,
   onTransferir,
   onExcluir,
+  onEditar,
   showAbrirAtendimento = true,
   variant = "card",
 }: AtendimentoCardActionsProps) {
@@ -121,6 +123,15 @@ export function AtendimentoCardActions({
           className="min-w-44"
           onClick={(e) => e.stopPropagation()}
         >
+          <ActionMenuItem
+            action="editar"
+            onSelect={(event) => {
+              stopCardNavigation(event);
+              onEditar();
+            }}
+          >
+            Editar
+          </ActionMenuItem>
           <ActionMenuItem
             action="contatoFeito"
             disabled={disabled}

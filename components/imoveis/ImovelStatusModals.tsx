@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { getMotivosDesativacao } from "@/lib/actions/configuracoes";
 import { desativarImovel, updateImovelStatus } from "@/lib/actions/imoveis";
-import { MOTIVOS_DESATIVACAO } from "@/lib/constants/imoveis";
+import { resolveMotivosDesativacaoAtivos } from "@/lib/imoveis/motivos-desativacao";
 import type { MotivoDesativacao, StatusImovel } from "@/types";
 
 interface ImovelDesativarModalProps {
@@ -31,6 +31,7 @@ interface ImovelDesativarModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  motivosDesativacao?: MotivoDesativacao[];
 }
 
 export function ImovelDesativarModal({
@@ -38,10 +39,13 @@ export function ImovelDesativarModal({
   open,
   onOpenChange,
   onSuccess,
+  motivosDesativacao,
 }: ImovelDesativarModalProps) {
   const [motivo, setMotivo] = useState("");
   const [infoAdicional, setInfoAdicional] = useState("");
-  const [motivos, setMotivos] = useState<MotivoDesativacao[]>([]);
+  const [motivos, setMotivos] = useState<MotivoDesativacao[]>(() =>
+    motivosDesativacao ? resolveMotivosDesativacaoAtivos(motivosDesativacao) : [],
+  );
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -51,24 +55,15 @@ export function ImovelDesativarModal({
       return;
     }
 
-    void getMotivosDesativacao().then((items) => {
-      const ativos = items.filter((item) => item.ativo);
-      if (ativos.length > 0) {
-        setMotivos(ativos);
-        return;
-      }
+    if (motivosDesativacao) {
+      setMotivos(resolveMotivosDesativacaoAtivos(motivosDesativacao));
+      return;
+    }
 
-      setMotivos(
-        MOTIVOS_DESATIVACAO.map((nome, index) => ({
-          id: `default-${index}`,
-          corretor_id: "",
-          nome,
-          ativo: true,
-          ordem: index,
-        })),
-      );
+    void getMotivosDesativacao().then((items) => {
+      setMotivos(resolveMotivosDesativacaoAtivos(items));
     });
-  }, [open]);
+  }, [open, motivosDesativacao]);
 
   function handleSubmit() {
     if (!motivo) {
@@ -108,7 +103,7 @@ export function ImovelDesativarModal({
               <SelectTrigger id="motivo-desativacao">
                 <SelectValue placeholder="Selecione o motivo" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100]">
                 {motivos.map((item) => (
                   <SelectItem key={item.id} value={item.nome}>
                     {item.nome}

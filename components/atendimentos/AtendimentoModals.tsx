@@ -293,3 +293,122 @@ export function AtendimentoModals({
       </Dialog>
 
       <Dialog open={descartarOpen} onOpenChange={onDescartarOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Descartar atendimento</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {leadNome ? `Descartar ${leadNome}?` : "Este atendimento será marcado como descartado."}
+          </p>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Motivo</Label>
+              <Select value={motivoId} onValueChange={setMotivoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {motivos.filter((m) => m.ativo).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Informações adicionais *</Label>
+              <Textarea
+                value={obsDescarte}
+                onChange={(e) => setObsDescarte(e.target.value)}
+                rows={2}
+                required
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                disabled={isPending}
+                onClick={() => onDescartarOpenChange(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                disabled={isPending}
+                onClick={handleDescartar}
+              >
+                {isPending ? <Loader2 className="size-4 animate-spin" /> : "Confirmar descarte"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={transferirOpen} onOpenChange={onTransferirOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transferir atendimento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Novo responsável</Label>
+              <Select value={perfilDestino} onValueChange={setPerfilDestino}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {perfis.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full" disabled={isPending} onClick={handleTransferir}>
+              {isPending ? <Loader2 className="size-4 animate-spin" /> : "Transferir"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {podeExcluir ? (
+        <Dialog open={excluirOpen} onOpenChange={(open) => onExcluirOpenChange?.(open)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Excluir atendimento</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              {leadNome
+                ? `Excluir permanentemente o atendimento de ${leadNome}?`
+                : "Esta ação não pode ser desfeita."}
+            </p>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Motivo *</Label>
+                <Textarea
+                  value={motivoExclusao}
+                  onChange={(e) => setMotivoExclusao(e.target.value)}
+                  rows={3}
+                  required
+                />
+              </div>
+              <Button
+                variant="destructive"
+                className="w-full"
+                disabled={isPending}
+                onClick={handleExcluir}
+              >
+                {isPending ? <Loader2 className="size-4 animate-spin" /> : "Confirmar exclusão"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </>
+  );
+}

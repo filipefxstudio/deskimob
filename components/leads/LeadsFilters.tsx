@@ -120,6 +120,7 @@ export function LeadsFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Ativos (padrão)</SelectItem>
+              <SelectItem value="todas">Todas</SelectItem>
               {SITUACOES.map((situacao) => (
                 <SelectItem key={situacao} value={situacao}>
                   {SITUACAO_LEAD_LABELS[situacao]}

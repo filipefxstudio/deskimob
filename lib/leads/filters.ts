@@ -32,7 +32,7 @@ export interface LeadsFilterState {
   finalidade: "all" | "compra" | "locacao";
   perfilId: string;
   semInteracaoDias: number | null;
-  situacao: SituacaoLead | "all";
+  situacao: SituacaoLead | "all" | "todas";
   apenasQualificados: boolean;
   interesse: LeadsInteresseFilterState;
 }
@@ -146,7 +146,9 @@ export function matchesLeadsFilters(
   filters: LeadsFilterState,
   viewMode: LeadsViewMode = "kanban",
 ): boolean {
-  if (filters.situacao !== "all") {
+  if (filters.situacao === "todas") {
+    // Sem filtro por situação — exibe ativos, descartados e negócios fechados.
+  } else if (filters.situacao !== "all") {
     const leadSituacao = lead.situacao ?? "em_atendimento";
     if (leadSituacao !== filters.situacao) {
       return false;

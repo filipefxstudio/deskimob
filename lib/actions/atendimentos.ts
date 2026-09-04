@@ -1073,22 +1073,35 @@ export async function descartarAtendimento(
 
   if (!motivo) return { error: "Motivo não encontrado." };
 
+  const { count: totalPropostas, error: propostasError } = await supabase
+    .from("propostas")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", leadId)
+    .eq("corretor_id", corretor.id);
+
+  if (propostasError) {
+    console.error(
+      "[descartar lead] erro ao verificar propostas:",
+      JSON.stringify(propostasError, null, 2),
+    );
+    return { error: "Não foi possível verificar propostas do atendimento." };
+  }
+
+  const negocioPerdido = (totalPropostas ?? 0) > 0;
   const agora = new Date().toISOString();
+  const etapaNegocioPerdido = negocioPerdido ? { etapa: "perdido" as const } : {};
+
   const updateTiers: Record<string, unknown>[] = [
     {
       situacao: "descartado",
-      etapa: "perdido",
+      ...etapaNegocioPerdido,
       motivo_descarte_id: motivoIdTrim,
       motivo_descarte_texto: observacaoTrim,
       atualizado_em: agora,
     },
     {
       situacao: "descartado",
-      etapa: "perdido",
-      atualizado_em: agora,
-    },
-    {
-      etapa: "perdido",
+      ...etapaNegocioPerdido,
       atualizado_em: agora,
     },
   ];
@@ -1121,7 +1134,8 @@ export async function descartarAtendimento(
     return { error: "Não foi possível descartar." };
   }
 
-  const msg = `Atendimento descartado. Motivo: ${motivo.nome}. ${observacaoTrim}`;
+  const tipoDescarte = negocioPerdido ? "negócio perdido" : "lead descartado";
+  const msg = `${tipoDescarte.charAt(0).toUpperCase()}${tipoDescarte.slice(1)}. Motivo: ${motivo.nome}. ${observacaoTrim}`;
 
   await registrarInteracao(leadId, "anotacao", msg);
   await registrarAuditoria(leadId, "atendimento_descartado", {
@@ -1129,10 +1143,16 @@ export async function descartarAtendimento(
     motivo: motivo.nome,
     observacao: observacaoTrim,
     motivo_persistido_colunas: motivoPersistido,
+    negocio_perdido: negocioPerdido,
   });
 
   revalidateAtendimentoPaths(leadId);
-  return { success: true, message: "Atendimento descartado." };
+  return {
+    success: true,
+    message: negocioPerdido
+      ? "Negócio perdido registrado."
+      : "Atendimento descartado.",
+  };
 }
 
 export async function transferirAtendimento(

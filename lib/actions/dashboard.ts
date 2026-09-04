@@ -359,13 +359,13 @@ function buildFunil(
       id: "venda",
       label: tab === "venda" ? "Venda" : "Locação",
       count: filtered.filter((l) => leadMatchesEtapaFilter(l, "venda")).length,
-      href: `${base}&etapa=venda`,
+      href: `${base}&etapa=venda&situacao=todas`,
     },
     {
       id: "perdido",
       label: "Perdido",
       count: etapaCount(["perdido"]),
-      href: `${base}&etapa=perdido`,
+      href: `${base}&etapa=perdido&situacao=todas`,
     },
   ];
 }
@@ -410,10 +410,12 @@ function buildQualidade(
     "fechado",
   ];
 
-  const qualificados = filtered.filter((l) => qualificadosEtapas.includes(l.etapa)).length;
-  const descartados = filtered.filter((l) => l.etapa === "perdido").length;
+  const qualificados = filtered.filter(
+    (l) => isLeadAtivo(l) && qualificadosEtapas.includes(l.etapa),
+  ).length;
+  const descartados = filtered.filter((l) => l.situacao === "descartado").length;
   const emAtendimento = filtered.filter(
-    (l) => l.etapa !== "perdido" && !qualificadosEtapas.includes(l.etapa),
+    (l) => isLeadAtivo(l) && !qualificadosEtapas.includes(l.etapa),
   ).length;
 
   return [
@@ -427,7 +429,7 @@ function buildQualidade(
       label: "Descartados",
       value: descartados,
       color: "#E63946",
-      href: `${base}&etapa=perdido`,
+      href: `${base}&situacao=descartado`,
     },
     {
       label: "Em atendimento",

@@ -60,7 +60,9 @@ function parseInitialFilters(
   }
 
   const situacao = typeof params.situacao === "string" ? params.situacao : undefined;
-  if (
+  if (situacao === "todas") {
+    filters.situacao = "todas";
+  } else if (
     situacao === "em_atendimento" ||
     situacao === "descartado" ||
     situacao === "negocio_fechado"

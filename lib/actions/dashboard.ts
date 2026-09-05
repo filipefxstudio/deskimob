@@ -10,7 +10,8 @@ import {
   resolvePeriodRange,
   type DashboardPeriodPreset,
 } from "@/lib/dashboard/period";
-import { formatOrigemDisplay, getUltimaAtividadeEm, isLeadAtivo } from "@/lib/leads/format";
+import { getUltimaAtividadeEm, isLeadAtivo } from "@/lib/leads/format";
+import { formatMidiaOrigemLead } from "@/lib/leads/midia-origem";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import {
@@ -493,19 +494,14 @@ function buildTempoInteracao(
 function buildOrigem(
   leads: LeadRow[],
   finalidadeLead: "compra" | "locacao",
-  start: Date,
-  end: Date,
 ): DashboardBarItem[] {
   const ativos = leads.filter(
-    (l) =>
-      l.finalidade_busca === finalidadeLead &&
-      isLeadAtivo(l) &&
-      isDateInRange(l.criado_em, start, end),
+    (l) => l.finalidade_busca === finalidadeLead && isLeadAtivo(l),
   );
 
   const origemMap = new Map<string, number>();
   for (const lead of ativos) {
-    const origem = formatOrigemDisplay(lead.origem);
+    const origem = formatMidiaOrigemLead(lead);
     origemMap.set(origem, (origemMap.get(origem) ?? 0) + 1);
   }
 
@@ -923,7 +919,7 @@ function buildDashboardDataForTab(
       dashboardConfig,
       finalidadeLead,
     ),
-    origem: buildOrigem(leads, finalidadeLead, start, end),
+    origem: buildOrigem(leads, finalidadeLead),
     captacoes: buildCaptacoes(imoveis, finalidadeImovel, start, end),
     imoveisDesatualizados: buildImoveisDesatualizados(
       imoveis,

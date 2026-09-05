@@ -9,6 +9,6 @@ interface DashboardOrigemChartProps {
 
 export function DashboardOrigemChart({ items }: DashboardOrigemChartProps) {
   return (
-    <DashboardHorizontalBarChart title="Origem dos leads" items={items} emptyMessage="Sem leads no período." />
+    <DashboardHorizontalBarChart title="Origem dos leads" items={items} emptyMessage="Sem leads ativos." />
   );
 }

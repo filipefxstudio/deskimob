@@ -53,3 +53,15 @@ export function formatMidiaOrigemLead(lead: Pick<Lead, "origem" | "observacoes">
 
   return formatOrigemDisplay(lead.origem);
 }
+
+export function leadMatchesMidiaOrigemFilter(
+  lead: Pick<Lead, "origem" | "observacoes">,
+  origemFilter: string,
+): boolean {
+  if (!origemFilter || origemFilter === "all") {
+    return true;
+  }
+
+  const display = formatMidiaOrigemLead(lead);
+  return display.toLowerCase() === origemFilter.trim().toLowerCase();
+}

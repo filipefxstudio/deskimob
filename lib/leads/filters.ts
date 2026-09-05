@@ -1,5 +1,6 @@
 import { leadMatchesTipoImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import type { LeadsViewMode } from "@/lib/constants/config";
+import { leadMatchesMidiaOrigemFilter } from "@/lib/leads/midia-origem";
 import { parseLeadObservacoes } from "@/lib/leads/observacoes";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
 import {
@@ -178,10 +179,9 @@ export function matchesLeadsFilters(
   }
 
   if (filters.origem !== "all") {
-    const match =
-      lead.origem === filters.origem ||
-      lead.origem.toLowerCase() === filters.origem.toLowerCase();
-    if (!match) return false;
+    if (!leadMatchesMidiaOrigemFilter(lead, filters.origem)) {
+      return false;
+    }
   }
 
   if (filters.perfilId !== "all") {

@@ -74,6 +74,11 @@ function parseInitialFilters(
     filters.apenasQualificados = true;
   }
 
+  const origem = typeof params.origem === "string" ? params.origem : undefined;
+  if (origem && origem !== "all") {
+    filters.origem = origem;
+  }
+
   return filters;
 }
 

@@ -515,7 +515,7 @@ function buildOrigem(
       label,
       count,
       color: colors[index % colors.length],
-      href: base,
+      href: `${base}&origem=${encodeURIComponent(label)}`,
     }));
 }
 

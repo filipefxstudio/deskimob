@@ -1542,9 +1542,21 @@ async function saveImovelProprietarios(
   proprietarioIds: string[],
   supabase: ImovelDbClient,
 ): Promise<void> {
-  await supabase.from("imovel_proprietarios").delete().eq("imovel_id", imovelId);
+  const primaryId = proprietarioIds[0] ?? null;
+  const adicionais = [...new Set(proprietarioIds.slice(1))].filter(
+    (clienteId): clienteId is string =>
+      Boolean(clienteId) && clienteId !== primaryId,
+  );
 
-  const adicionais = proprietarioIds.slice(1);
+  const { error: deleteError } = await supabase
+    .from("imovel_proprietarios")
+    .delete()
+    .eq("imovel_id", imovelId);
+
+  if (deleteError) {
+    logSupabaseError("saveImovelProprietarios:delete", deleteError);
+    throw new Error("Não foi possível salvar os proprietários adicionais.");
+  }
 
   if (adicionais.length === 0) {
     return;

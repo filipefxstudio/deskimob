@@ -135,7 +135,7 @@ export function ProprietarioSection({
     setConfirmados(next);
     const ids = next
       .map((item) => item.id)
-      .filter((id) => id !== "pendente-novo");
+      .filter((id) => id !== "pendente-novo" && id.trim().length > 0);
     setValue("proprietario_ids", ids, { shouldValidate: true });
     setValue("cliente_id", ids[0] ?? null, { shouldValidate: true });
   }

@@ -1,3 +1,7 @@
+-- Garante coluna ordem (instalações antigas criaram a tabela sem ela)
+ALTER TABLE public.imovel_proprietarios
+  ADD COLUMN IF NOT EXISTS ordem INT DEFAULT 0;
+
 -- Alinha imovel_proprietarios com imoveis (rls_mesmo_corretor) para equipe + dono
 
 DROP POLICY IF EXISTS "imovel_proprietarios_corretor_select" ON public.imovel_proprietarios;

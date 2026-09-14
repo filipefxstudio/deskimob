@@ -1562,16 +1562,33 @@ async function saveImovelProprietarios(
     return;
   }
 
-  const rows = adicionais.map((clienteId, index) => ({
+  const rowsWithOrdem = adicionais.map((clienteId, index) => ({
     imovel_id: imovelId,
     cliente_id: clienteId,
     ordem: index + 1,
   }));
 
-  const { error } = await supabase.from("imovel_proprietarios").insert(rows);
+  const rowsWithoutOrdem = adicionais.map((clienteId) => ({
+    imovel_id: imovelId,
+    cliente_id: clienteId,
+  }));
 
-  if (error) {
-    logSupabaseError("saveImovelProprietarios:insert", error);
+  let insertError: PostgrestError | null = null;
+  ({ error: insertError } = await supabase.from("imovel_proprietarios").insert(rowsWithOrdem));
+
+  if (
+    insertError &&
+    isSchemaMismatchError(insertError) &&
+    extractMissingColumn(insertError) === "ordem"
+  ) {
+    logPostgrestError("saveImovelProprietarios:insert_without_ordem", insertError);
+    ({ error: insertError } = await supabase
+      .from("imovel_proprietarios")
+      .insert(rowsWithoutOrdem));
+  }
+
+  if (insertError) {
+    logSupabaseError("saveImovelProprietarios:insert", insertError);
     throw new Error("Não foi possível salvar os proprietários adicionais.");
   }
 }

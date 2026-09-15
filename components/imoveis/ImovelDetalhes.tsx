@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useLayoutEffect, useRef, useState, useTransition, type CSSProperties } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type CSSProperties,
+} from "react";
 import {
   Check,
   MapPin,
@@ -41,6 +48,7 @@ import {
   getCaptadorPrincipalNome,
   getCaptadoresLista,
 } from "@/lib/imoveis/captador";
+import { proprietariosFromImovel } from "@/lib/imoveis/form";
 import { getImovelCodigo, formatEnderecoCompleto } from "@/lib/imoveis/format";
 import { buildTelLinkLocal, buildWhatsAppLink, formatTelefoneBr } from "@/lib/imoveis/telefone";
 import {
@@ -63,6 +71,55 @@ interface ImovelDetalhesProps {
   desempenho: ImovelDesempenho | null;
   perfil?: Perfil | null;
   alertaRepublicacao?: AlertaRepublicacaoImovel | null;
+}
+
+interface ProprietarioContatoProps {
+  nome: string;
+  telefone: string;
+  showPrincipal?: boolean;
+}
+
+function ProprietarioContato({ nome, telefone, showPrincipal }: ProprietarioContatoProps) {
+  const telLink = buildTelLinkLocal(telefone);
+  const waLink = buildWhatsAppLink(telefone);
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-medium">{nome}</p>
+          {showPrincipal ? (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              Principal
+            </span>
+          ) : null}
+        </div>
+        {telefone ? (
+          <p className="text-sm text-muted-foreground">{formatTelefoneBr(telefone)}</p>
+        ) : null}
+      </div>
+      {telLink || waLink ? (
+        <div className="flex flex-wrap gap-2">
+          {telLink ? (
+            <Button variant="outline" size="sm" asChild>
+              <a href={telLink}>
+                <Phone data-icon="inline-start" />
+                Ligar
+              </a>
+            </Button>
+          ) : null}
+          {waLink ? (
+            <Button variant="outline" size="sm" asChild>
+              <a href={waLink} target="_blank" rel="noopener noreferrer">
+                <WhatsAppIcon data-icon="inline-start" className="size-4" />
+                WhatsApp
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -109,6 +166,7 @@ export function ImovelDetalhes({
   const [toolbarHeight, setToolbarHeight] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [imovel, setImovel] = useState(initialImovel);
+  const [outrosProprietariosOpen, setOutrosProprietariosOpen] = useState(false);
   const { selectedTab, displayTab, selectTab, isContentPending } = useInstantTabs<
     "detalhes" | "desempenho" | "auditoria"
   >("detalhes");
@@ -142,12 +200,12 @@ export function ImovelDetalhes({
   const fotos = imovel.fotos ?? [];
   const diferenciais = imovel.diferenciais ?? [];
   const hasMap = imovel.latitude != null && imovel.longitude != null;
-  const cliente = imovel.cliente;
+  const proprietarios = useMemo(() => proprietariosFromImovel(imovel), [imovel]);
+  const proprietarioPrincipal = proprietarios[0] ?? null;
+  const outrosProprietarios = proprietarios.slice(1);
   const captadores = getCaptadoresLista(imovel);
   const captadorNome = getCaptadorPrincipalNome(imovel);
   const cadastradoPor = imovel.cadastrado_por;
-  const telLink = buildTelLinkLocal(cliente?.telefone);
-  const waLink = buildWhatsAppLink(cliente?.telefone);
   const aguardandoAprovacao = imovel.status_aprovacao === "aguardando_aprovacao";
 
   const infoAdicional = INFO_ADICIONAL_FIELDS.filter(
@@ -516,37 +574,44 @@ export function ImovelDetalhes({
             <div className="grid gap-6 lg:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Proprietário</CardTitle>
+                  <CardTitle>
+                    {proprietarios.length > 1 ? "Proprietários" : "Proprietário"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {cliente ? (
+                  {proprietarioPrincipal ? (
                     <div className="space-y-3">
-                      <div>
-                        <p className="font-medium">{cliente.nome}</p>
-                        {cliente.telefone ? (
-                          <p className="text-sm text-muted-foreground">
-                            {formatTelefoneBr(cliente.telefone)}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {telLink ? (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={telLink}>
-                              <Phone data-icon="inline-start" />
-                              Ligar
-                            </a>
+                      <ProprietarioContato
+                        nome={proprietarioPrincipal.nome}
+                        telefone={proprietarioPrincipal.telefone}
+                        showPrincipal={outrosProprietarios.length > 0}
+                      />
+                      {outrosProprietarios.length > 0 ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="h-auto p-0 text-sm"
+                            onClick={() => setOutrosProprietariosOpen((open) => !open)}
+                          >
+                            {outrosProprietariosOpen
+                              ? "Ocultar outros proprietários"
+                              : `Ver outros proprietários (${outrosProprietarios.length})`}
                           </Button>
-                        ) : null}
-                        {waLink ? (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={waLink} target="_blank" rel="noopener noreferrer">
-                              <WhatsAppIcon data-icon="inline-start" className="size-4" />
-                              WhatsApp
-                            </a>
-                          </Button>
-                        ) : null}
-                      </div>
+                          {outrosProprietariosOpen ? (
+                            <ul className="space-y-4 border-t border-border pt-3">
+                              {outrosProprietarios.map((proprietario) => (
+                                <li key={proprietario.id}>
+                                  <ProprietarioContato
+                                    nome={proprietario.nome}
+                                    telefone={proprietario.telefone}
+                                  />
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">

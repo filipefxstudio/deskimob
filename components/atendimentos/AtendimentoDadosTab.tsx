@@ -458,7 +458,6 @@ export function AtendimentoDadosTab({
           <div className="space-y-2">
             <Label>Valor mín.</Label>
             <CurrencyInput
-              key={`valor-min-${valorMin ?? "vazio"}`}
               value={valorMin}
               onChange={setValorMin}
               mode="filter"
@@ -467,7 +466,6 @@ export function AtendimentoDadosTab({
           <div className="space-y-2">
             <Label>Valor máx.</Label>
             <CurrencyInput
-              key={`valor-max-${valorMax ?? "vazio"}`}
               value={valorMax}
               onChange={setValorMax}
               mode="filter"

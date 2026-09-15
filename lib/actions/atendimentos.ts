@@ -17,11 +17,7 @@ import {
 import { podeAvancarEtapa } from "@/lib/leads/etapa-order";
 import { mergeLeadObservacoesMeta, parseLeadObservacoes, serializeLeadObservacoes } from "@/lib/leads/observacoes";
 import { mapMidiaToOrigem } from "@/lib/leads/midia-origem";
-import {
-  fetchPreferenciasInteresseFromImovel,
-  resolveValorReferenciaImovel,
-  type PreferenciasInteresseFromImovel,
-} from "@/lib/atendimentos/interesse-from-imovel";
+import { resolveValorReferenciaImovel } from "@/lib/atendimentos/interesse-from-imovel";
 import { atualizarStatusImovelAutomatico } from "@/lib/imoveis/status-automatico";
 import {
   avaliarSelecaoPessoaAtendimento,
@@ -449,12 +445,12 @@ export interface CreateAtendimentoInput {
   finalidade_busca?: string;
   tipo_imovel_busca?: string;
   bairros_interesse?: string[];
-  quartos_minimo?: number;
-  suites_minimas?: number;
-  banheiros_minimos?: number;
-  vagas_minimas?: number;
-  valor_minimo?: number;
-  valor_maximo?: number;
+  quartos_minimo?: number | null;
+  suites_minimas?: number | null;
+  banheiros_minimos?: number | null;
+  vagas_minimas?: number | null;
+  valor_minimo?: number | null;
+  valor_maximo?: number | null;
   observacoes?: string;
 }
 
@@ -618,19 +614,8 @@ export async function createAtendimento(
   let codigo = "";
   let lastError: unknown = null;
 
-  let preferenciasImovel: PreferenciasInteresseFromImovel | null = null;
   const imovelIdValido =
     input.imovel_id && isValidUuid(input.imovel_id) ? input.imovel_id : null;
-
-  if (imovelIdValido) {
-    const config = await getAtendimentoConfigForCorretor(supabase, corretor.id);
-    preferenciasImovel = await fetchPreferenciasInteresseFromImovel(
-      supabase,
-      corretor.id,
-      imovelIdValido,
-      config?.faixa_valor_percent ?? 20,
-    );
-  }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -656,22 +641,15 @@ export async function createAtendimento(
       perfil_id: perfilId,
       codigo_atendimento: codigo,
       situacao: "em_atendimento",
-      finalidade_busca:
-        input.finalidade_busca || preferenciasImovel?.finalidade_busca || null,
-      tipo_imovel_busca:
-        input.tipo_imovel_busca?.trim() || preferenciasImovel?.tipo_imovel_busca || null,
-      bairros_interesse: input.bairros_interesse?.length
-        ? input.bairros_interesse
-        : preferenciasImovel?.bairros_interesse.length
-          ? preferenciasImovel.bairros_interesse
-          : null,
-      quartos_minimo: input.quartos_minimo ?? preferenciasImovel?.quartos_minimo ?? null,
-      suites_minimas: input.suites_minimas ?? preferenciasImovel?.suites_minimas ?? null,
-      banheiros_minimos:
-        input.banheiros_minimos ?? preferenciasImovel?.banheiros_minimos ?? null,
-      vagas_minimas: input.vagas_minimas ?? preferenciasImovel?.vagas_minimas ?? null,
-      valor_minimo: input.valor_minimo ?? preferenciasImovel?.valor_minimo ?? null,
-      valor_maximo: input.valor_maximo ?? preferenciasImovel?.valor_maximo ?? null,
+      finalidade_busca: input.finalidade_busca?.trim() || null,
+      tipo_imovel_busca: input.tipo_imovel_busca?.trim() || null,
+      bairros_interesse: input.bairros_interesse?.length ? input.bairros_interesse : null,
+      quartos_minimo: input.quartos_minimo ?? null,
+      suites_minimas: input.suites_minimas ?? null,
+      banheiros_minimos: input.banheiros_minimos ?? null,
+      vagas_minimas: input.vagas_minimas ?? null,
+      valor_minimo: input.valor_minimo ?? null,
+      valor_maximo: input.valor_maximo ?? null,
       origem: mapMidiaToOrigem(midiaNome),
       etapa: "novo",
       temperatura: "indefinido",
@@ -1377,19 +1355,6 @@ export async function getImoveisRadar(leadId: string): Promise<Imovel[]> {
   }
 
   return imoveis;
-}
-
-async function getAtendimentoConfigForCorretor(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  corretorId: string,
-): Promise<{ faixa_valor_percent: number } | null> {
-  const { data } = await supabase
-    .from("atendimento_config")
-    .select("faixa_valor_percent")
-    .eq("corretor_id", corretorId)
-    .maybeSingle();
-
-  return data as { faixa_valor_percent: number } | null;
 }
 
 export async function calcularFaixaValorImovel(

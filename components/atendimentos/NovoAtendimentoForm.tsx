@@ -125,6 +125,12 @@ export function NovoAtendimentoForm({
     setPerfilId(perfilAtualId);
   }, [perfilAtualId, perfilId]);
 
+  function parseNumeroMinimo(valor: string): number | null {
+    if (valor.trim() === "") return null;
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
@@ -145,13 +151,13 @@ export function NovoAtendimentoForm({
         imovel_id: imovelSelecionado?.id,
         finalidade_busca: finalidade || undefined,
         tipo_imovel_busca: serializeTiposImovelBusca(tiposImovelSelecionados),
-        bairros_interesse: bairros.length ? bairros : undefined,
-        quartos_minimo: quartos ? Number(quartos) : undefined,
-        suites_minimas: suites ? Number(suites) : undefined,
-        banheiros_minimos: banheiros ? Number(banheiros) : undefined,
-        vagas_minimas: vagas ? Number(vagas) : undefined,
-        valor_minimo: valorMin ?? undefined,
-        valor_maximo: valorMax ?? undefined,
+        bairros_interesse: bairros,
+        quartos_minimo: parseNumeroMinimo(quartos),
+        suites_minimas: parseNumeroMinimo(suites),
+        banheiros_minimos: parseNumeroMinimo(banheiros),
+        vagas_minimas: parseNumeroMinimo(vagas),
+        valor_minimo: valorMin,
+        valor_maximo: valorMax,
         observacoes: observacoes || undefined,
       });
 

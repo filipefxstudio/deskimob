@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 
 import { Toaster } from "@/components/ui/toaster";
+import { deskimobFaviconMetadata } from "@/lib/site/deskimob-favicon";
 
 import "./globals.css";
 
@@ -14,6 +15,7 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "Deskimob — CRM Imobiliário",
   description: "CRM imobiliário SaaS para corretores autônomos no Brasil",
+  icons: deskimobFaviconMetadata,
 };
 
 export default function RootLayout({

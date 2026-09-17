@@ -1151,7 +1151,7 @@ async function fetchLeadsSearchRows(
     return [];
   }
 
-  return ((data ?? []) as LeadSearchRow[]).filter((lead) =>
+  return ((data ?? []) as unknown as LeadSearchRow[]).filter((lead) =>
     pessoaMatchesSearchQuery(lead, trimmed, digits),
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 
 import { FunilKanban } from "@/components/dashboard/FunilKanban";
@@ -23,7 +23,9 @@ import {
   STORAGE_KEY_LEADS_VIEW,
   type LeadsViewMode,
 } from "@/lib/constants/config";
+import { searchAtendimentosListing } from "@/lib/actions/leads";
 import { isLeadAtivo } from "@/lib/leads/format";
+import { shouldRunListingSearch } from "@/lib/listings/search-query";
 import { contemNormalizado } from "@/lib/utils/normalizar";
 import type { Lead, MidiaOrigem } from "@/types";
 
@@ -63,6 +65,26 @@ export function LeadsPage({
     ...initialFilters,
   });
   const [diasAlerta, setDiasAlerta] = useState(DEFAULT_DIAS_ALERTA_INATIVIDADE);
+  const [searchResults, setSearchResults] = useState<Lead[] | null>(null);
+  const [, startSearch] = useTransition();
+
+  const serverSearchActive = shouldRunListingSearch(search);
+
+  useEffect(() => {
+    if (!serverSearchActive) {
+      setSearchResults(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      startSearch(async () => {
+        const found = await searchAtendimentosListing(search);
+        setSearchResults(found);
+      });
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search, serverSearchActive]);
 
   useEffect(() => {
     const storedView = localStorage.getItem(STORAGE_KEY_LEADS_VIEW);
@@ -90,14 +112,14 @@ export function LeadsPage({
     localStorage.setItem(STORAGE_KEY_LEADS_VIEW, mode);
   }
 
-  const filteredLeads = useMemo(
-    () =>
-      initialLeads.filter(
-        (lead) =>
-          matchesSearch(lead, search) && matchesLeadsFilters(lead, filters, viewMode),
-      ),
-    [initialLeads, search, filters, viewMode],
-  );
+  const filteredLeads = useMemo(() => {
+    const base = serverSearchActive ? (searchResults ?? []) : initialLeads;
+    return base.filter(
+      (lead) =>
+        (serverSearchActive || matchesSearch(lead, search)) &&
+        matchesLeadsFilters(lead, filters, viewMode),
+    );
+  }, [initialLeads, searchResults, search, filters, viewMode, serverSearchActive]);
 
   const ativosCount = useMemo(
     () => initialLeads.filter(isLeadAtivo).length,

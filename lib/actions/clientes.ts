@@ -41,8 +41,10 @@ import { createClient } from "@/lib/supabase/server";
 import {
   clampListLimit,
   clampListOffset,
+  LISTING_SEARCH_MAX,
   type ListQueryOptions,
 } from "@/lib/constants/listings";
+import { shouldRunListingSearch } from "@/lib/listings/search-query";
 import { contemNormalizado } from "@/lib/utils/normalizar";
 import {
   clienteFormSchema,
@@ -978,27 +980,67 @@ type ClienteSearchRow = {
   perfil_id: string | null;
 };
 
+function pessoaMatchesSearchQuery(
+  pessoa: { nome: string | null; telefone: string | null; email?: string | null },
+  trimmed: string,
+  digits: string,
+): boolean {
+  const nome = pessoa.nome?.trim() ?? "";
+  const telefone = pessoa.telefone?.trim() ?? "";
+
+  if (contemNormalizado(nome, trimmed)) {
+    return true;
+  }
+
+  if (telefone && contemNormalizado(telefone, trimmed)) {
+    return true;
+  }
+
+  if (pessoa.email && contemNormalizado(pessoa.email, trimmed)) {
+    return true;
+  }
+
+  if (digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE && telefone) {
+    const telefoneDigits = sanitizeTelefone(telefone);
+    return (
+      telefoneDigits.includes(digits) ||
+      digits.includes(telefoneDigits) ||
+      telefonesEquivalentes(telefone, digits)
+    );
+  }
+
+  return false;
+}
+
 async function fetchClientesSearchRows(
   supabase: ClienteDbClient,
   corretorId: string,
   trimmed: string,
   digits: string,
+  options?: { limit?: number; full?: boolean },
 ): Promise<ClienteSearchRow[]> {
+  const limit = options?.limit ?? 50;
+  const select = options?.full
+    ? "*, perfil:perfis(id, nome, email, papel)"
+    : "id, nome, telefone, email, tipo, eh_construtor_investidor, corretor_id, perfil_id";
+
   let dbQuery = supabase
     .from("clientes")
-    .select(
-      "id, nome, telefone, email, tipo, eh_construtor_investidor, corretor_id, perfil_id",
-    )
+    .select(select)
     .eq("corretor_id", corretorId)
     .order("nome", { ascending: true })
-    .limit(50);
+    .limit(limit);
 
   const nomePattern = escapeIlikePattern(trimmed);
 
-  if (digits.length >= 4) {
+  if (digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE) {
     const telefonePattern = escapeIlikePattern(digits);
     dbQuery = dbQuery.or(
       `telefone.ilike.%${telefonePattern}%,nome.ilike.%${nomePattern}%`,
+    );
+  } else if (emailValidoParaBusca(normalizeEmail(trimmed))) {
+    dbQuery = dbQuery.or(
+      `email.ilike.%${escapeIlikePattern(normalizeEmail(trimmed))}%,nome.ilike.%${nomePattern}%`,
     );
   } else {
     dbQuery = dbQuery.ilike("nome", `%${nomePattern}%`);
@@ -1011,7 +1053,7 @@ async function fetchClientesSearchRows(
     return [];
   }
 
-  return (data ?? []) as ClienteSearchRow[];
+  return (data ?? []) as unknown as ClienteSearchRow[];
 }
 
 export async function searchClientes(query: string): Promise<ClienteSearchResult[]> {
@@ -1050,20 +1092,7 @@ export async function searchClientes(query: string): Promise<ClienteSearchResult
       return false;
     }
 
-    if (contemNormalizado(cliente.nome, trimmed)) {
-      return true;
-    }
-
-    if (digits.length >= 4) {
-      const telefoneDigits = sanitizeTelefone(cliente.telefone ?? "");
-      return (
-        telefoneDigits.includes(digits) ||
-        digits.includes(telefoneDigits) ||
-        telefonesEquivalentes(cliente.telefone ?? "", digits)
-      );
-    }
-
-    return false;
+    return pessoaMatchesSearchQuery(cliente, trimmed, digits);
   });
 
   return filtered.slice(0, 10).map((cliente) => mapClienteRowToSearchResult(cliente, corretor.id));
@@ -1083,22 +1112,36 @@ async function fetchLeadsSearchRows(
   corretorId: string,
   trimmed: string,
   digits: string,
+  options?: { limit?: number; full?: boolean },
 ): Promise<LeadSearchRow[]> {
+  const limit = options?.limit ?? 50;
   const emailNorm = trimmed.includes("@") ? normalizeEmail(trimmed) : "";
   const buscaPorTelefone = digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE;
   const buscaPorEmail = emailValidoParaBusca(emailNorm);
+  const nomePattern = escapeIlikePattern(trimmed);
+
+  const select = options?.full
+    ? "id, corretor_id, perfil_id, nome, telefone, email, observacoes, criado_em, atualizado_em, cliente_id, perfil:perfis(id, nome, email, papel)"
+    : "id, nome, telefone, email, cliente_id, perfil_id";
 
   let dbQuery = supabase
     .from("leads")
-    .select("id, nome, telefone, email, cliente_id, perfil_id")
+    .select(select)
     .eq("corretor_id", corretorId)
     .order("criado_em", { ascending: false })
-    .limit(50);
+    .limit(limit);
 
-  if (buscaPorEmail && !buscaPorTelefone) {
-    dbQuery = dbQuery.ilike("email", `%${escapeIlikePattern(emailNorm)}%`);
-  } else if (!buscaPorTelefone) {
-    dbQuery = dbQuery.ilike("nome", `%${escapeIlikePattern(trimmed)}%`);
+  if (buscaPorTelefone) {
+    const telefonePattern = escapeIlikePattern(digits);
+    dbQuery = dbQuery.or(
+      `telefone.ilike.%${telefonePattern}%,nome.ilike.%${nomePattern}%`,
+    );
+  } else if (buscaPorEmail) {
+    dbQuery = dbQuery.or(
+      `email.ilike.%${escapeIlikePattern(emailNorm)}%,nome.ilike.%${nomePattern}%`,
+    );
+  } else {
+    dbQuery = dbQuery.ilike("nome", `%${nomePattern}%`);
   }
 
   const { data, error } = await dbQuery;
@@ -1108,31 +1151,9 @@ async function fetchLeadsSearchRows(
     return [];
   }
 
-  return ((data ?? []) as LeadSearchRow[]).filter((lead) => {
-    const telefone = lead.telefone?.trim() ?? "";
-    if (!telefone) {
-      return false;
-    }
-
-    if (contemNormalizado(lead.nome, trimmed)) {
-      return true;
-    }
-
-    if (buscaPorTelefone) {
-      const telefoneDigits = sanitizeTelefone(telefone);
-      return (
-        telefoneDigits.includes(digits) ||
-        digits.includes(telefoneDigits) ||
-        telefonesEquivalentes(telefone, digits)
-      );
-    }
-
-    if (buscaPorEmail && lead.email) {
-      return normalizeEmail(lead.email).includes(emailNorm);
-    }
-
-    return false;
-  });
+  return ((data ?? []) as LeadSearchRow[]).filter((lead) =>
+    pessoaMatchesSearchQuery(lead, trimmed, digits),
+  );
 }
 
 function mapClienteRowToSearchResult(
@@ -1227,12 +1248,7 @@ export async function buscarPessoasParaProprietario(
       continue;
     }
 
-    if (
-      !contemNormalizado(cliente.nome, trimmed) &&
-      !(digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE &&
-        (sanitizeTelefone(cliente.telefone ?? "").includes(digits) ||
-          telefonesEquivalentes(cliente.telefone ?? "", digits)))
-    ) {
+    if (!pessoaMatchesSearchQuery(cliente, trimmed, digits)) {
       continue;
     }
 
@@ -1268,6 +1284,73 @@ export async function buscarPessoasParaProprietario(
   }
 
   return dedupeSearchResults(resultados).slice(0, 10);
+}
+
+export async function searchPessoasListing(query: string): Promise<Cliente[]> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return [];
+  }
+
+  const trimmed = query.trim();
+  const digits = sanitizeTelefone(trimmed);
+
+  if (!shouldRunListingSearch(trimmed)) {
+    return [];
+  }
+
+  const access = await resolvePessoasAccess(corretor);
+  const searchOptions = { limit: LISTING_SEARCH_MAX, full: true };
+
+  const supabase = await createClient();
+  let clienteRows = await fetchClientesSearchRows(
+    supabase,
+    corretor.id,
+    trimmed,
+    digits,
+    searchOptions,
+  );
+  let leadRows = await fetchLeadsSearchRows(
+    supabase,
+    corretor.id,
+    trimmed,
+    digits,
+    searchOptions,
+  );
+
+  if (clienteRows.length === 0 || leadRows.length === 0) {
+    const admin = await createTenantDataClient();
+
+    if (admin) {
+      if (clienteRows.length === 0) {
+        clienteRows = await fetchClientesSearchRows(
+          admin,
+          corretor.id,
+          trimmed,
+          digits,
+          searchOptions,
+        );
+      }
+      if (leadRows.length === 0) {
+        leadRows = await fetchLeadsSearchRows(admin, corretor.id, trimmed, digits, searchOptions);
+      }
+    }
+  }
+
+  const clientes = (clienteRows as Cliente[]).filter(
+    (cliente) =>
+      pessoaVisivelParaUsuario(cliente.perfil_id, access) &&
+      pessoaMatchesSearchQuery(cliente, trimmed, digits),
+  );
+
+  const leads = (leadRows as unknown as LeadPessoaRow[]).filter(
+    (lead) =>
+      pessoaVisivelParaUsuario(resolveLeadPerfilId(lead), access) &&
+      pessoaMatchesSearchQuery(lead, trimmed, digits),
+  );
+
+  return mergeClientesComLeads(clientes, leads, access);
 }
 
 async function ensureClienteFromLead(leadId: string): Promise<{ clienteId: string } | { error: string }> {

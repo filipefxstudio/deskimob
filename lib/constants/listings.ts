@@ -1,5 +1,9 @@
 export const DEFAULT_LIST_LIMIT = 200;
 export const MAX_LIST_LIMIT = 200;
+/** Máximo de resultados na busca server-side (Pessoas, Atendimentos, Imóveis). */
+export const LISTING_SEARCH_MAX = 500;
+/** @deprecated Use LISTING_SEARCH_MAX */
+export const PESSOAS_SEARCH_MAX = LISTING_SEARCH_MAX;
 export const IMOVEL_LIST_LIMIT = 1000;
 export const MAX_IMOVEL_LIST_LIMIT = 1000;
 

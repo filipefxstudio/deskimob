@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
 
 import { ImovelCardGrid } from "@/components/imoveis/ImovelCardGrid";
 import { ImovelPhotoBadge } from "@/components/atendimentos/ImovelPhotoBadge";
-import type { ImovelListingBadge } from "@/lib/actions/imoveis";
+import { searchImoveisListing, type ImovelListingBadge } from "@/lib/actions/imoveis";
+import { shouldRunListingSearch } from "@/lib/listings/search-query";
 import { ImovelCardList } from "@/components/imoveis/ImovelCardList";
 import { ListingScrollRestore } from "@/components/site/ListingScrollRestore";
 import {
@@ -200,6 +201,26 @@ export function ImoveisListing({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ImoveisViewMode>("grid");
   const [sort, setSort] = useState<ImoveisSortOption>("cadastro_desc");
+  const [searchResults, setSearchResults] = useState<Imovel[] | null>(null);
+  const [, startSearch] = useTransition();
+
+  const serverSearchActive = shouldRunListingSearch(search);
+
+  useEffect(() => {
+    if (!serverSearchActive) {
+      setSearchResults(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      startSearch(async () => {
+        const found = await searchImoveisListing(search);
+        setSearchResults(found);
+      });
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search, serverSearchActive]);
 
   useEffect(() => {
     const restored = consumeListingStateRestore();
@@ -270,16 +291,17 @@ export function ImoveisListing({
     [filters, statusList],
   );
 
-  const filteredImoveis = useMemo(
-    () =>
-      sortImoveis(
-        imoveis.filter(
-          (imovel) => matchesSearch(imovel, search) && matchesFilters(imovel, filters),
-        ),
-        sort,
+  const filteredImoveis = useMemo(() => {
+    const base = serverSearchActive ? (searchResults ?? []) : imoveis;
+    return sortImoveis(
+      base.filter(
+        (imovel) =>
+          (serverSearchActive || matchesSearch(imovel, search)) &&
+          matchesFilters(imovel, filters),
       ),
-    [imoveis, search, filters, sort],
-  );
+      sort,
+    );
+  }, [imoveis, searchResults, search, filters, sort, serverSearchActive]);
 
   const activeFilterCount = countActiveFilters(filters, statusList);
 

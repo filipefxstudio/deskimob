@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid, List, Plus, Search, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState } from "react";
+import { LayoutGrid, List, Loader2, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { ClienteCard } from "@/components/clientes/ClienteCard";
 import {
@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { searchPessoasListing } from "@/lib/actions/clientes";
+import { shouldRunListingSearch } from "@/lib/listings/search-query";
 import { cn } from "@/lib/utils";
 import { contemNormalizado } from "@/lib/utils/normalizar";
 import type { Cliente, Perfil } from "@/types";
@@ -65,23 +67,51 @@ export function ClientesListing({ clientes, perfis }: ClientesListingProps) {
   const [filters, setFilters] = useState<ClientesFilterState>(defaultClientesFilters);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [searchResults, setSearchResults] = useState<Cliente[] | null>(null);
+  const [isSearching, startSearch] = useTransition();
+
+  const serverSearchActive = shouldRunListingSearch(search);
+
+  useEffect(() => {
+    if (!serverSearchActive) {
+      setSearchResults(null);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      startSearch(async () => {
+        const found = await searchPessoasListing(search);
+        setSearchResults(found);
+      });
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search, serverSearchActive]);
+
+  const baseList = serverSearchActive ? (searchResults ?? []) : clientes;
 
   const filtered = useMemo(
     () =>
-      clientes.filter(
-        (cliente) => matchesSearch(cliente, search) && matchesFilters(cliente, filters),
+      baseList.filter(
+        (cliente) =>
+          (serverSearchActive || matchesSearch(cliente, search)) &&
+          matchesFilters(cliente, filters),
       ),
-    [clientes, search, filters],
+    [baseList, search, filters, serverSearchActive],
   );
+
+  const subtitle = serverSearchActive
+    ? isSearching
+      ? "Buscando em todo o cadastro..."
+      : `${filtered.length} ${filtered.length === 1 ? "resultado" : "resultados"}`
+    : `${clientes.length} exibidas (use a busca para localizar qualquer pessoa no cadastro)`;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-primary">Pessoas</h2>
-          <p className="text-sm text-muted-foreground">
-            {clientes.length} {clientes.length === 1 ? "pessoa cadastrada" : "pessoas cadastradas"}
-          </p>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
         <Button asChild>
           <Link href="/dashboard/clientes/novo">
@@ -95,11 +125,14 @@ export function ClientesListing({ clientes, perfis }: ClientesListingProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome ou telefone..."
+            placeholder="Buscar por nome, telefone ou e-mail..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="pl-9"
           />
+          {isSearching ? (
+            <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          ) : null}
         </div>
         <div className="flex gap-2">
           <Button
@@ -142,7 +175,11 @@ export function ClientesListing({ clientes, perfis }: ClientesListingProps) {
       {filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Nenhuma pessoa encontrada.
+            {isSearching
+              ? "Buscando..."
+              : serverSearchActive
+                ? "Nenhuma pessoa encontrada no cadastro."
+                : "Nenhuma pessoa encontrada."}
           </CardContent>
         </Card>
       ) : (
@@ -154,7 +191,7 @@ export function ClientesListing({ clientes, perfis }: ClientesListingProps) {
           )}
         >
           {filtered.map((cliente) => (
-            <ClienteCard key={cliente.id} cliente={cliente} />
+            <ClienteCard key={cliente.lead_id ?? cliente.id} cliente={cliente} />
           ))}
         </div>
       )}

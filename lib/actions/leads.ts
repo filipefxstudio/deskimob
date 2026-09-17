@@ -40,7 +40,15 @@ import { createClient } from "@/lib/supabase/server";
 import {
   clampListLimit,
   clampListOffset,
+  IMOVEL_LIST_LIMIT,
+  LISTING_SEARCH_MAX,
 } from "@/lib/constants/listings";
+import { shouldRunListingSearch } from "@/lib/listings/search-query";
+import {
+  MIN_TELEFONE_BUSCA_AUTOCOMPLETE,
+  sanitizeTelefone,
+  telefonesEquivalentes,
+} from "@/lib/pessoas/duplicate";
 import type {
   EtapaLead,
   Lead,
@@ -118,10 +126,6 @@ export interface InteracaoInput {
   descricao: string;
   data?: string;
   contarPrimeiraResposta?: boolean;
-}
-
-function sanitizeTelefone(telefone: string): string {
-  return telefone.replace(/\D/g, "");
 }
 
 function mapMidiaToOrigem(midiaNome?: string): string {
@@ -978,7 +982,7 @@ async function fetchImoveisByIds(
     .select(select as "*")
     .eq("corretor_id", corretorId)
     .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
-    .in("id", ids.slice(0, 50))
+    .in("id", ids.slice(0, LISTING_SEARCH_MAX))
     .order("atualizado_em", { ascending: false });
 
   if (error) {
@@ -1009,7 +1013,7 @@ async function fetchImoveisSearchRowsWithFilter(
     .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
     .or(buildImovelSearchOrFilter(trimmed))
     .order("atualizado_em", { ascending: false })
-    .limit(30);
+    .limit(LISTING_SEARCH_MAX);
 
   if (error) {
     console.error("[fetchImoveisSearchRowsWithFilter] failed", { withFotos, error });
@@ -1037,7 +1041,7 @@ async function fetchImoveisSearchRowsForScan(
     .eq("corretor_id", corretorId)
     .not("status", "in", IMOVEIS_STATUS_EXCLUIDOS_BUSCA)
     .order("atualizado_em", { ascending: false })
-    .limit(400);
+    .limit(IMOVEL_LIST_LIMIT);
 
   if (error) {
     console.error("[fetchImoveisSearchRowsForScan] failed", { withFotos, error });
@@ -1064,7 +1068,7 @@ async function fetchClienteIdsByProprietarioNome(
     .select("id, nome")
     .eq("corretor_id", corretorId)
     .ilike("nome", pattern)
-    .limit(30);
+    .limit(LISTING_SEARCH_MAX);
 
   if (error) {
     console.error("[fetchClienteIdsByProprietarioNome] failed", error);
@@ -1081,7 +1085,7 @@ async function fetchClienteIdsByProprietarioNome(
       .select("id, nome")
       .eq("corretor_id", corretorId)
       .order("nome", { ascending: true })
-      .limit(400);
+      .limit(LISTING_SEARCH_MAX);
 
     if (scanError) {
       console.error("[fetchClienteIdsByProprietarioNome] scan failed", scanError);
@@ -1115,12 +1119,12 @@ async function fetchImovelIdsByProprietarioNome(
       .select("id")
       .eq("corretor_id", corretorId)
       .in("cliente_id", clienteIds)
-      .limit(50),
+      .limit(LISTING_SEARCH_MAX),
     supabase
       .from("imovel_proprietarios")
       .select("imovel_id")
       .in("cliente_id", clienteIds)
-      .limit(50),
+      .limit(LISTING_SEARCH_MAX),
   ]);
 
   for (const row of directImoveis ?? []) {
@@ -1178,6 +1182,100 @@ async function searchImoveisForLeadRows(
   );
 }
 
+function leadMatchesListingSearch(lead: Lead, trimmed: string, digits: string): boolean {
+  const telefoneDigits = sanitizeTelefone(lead.telefone ?? "");
+
+  return (
+    contemNormalizado(lead.nome ?? "", trimmed) ||
+    contemNormalizado(lead.telefone ?? "", trimmed) ||
+    contemNormalizado(lead.codigo_atendimento ?? "", trimmed) ||
+    contemNormalizado(lead.email ?? "", trimmed) ||
+    (digits.length > 0 &&
+      (telefoneDigits.includes(digits) ||
+        telefonesEquivalentes(lead.telefone ?? "", digits)))
+  );
+}
+
+async function fetchLeadsListingSearchRows(
+  supabase: TenantDbClient,
+  corretorId: string,
+  trimmed: string,
+  digits: string,
+): Promise<Lead[]> {
+  const pattern = escapeIlikePattern(trimmed);
+
+  for (let tier = 0; tier < LEADS_LIST_SELECT_TIERS.length; tier += 1) {
+    let query = supabase
+      .from("leads")
+      .select(LEADS_LIST_SELECT_TIERS[tier] as "*")
+      .eq("corretor_id", corretorId)
+      .order("criado_em", { ascending: false })
+      .limit(LISTING_SEARCH_MAX);
+
+    if (digits.length >= MIN_TELEFONE_BUSCA_AUTOCOMPLETE) {
+      const telefonePattern = escapeIlikePattern(digits);
+      query = query.or(
+        `nome.ilike.%${pattern}%,telefone.ilike.%${telefonePattern}%,codigo_atendimento.ilike.%${pattern}%,email.ilike.%${pattern}%`,
+      );
+    } else {
+      query = query.or(
+        `nome.ilike.%${pattern}%,codigo_atendimento.ilike.%${pattern}%,email.ilike.%${pattern}%`,
+      );
+    }
+
+    const { data, error } = await query;
+
+    if (!error) {
+      const leads = (data ?? []) as Lead[];
+      const usedPerfilEmbed = tier === 0;
+      const enriched = usedPerfilEmbed
+        ? leads
+        : await enrichLeadsWithPerfis(supabase, corretorId, leads);
+
+      return enriched.filter((lead) => leadMatchesListingSearch(lead, trimmed, digits));
+    }
+
+    const hasFallback = tier < LEADS_LIST_SELECT_TIERS.length - 1;
+    if (hasFallback && isSchemaMismatchError(error)) {
+      logPostgrestError(`fetchLeadsListingSearchRows.tier${tier}`, error);
+      continue;
+    }
+
+    logPostgrestError("fetchLeadsListingSearchRows", error);
+    return [];
+  }
+
+  return [];
+}
+
+export async function searchAtendimentosListing(query: string): Promise<Lead[]> {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return [];
+  }
+
+  const trimmed = query.trim();
+  if (!shouldRunListingSearch(trimmed)) {
+    return [];
+  }
+
+  const digits = sanitizeTelefone(trimmed);
+  const access = await resolveTenantAccess(corretor);
+
+  const leads = await fetchWithTenantFallback(
+    corretor.id,
+    (client) => fetchLeadsListingSearchRows(client, corretor.id, trimmed, digits),
+    (rows) => rows.length === 0,
+  );
+
+  const visiveis = access.verTodos
+    ? leads
+    : leads.filter((lead) => leadVisivelParaUsuario(lead, access));
+
+  return visiveis;
+}
+
 export async function searchImoveisForLead(query: string) {
   const corretor = await getCorretorForUser();
 
@@ -1186,12 +1284,28 @@ export async function searchImoveisForLead(query: string) {
   }
 
   const trimmed = query.trim();
-  if (trimmed.length < 2) {
+  if (!shouldRunListingSearch(trimmed)) {
     return [];
   }
 
   const rows = await searchImoveisForLeadRows(corretor.id, trimmed);
   return limitImovelSearchResults(rows, 10);
+}
+
+export async function searchImoveisForListing(query: string) {
+  const corretor = await getCorretorForUser();
+
+  if (!corretor) {
+    return [];
+  }
+
+  const trimmed = query.trim();
+  if (!shouldRunListingSearch(trimmed)) {
+    return [];
+  }
+
+  const rows = await searchImoveisForLeadRows(corretor.id, trimmed);
+  return limitImovelSearchResults(rows, LISTING_SEARCH_MAX, LISTING_SEARCH_MAX);
 }
 
 export async function getPerfisForLeads() {

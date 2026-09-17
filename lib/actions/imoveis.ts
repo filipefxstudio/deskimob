@@ -1843,6 +1843,89 @@ async function fetchImoveisRows(
   return [];
 }
 
+async function fetchImoveisByIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  corretorId: string,
+  ids: string[],
+): Promise<Imovel[]> {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const uniqueIds = [...new Set(ids)];
+  const excludedOptional = new Set<string>();
+
+  for (let tier = 0; tier < IMOVEL_LIST_SELECT_TIERS.length; tier += 1) {
+    const { data, error } = await supabase
+      .from("imoveis")
+      .select(imovelListSelectForTier(tier, Array.from(excludedOptional)) as "*")
+      .eq("corretor_id", corretorId)
+      .in("id", uniqueIds);
+
+    if (!error) {
+      return (data ?? [])
+        .map((row) => normalizeImovelRow(row as Imovel)!)
+        .filter(Boolean) as Imovel[];
+    }
+
+    const missingColumn = extractMissingColumn(error);
+    if (
+      missingColumn &&
+      (OPTIONAL_IMOVEL_DB_COLUMNS as readonly string[]).includes(missingColumn) &&
+      !excludedOptional.has(missingColumn)
+    ) {
+      excludedOptional.add(missingColumn);
+      logPostgrestError(`fetchImoveisByIds:retry_without_${missingColumn}`, error);
+      tier -= 1;
+      continue;
+    }
+
+    const hasFallback = tier < IMOVEL_LIST_SELECT_TIERS.length - 1;
+    if (hasFallback && isSchemaMismatchError(error)) {
+      logPostgrestError(`fetchImoveisByIds.tier${tier}`, error);
+      continue;
+    }
+
+    logPostgrestError("fetchImoveisByIds", error);
+    return [];
+  }
+
+  return [];
+}
+
+export async function searchImoveisListing(query: string): Promise<Imovel[]> {
+  const { searchImoveisForListing } = await import("@/lib/actions/leads");
+  const rows = await searchImoveisForListing(query);
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const corretor = await getCorretorForUser();
+  if (!corretor) {
+    return [];
+  }
+
+  const ids = rows.map((row) => row.id);
+  const orderIndex = new Map(ids.map((id, index) => [id, index]));
+
+  const supabase = await createClient();
+  let imoveis = await fetchImoveisByIds(supabase, corretor.id, ids);
+
+  if (imoveis.length === 0) {
+    try {
+      const admin = createServiceRoleClient();
+      imoveis = await fetchImoveisByIds(admin, corretor.id, ids);
+    } catch (error) {
+      console.error("[searchImoveisListing] service role fallback unavailable", error);
+    }
+  }
+
+  return imoveis.sort(
+    (a, b) => (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0),
+  );
+}
+
 export async function getImoveis(options?: ListQueryOptions): Promise<Imovel[]> {
   const corretor = await getCorretorForUser();
 

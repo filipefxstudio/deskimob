@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { processarLeadIntegracao } from "@/lib/atendimentos/integracao-lead";
+import { emitNotificacaoLeadSite } from "@/lib/notifications/emit";
 import {
   notificarCorretorContatoSite,
   notificarCorretorInteresseImovel,
@@ -104,24 +105,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não foi possível registrar seu contato." }, { status: 500 });
   }
 
+  let imovelMeta: { titulo?: string | null; codigo?: string | null; codigo_personalizado?: string | null } | null =
+    null;
+
+  if (body.imovel_id) {
+    const { data: imovel } = await supabase
+      .from("imoveis")
+      .select("titulo, codigo, codigo_personalizado")
+      .eq("id", body.imovel_id)
+      .maybeSingle();
+    imovelMeta = imovel;
+  }
+
+  try {
+    await emitNotificacaoLeadSite({
+      corretorId: corretor.id,
+      leadId: resultado.leadId,
+      leadNome: nome,
+      criado: resultado.criado,
+      imovelTitulo: imovelMeta?.titulo,
+      imovelCodigo: imovelMeta?.codigo_personalizado ?? imovelMeta?.codigo ?? null,
+      origemLabel: body.origem?.trim() || "Site",
+    });
+  } catch (error) {
+    console.error("[site/leads] notificacao", error);
+  }
+
   const emailDestino = getSiteEmail(corretor);
 
   if (emailDestino) {
     if (body.imovel_id) {
-      const { data: imovel } = await supabase
-        .from("imoveis")
-        .select("titulo, codigo, codigo_personalizado")
-        .eq("id", body.imovel_id)
-        .maybeSingle();
-
       const emailResult = await notificarCorretorInteresseImovel({
         email: emailDestino,
         corretorNome: corretor.nome,
         leadNome: nome,
         leadTelefone: telefone,
         leadEmail: body.email?.trim() || null,
-        imovelTitulo: imovel?.titulo ?? "Imóvel",
-        imovelCodigo: imovel?.codigo_personalizado ?? imovel?.codigo ?? null,
+        imovelTitulo: imovelMeta?.titulo ?? "Imóvel",
+        imovelCodigo: imovelMeta?.codigo_personalizado ?? imovelMeta?.codigo ?? null,
         observacoes: body.observacoes?.trim() || null,
         preferenciaContato: body.preferencia_contato?.trim() || null,
       });

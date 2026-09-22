@@ -15,6 +15,7 @@ import {
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { NovoAtendimentoTrigger } from "@/components/atendimentos/NovoAtendimentoTrigger";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useSidebarContext } from "@/components/dashboard/Sidebar";
 import { Button } from "@/components/ui/button";
 import {
@@ -174,6 +175,8 @@ export function AppHeader({ nome, slug, logoUrl }: AppHeaderProps) {
             </form>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <NotificationBell />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -17,6 +17,7 @@ import {
   resolveTenantAccess,
   type TenantDbClient,
 } from "@/lib/supabase/tenant-access";
+import { emitNotificacao } from "@/lib/notifications/emit";
 import { createClient } from "@/lib/supabase/server";
 import type { Agenda, StatusAgenda, TipoAgenda, TipoInteracao } from "@/types";
 
@@ -201,6 +202,17 @@ export async function createAgendaItem(
     });
     revalidatePath(`/dashboard/atendimentos/${input.lead_id}`);
   }
+
+  const quando = formatDateTimeBrasilia(dataAtividadeUtc);
+  void emitNotificacao({
+    corretorId: corretor.id,
+    tipo: "agenda",
+    titulo: input.tipo === "visita" ? "Visita agendada" : "Nova atividade na agenda",
+    mensagem: `${titulo} — ${quando}`,
+    href: input.lead_id ? `/dashboard/atendimentos/${input.lead_id}` : "/dashboard/agenda",
+    entidadeTipo: "agenda",
+    entidadeId: data.id,
+  });
 
   revalidatePath("/dashboard/agenda");
   revalidatePath("/dashboard");

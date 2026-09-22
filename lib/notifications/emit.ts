@@ -67,10 +67,17 @@ export async function emitNotificacao(input: EmitNotificacaoInput): Promise<Noti
 
   const created = data as NotificacaoRow;
 
+  const { count: unreadCount } = await supabase
+    .from("notificacoes")
+    .select("id", { count: "exact", head: true })
+    .eq("corretor_id", input.corretorId)
+    .is("lida_em", null);
+
   void sendPushForCorretor(input.corretorId, {
     title: input.titulo,
     body: input.mensagem ?? undefined,
     url: input.href ?? undefined,
+    badgeCount: unreadCount ?? undefined,
   });
 
   return created;

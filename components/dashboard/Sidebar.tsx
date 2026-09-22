@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { AppHeader } from "@/components/dashboard/AppHeader";
+import { AppBadgeSync } from "@/components/notifications/AppBadgeSync";
 import {
   Tooltip,
   TooltipContent,
@@ -91,6 +92,7 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
           className="flex h-full min-h-0 flex-col overflow-hidden bg-background"
           data-dashboard-app
         >
+          <AppBadgeSync />
           <AppHeader nome={nome} slug={slug} logoUrl={logoUrl} />
           <SidebarPanel />
           <div

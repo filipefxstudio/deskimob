@@ -20,23 +20,9 @@ import {
   markAllNotificacoesLidas,
   markNotificacaoLida,
 } from "@/lib/actions/notificacoes";
+import { registerDeskimobServiceWorker, syncAppIconBadge } from "@/lib/notifications/app-badge";
 import type { NotificacaoRow } from "@/lib/notifications/types";
 import { cn } from "@/lib/utils";
-
-function syncAppBadge(count: number) {
-  if (typeof navigator === "undefined" || !("setAppBadge" in navigator)) {
-    return;
-  }
-  const badge = navigator as Navigator & {
-    setAppBadge?: (count: number) => Promise<void>;
-    clearAppBadge?: () => Promise<void>;
-  };
-  if (count > 0) {
-    void badge.setAppBadge?.(Math.min(count, 99));
-  } else {
-    void badge.clearAppBadge?.();
-  }
-}
 
 function formatRelativeTime(iso: string): string {
   const date = new Date(iso);
@@ -48,16 +34,6 @@ function formatRelativeTime(iso: string): string {
   if (diffH < 24) return `${diffH} h`;
   const diffD = Math.floor(diffH / 24);
   return `${diffD} d`;
-}
-
-async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!("serviceWorker" in navigator)) return null;
-  try {
-    return await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  } catch (error) {
-    console.error("[NotificationBell] service worker", error);
-    return null;
-  }
 }
 
 export function NotificationBell() {
@@ -73,7 +49,7 @@ export function NotificationBell() {
   const refreshCount = useCallback(async () => {
     const count = await getUnreadNotificacoesCount();
     setUnread(count);
-    syncAppBadge(count);
+    syncAppIconBadge(count);
   }, []);
 
   const loadList = useCallback(async () => {
@@ -83,7 +59,7 @@ export function NotificationBell() {
       setItems(rows);
       const naoLidas = rows.filter((r) => !r.lida_em).length;
       setUnread(naoLidas);
-      syncAppBadge(naoLidas);
+      syncAppIconBadge(naoLidas);
     } finally {
       setLoading(false);
     }
@@ -110,7 +86,7 @@ export function NotificationBell() {
     }
     if (Notification.permission === "granted") {
       setPushState("enabled");
-      void registerServiceWorker();
+      void registerDeskimobServiceWorker();
     } else if (Notification.permission === "denied") {
       setPushState("denied");
     }
@@ -128,7 +104,7 @@ export function NotificationBell() {
       return;
     }
 
-    const registration = await registerServiceWorker();
+    const registration = await registerDeskimobServiceWorker();
     if (!registration) {
       setPushState("idle");
       return;
@@ -170,7 +146,7 @@ export function NotificationBell() {
         ),
       );
       setUnread((c) => Math.max(0, c - 1));
-      syncAppBadge(Math.max(0, unread - 1));
+      syncAppIconBadge(Math.max(0, unread - 1));
     }
     setOpen(false);
     if (item.href) {
@@ -182,7 +158,7 @@ export function NotificationBell() {
     await markAllNotificacoesLidas();
     setItems((prev) => prev.map((row) => ({ ...row, lida_em: row.lida_em ?? new Date().toISOString() })));
     setUnread(0);
-    syncAppBadge(0);
+    syncAppIconBadge(0);
   }
 
   const showPushCta =
@@ -196,7 +172,7 @@ export function NotificationBell() {
           {unread > 0 ? (
             <span
               className={cn(
-                "absolute -right-0.5 -top-0.5 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground",
+                "pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex min-h-[16px] min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none !text-white",
               )}
             >
               {unread > 99 ? "99+" : unread}

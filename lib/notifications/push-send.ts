@@ -17,7 +17,7 @@ function pushConfigured(): boolean {
 
 export async function sendPushForCorretor(
   corretorId: string,
-  payload: { title: string; body?: string; url?: string },
+  payload: { title: string; body?: string; url?: string; badgeCount?: number },
 ): Promise<void> {
   if (!pushConfigured()) {
     return;
@@ -44,6 +44,7 @@ export async function sendPushForCorretor(
     title: payload.title,
     body: payload.body ?? "",
     url: payload.url ?? "/dashboard",
+    badgeCount: payload.badgeCount,
   });
 
   await Promise.allSettled(

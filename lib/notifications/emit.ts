@@ -1,9 +1,31 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 
+import { resolveDestinatarioUserId } from "./resolve-destinatario";
 import { sendPushForCorretor } from "./push-send";
 import type { EmitNotificacaoInput, NotificacaoRow } from "./types";
+
+async function countUnreadForDestinatario(
+  supabase: SupabaseClient,
+  corretorId: string,
+  destinatarioUserId: string | null | undefined,
+): Promise<number> {
+  let query = supabase
+    .from("notificacoes")
+    .select("id", { count: "exact", head: true })
+    .eq("corretor_id", corretorId)
+    .is("lida_em", null);
+
+  if (destinatarioUserId) {
+    query = query.or(`destinatario_user_id.is.null,destinatario_user_id.eq.${destinatarioUserId}`);
+  }
+
+  const { count } = await query;
+  return count ?? 0;
+}
 
 export async function emitNotificacao(input: EmitNotificacaoInput): Promise<NotificacaoRow | null> {
   let supabase;
@@ -23,6 +45,7 @@ export async function emitNotificacao(input: EmitNotificacaoInput): Promise<Noti
     entidade_tipo: input.entidadeTipo ?? null,
     entidade_id: input.entidadeId ?? null,
     dedupe_key: input.dedupeKey ?? null,
+    destinatario_user_id: input.destinatarioUserId ?? null,
   };
 
   if (input.dedupeKey && input.upsertDedupe) {
@@ -40,7 +63,6 @@ export async function emitNotificacao(input: EmitNotificacaoInput): Promise<Noti
           titulo: row.titulo,
           mensagem: row.mensagem,
           href: row.href,
-          ...(existing.lida_em ? {} : {}),
         })
         .eq("id", existing.id)
         .select("*")
@@ -66,51 +88,140 @@ export async function emitNotificacao(input: EmitNotificacaoInput): Promise<Noti
   }
 
   const created = data as NotificacaoRow;
+  const unreadCount = await countUnreadForDestinatario(
+    supabase,
+    input.corretorId,
+    input.destinatarioUserId,
+  );
 
-  const { count: unreadCount } = await supabase
-    .from("notificacoes")
-    .select("id", { count: "exact", head: true })
-    .eq("corretor_id", input.corretorId)
-    .is("lida_em", null);
-
-  void sendPushForCorretor(input.corretorId, {
-    title: input.titulo,
-    body: input.mensagem ?? undefined,
-    url: input.href ?? undefined,
-    badgeCount: unreadCount ?? undefined,
-  });
+  void sendPushForCorretor(
+    input.corretorId,
+    {
+      title: input.titulo,
+      body: input.mensagem ?? undefined,
+      url: input.href ?? undefined,
+      badgeCount: unreadCount,
+    },
+    { destinatarioUserId: input.destinatarioUserId },
+  );
 
   return created;
 }
 
+function formatImovelParte(imovelTitulo?: string | null, imovelCodigo?: string | null): string {
+  if (!imovelTitulo?.trim()) return "";
+  const codigo = imovelCodigo?.trim();
+  return ` sobre ${imovelTitulo.trim()}${codigo ? ` (${codigo})` : ""}`;
+}
+
+/** Novo atendimento/lead (manual, site, portais, integrações). */
+export async function emitNotificacaoNovoAtendimento(params: {
+  supabase?: SupabaseClient;
+  corretorId: string;
+  leadId: string;
+  leadNome: string;
+  perfilId?: string | null;
+  origemLabel: string;
+  imovelTitulo?: string | null;
+  imovelCodigo?: string | null;
+}): Promise<void> {
+  let supabase = params.supabase;
+  if (!supabase) {
+    try {
+      supabase = createServiceRoleClient();
+    } catch (error) {
+      console.error("[emitNotificacaoNovoAtendimento] admin client", error);
+      return;
+    }
+  }
+
+  const destinatarioUserId = await resolveDestinatarioUserId(
+    supabase,
+    params.corretorId,
+    params.perfilId,
+  );
+
+  const midia = params.origemLabel.trim() || "Integração";
+  const imovelParte = formatImovelParte(params.imovelTitulo, params.imovelCodigo);
+
+  await emitNotificacao({
+    corretorId: params.corretorId,
+    destinatarioUserId,
+    tipo: "novo_atendimento",
+    titulo: "Novo atendimento",
+    mensagem: `${params.leadNome} — cadastro via ${midia}${imovelParte}.`,
+    href: `/dashboard/atendimentos/${params.leadId}`,
+    entidadeTipo: "lead",
+    entidadeId: params.leadId,
+  });
+}
+
+/** Lead existente entrou em contato de novo (site / portal). */
+export async function emitNotificacaoLeadRecontato(params: {
+  supabase?: SupabaseClient;
+  corretorId: string;
+  leadId: string;
+  leadNome: string;
+  perfilId?: string | null;
+  origemLabel: string;
+  imovelTitulo?: string | null;
+  imovelCodigo?: string | null;
+}): Promise<void> {
+  let supabase = params.supabase;
+  if (!supabase) {
+    try {
+      supabase = createServiceRoleClient();
+    } catch (error) {
+      console.error("[emitNotificacaoLeadRecontato] admin client", error);
+      return;
+    }
+  }
+
+  const destinatarioUserId = await resolveDestinatarioUserId(
+    supabase,
+    params.corretorId,
+    params.perfilId,
+  );
+
+  const midia = params.origemLabel.trim() || "Integração";
+  const imovelParte = formatImovelParte(params.imovelTitulo, params.imovelCodigo);
+
+  await emitNotificacao({
+    corretorId: params.corretorId,
+    destinatarioUserId,
+    tipo: "lead_site",
+    titulo: "Nova mensagem de lead",
+    mensagem: `${params.leadNome} entrou em contato via ${midia}${imovelParte}.`,
+    href: `/dashboard/atendimentos/${params.leadId}`,
+    entidadeTipo: "lead",
+    entidadeId: params.leadId,
+  });
+}
+
+/** @deprecated Use emitNotificacaoNovoAtendimento / emitNotificacaoLeadRecontato */
 export async function emitNotificacaoLeadSite(params: {
   corretorId: string;
   leadId: string;
   leadNome: string;
   criado: boolean;
+  perfilId?: string | null;
   imovelTitulo?: string | null;
   imovelCodigo?: string | null;
   origemLabel?: string;
 }): Promise<void> {
-  const imovelParte =
-    params.imovelTitulo?.trim()
-      ? ` sobre ${params.imovelTitulo.trim()}${params.imovelCodigo ? ` (${params.imovelCodigo})` : ""}`
-      : "";
-
-  const midia = params.origemLabel?.trim() || "Site";
-
-  const titulo = params.criado ? "Novo lead do site" : "Nova mensagem pelo site";
-  const mensagem = params.criado
-    ? `${params.leadNome} se cadastrou via ${midia}${imovelParte}.`
-    : `${params.leadNome} enviou nova mensagem via ${midia}${imovelParte}.`;
-
-  await emitNotificacao({
+  const base = {
     corretorId: params.corretorId,
-    tipo: "lead_site",
-    titulo,
-    mensagem,
-    href: `/dashboard/atendimentos/${params.leadId}`,
-    entidadeTipo: "lead",
-    entidadeId: params.leadId,
-  });
+    leadId: params.leadId,
+    leadNome: params.leadNome,
+    perfilId: params.perfilId,
+    origemLabel: params.origemLabel?.trim() || "Site",
+    imovelTitulo: params.imovelTitulo,
+    imovelCodigo: params.imovelCodigo,
+  };
+
+  if (params.criado) {
+    await emitNotificacaoNovoAtendimento(base);
+  } else {
+    await emitNotificacaoLeadRecontato(base);
+  }
 }

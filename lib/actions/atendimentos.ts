@@ -38,6 +38,7 @@ import { normalizar } from "@/lib/utils/normalizar";
 import { isValidUuid } from "@/lib/utils/uuid";
 import { parseTiposImovelBusca } from "@/lib/atendimentos/tipo-imovel-busca";
 import { IMOVEL_LIST_LIMIT } from "@/lib/constants/listings";
+import { emitNotificacaoNovoAtendimento } from "@/lib/notifications/emit";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -693,6 +694,28 @@ export async function createAtendimento(
       true,
     );
   }
+
+  let imovelTitulo: string | null = null;
+  let imovelCodigo: string | null = null;
+  if (imovelIdValido) {
+    const { data: imovelRow } = await supabase
+      .from("imoveis")
+      .select("titulo, codigo, codigo_personalizado")
+      .eq("id", imovelIdValido)
+      .maybeSingle();
+    imovelTitulo = imovelRow?.titulo ?? null;
+    imovelCodigo = imovelRow?.codigo_personalizado ?? imovelRow?.codigo ?? null;
+  }
+
+  void emitNotificacaoNovoAtendimento({
+    corretorId: corretor.id,
+    leadId: insertedLeadId,
+    leadNome: nome,
+    perfilId,
+    origemLabel: midiaNome,
+    imovelTitulo,
+    imovelCodigo,
+  });
 
   revalidateAtendimentoPaths(insertedLeadId);
   return { success: true, id: insertedLeadId, message: `Atendimento ${codigo} criado.` };

@@ -10,6 +10,10 @@ import {
 } from "@/lib/pessoas/duplicate";
 import { gerarCodigoAtendimento } from "@/lib/actions/atendimentos";
 import { fetchPreferenciasInteresseFromImovel } from "@/lib/atendimentos/interesse-from-imovel";
+import {
+  emitNotificacaoLeadRecontato,
+  emitNotificacaoNovoAtendimento,
+} from "@/lib/notifications/emit";
 import type { OrigemLead } from "@/types";
 
 export type IntegracaoLeadInput = {
@@ -20,6 +24,8 @@ export type IntegracaoLeadInput = {
   imovelId?: string | null;
   observacoes?: string | null;
   origem?: OrigemLead;
+  /** Rótulo exibido na notificação (ex.: "Site", "ZAP Imóveis"). */
+  origemLabel?: string;
 };
 
 export type IntegracaoLeadResult = {
@@ -35,6 +41,8 @@ type LeadContatoRow = {
   email?: string | null;
   situacao?: string | null;
   etapa?: string | null;
+  perfil_id?: string | null;
+  nome?: string | null;
 };
 
 function leadEstaAtivo(lead: { situacao?: string | null; etapa?: string | null }): boolean {
@@ -57,7 +65,7 @@ async function buscarLeadAtivoPorContato(
 
   const { data: leads, error } = await supabase
     .from("leads")
-    .select("id, cliente_id, telefone, email, situacao, etapa")
+    .select("id, cliente_id, telefone, email, situacao, etapa, perfil_id, nome")
     .eq("corretor_id", corretorId)
     .order("criado_em", { ascending: false });
 
@@ -95,17 +103,40 @@ async function buscarLeadAtivoPorContato(
   return leadAtivo ?? null;
 }
 
+async function getImovelNotificacaoMeta(
+  supabase: SupabaseClient,
+  imovelId: string,
+): Promise<{ titulo: string | null; codigo: string | null }> {
+  const { data: imovel } = await supabase
+    .from("imoveis")
+    .select("titulo, codigo, codigo_personalizado")
+    .eq("id", imovelId)
+    .maybeSingle();
+
+  return {
+    titulo: imovel?.titulo ?? null,
+    codigo: imovel?.codigo_personalizado ?? imovel?.codigo ?? null,
+  };
+}
+
 async function getImovelCodigo(
   supabase: SupabaseClient,
   imovelId: string,
 ): Promise<string | null> {
-  const { data: imovel } = await supabase
-    .from("imoveis")
-    .select("codigo, codigo_personalizado")
-    .eq("id", imovelId)
-    .maybeSingle();
+  const meta = await getImovelNotificacaoMeta(supabase, imovelId);
+  return meta.codigo;
+}
 
-  return imovel?.codigo_personalizado ?? imovel?.codigo ?? null;
+function labelOrigemIntegracao(origem: OrigemLead, custom?: string | null): string {
+  if (custom?.trim()) return custom.trim();
+  const map: Record<OrigemLead, string> = {
+    site: "Site",
+    whatsapp: "WhatsApp",
+    portal: "Portal",
+    indicacao: "Indicação",
+    manual: "Manual",
+  };
+  return map[origem] ?? origem;
 }
 
 async function garantirImovelSelecionado(
@@ -235,6 +266,25 @@ export async function processarLeadIntegracao(
       );
     }
 
+    const imovelMeta = input.imovelId
+      ? await getImovelNotificacaoMeta(supabase, input.imovelId)
+      : { titulo: null, codigo: null };
+
+    try {
+      await emitNotificacaoLeadRecontato({
+        supabase,
+        corretorId: input.corretorId,
+        leadId: leadAtivo.id,
+        leadNome: leadAtivo.nome?.trim() || nome,
+        perfilId: leadAtivo.perfil_id,
+        origemLabel: labelOrigemIntegracao(origem, input.origemLabel),
+        imovelTitulo: imovelMeta.titulo,
+        imovelCodigo: imovelMeta.codigo,
+      });
+    } catch (error) {
+      console.error("[integracao-lead] notificacao recontato", error);
+    }
+
     return {
       leadId: leadAtivo.id,
       criado: false,
@@ -302,6 +352,25 @@ export async function processarLeadIntegracao(
       input.corretorId,
       true,
     );
+  }
+
+  const imovelMeta = input.imovelId
+    ? await getImovelNotificacaoMeta(supabase, input.imovelId)
+    : { titulo: null, codigo: null };
+
+  try {
+    await emitNotificacaoNovoAtendimento({
+      supabase,
+      corretorId: input.corretorId,
+      leadId: novoLead.id,
+      leadNome: nome,
+      perfilId: null,
+      origemLabel: labelOrigemIntegracao(origem, input.origemLabel),
+      imovelTitulo: imovelMeta.titulo,
+      imovelCodigo: imovelMeta.codigo,
+    });
+  } catch (error) {
+    console.error("[integracao-lead] notificacao novo", error);
   }
 
   return {

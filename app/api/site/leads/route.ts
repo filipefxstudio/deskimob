@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { processarLeadIntegracao } from "@/lib/atendimentos/integracao-lead";
-import { emitNotificacaoLeadSite } from "@/lib/notifications/emit";
 import {
   notificarCorretorContatoSite,
   notificarCorretorInteresseImovel,
@@ -99,6 +98,7 @@ export async function POST(request: Request) {
       imovelId: body.imovel_id ?? null,
       observacoes,
       origem: "site",
+      origemLabel: body.origem?.trim() || "Site",
     });
   } catch (error) {
     console.error("[site/leads] processarLeadIntegracao failed", error);
@@ -115,20 +115,6 @@ export async function POST(request: Request) {
       .eq("id", body.imovel_id)
       .maybeSingle();
     imovelMeta = imovel;
-  }
-
-  try {
-    await emitNotificacaoLeadSite({
-      corretorId: corretor.id,
-      leadId: resultado.leadId,
-      leadNome: nome,
-      criado: resultado.criado,
-      imovelTitulo: imovelMeta?.titulo,
-      imovelCodigo: imovelMeta?.codigo_personalizado ?? imovelMeta?.codigo ?? null,
-      origemLabel: body.origem?.trim() || "Site",
-    });
-  } catch (error) {
-    console.error("[site/leads] notificacao", error);
   }
 
   const emailDestino = getSiteEmail(corretor);

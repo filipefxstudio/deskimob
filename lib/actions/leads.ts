@@ -24,7 +24,9 @@ import {
   verificarPessoaExistente,
 } from "@/lib/actions/clientes";
 import { erroDuplicidadePessoa } from "@/lib/pessoas/messages";
+import { emitNotificacaoNovoAtendimento } from "@/lib/notifications/emit";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
+import { getPerfilForUser } from "@/lib/supabase/get-perfil";
 import {
   createTenantDataClient,
   fetchWithTenantFallback,
@@ -497,6 +499,18 @@ export async function createLead(input: CreateLeadInput): Promise<LeadActionResu
     console.error("[createLead] failed", error);
     return { error: "Não foi possível criar o lead." };
   }
+
+  const perfilLogado = await getPerfilForUser(corretor.id);
+  const perfilResponsavel =
+    input.perfil_id?.trim() || perfilLogado?.id || null;
+
+  void emitNotificacaoNovoAtendimento({
+    corretorId: corretor.id,
+    leadId: data.id,
+    leadNome: nome,
+    perfilId: perfilResponsavel,
+    origemLabel: input.midia_nome?.trim() || "Manual",
+  });
 
   revalidatePath("/dashboard/atendimentos");
   revalidatePath("/dashboard/leads");

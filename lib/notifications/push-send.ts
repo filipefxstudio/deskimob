@@ -15,9 +15,35 @@ function pushConfigured(): boolean {
   return true;
 }
 
+async function countUnreadForUser(
+  corretorId: string,
+  userId: string | null | undefined,
+): Promise<number | undefined> {
+  let supabase;
+  try {
+    supabase = createServiceRoleClient();
+  } catch {
+    return undefined;
+  }
+
+  let query = supabase
+    .from("notificacoes")
+    .select("id", { count: "exact", head: true })
+    .eq("corretor_id", corretorId)
+    .is("lida_em", null);
+
+  if (userId) {
+    query = query.or(`destinatario_user_id.is.null,destinatario_user_id.eq.${userId}`);
+  }
+
+  const { count } = await query;
+  return count ?? undefined;
+}
+
 export async function sendPushForCorretor(
   corretorId: string,
   payload: { title: string; body?: string; url?: string; badgeCount?: number },
+  options?: { destinatarioUserId?: string | null },
 ): Promise<void> {
   if (!pushConfigured()) {
     return;
@@ -31,20 +57,31 @@ export async function sendPushForCorretor(
     return;
   }
 
-  const { data: subs, error } = await supabase
+  let subsQuery = supabase
     .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
+    .select("id, endpoint, p256dh, auth, user_id")
     .eq("corretor_id", corretorId);
+
+  const destinatarioUserId = options?.destinatarioUserId?.trim();
+  if (destinatarioUserId) {
+    subsQuery = subsQuery.eq("user_id", destinatarioUserId);
+  }
+
+  const { data: subs, error } = await subsQuery;
 
   if (error || !subs?.length) {
     return;
   }
 
+  const badgeCount =
+    payload.badgeCount ??
+    (await countUnreadForUser(corretorId, destinatarioUserId ?? null));
+
   const json = JSON.stringify({
     title: payload.title,
     body: payload.body ?? "",
     url: payload.url ?? "/dashboard",
-    badgeCount: payload.badgeCount,
+    badgeCount,
   });
 
   await Promise.allSettled(

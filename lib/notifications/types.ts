@@ -1,5 +1,6 @@
 export type NotificacaoTipo =
   | "novo_lead"
+  | "novo_atendimento"
   | "lead_site"
   | "agenda"
   | "agenda_lembrete"
@@ -15,6 +16,7 @@ export interface NotificacaoRow {
   entidade_tipo: string | null;
   entidade_id: string | null;
   dedupe_key: string | null;
+  destinatario_user_id: string | null;
   lida_em: string | null;
   criado_em: string;
 }
@@ -28,6 +30,7 @@ export interface EmitNotificacaoInput {
   entidadeTipo?: string | null;
   entidadeId?: string | null;
   dedupeKey?: string | null;
+  destinatarioUserId?: string | null;
   /** Se true, atualiza título/mensagem/href de alerta existente (não relê). */
   upsertDedupe?: boolean;
 }

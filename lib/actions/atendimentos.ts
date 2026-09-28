@@ -540,13 +540,56 @@ export async function excluirAtendimento(
     nome: lead.nome,
   });
 
-  const { error } = await supabase
+  let writeClient: Awaited<ReturnType<typeof createClient>>;
+  try {
+    writeClient = createServiceRoleClient();
+  } catch (error) {
+    console.error("[excluirAtendimento] service role unavailable", error);
+    writeClient = supabase;
+  }
+
+  const { data: visitasDoLead } = await writeClient
+    .from("visitas")
+    .select("id")
+    .eq("lead_id", leadId)
+    .eq("corretor_id", corretor.id);
+
+  const visitaIds = (visitasDoLead ?? []).map((v) => v.id);
+
+  if (visitaIds.length > 0) {
+    const { error: agendaVisitaError } = await writeClient
+      .from("agenda")
+      .delete()
+      .eq("corretor_id", corretor.id)
+      .in("visita_id", visitaIds);
+
+    if (agendaVisitaError) {
+      console.error("[excluirAtendimento] agenda por visita", agendaVisitaError);
+      return { error: "Não foi possível excluir o atendimento." };
+    }
+  }
+
+  const { error: agendaLeadError } = await writeClient
+    .from("agenda")
+    .delete()
+    .eq("corretor_id", corretor.id)
+    .eq("lead_id", leadId);
+
+  if (agendaLeadError) {
+    console.error("[excluirAtendimento] agenda por lead", agendaLeadError);
+    return { error: "Não foi possível excluir o atendimento." };
+  }
+
+  const { error } = await writeClient
     .from("leads")
     .delete()
     .eq("id", leadId)
     .eq("corretor_id", corretor.id);
 
-  if (error) return { error: "Não foi possível excluir o atendimento." };
+  if (error) {
+    console.error("[excluirAtendimento] delete lead", error);
+    return { error: "Não foi possível excluir o atendimento." };
+  }
 
   revalidateAtendimentoPaths(leadId);
   return { success: true, message: "Atendimento excluído." };

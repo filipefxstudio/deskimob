@@ -46,6 +46,7 @@ export async function sendPushForCorretor(
   options?: { destinatarioUserId?: string | null },
 ): Promise<void> {
   if (!pushConfigured()) {
+    console.warn("[push] VAPID não configurado — push ignorado.");
     return;
   }
 
@@ -69,7 +70,16 @@ export async function sendPushForCorretor(
 
   const { data: subs, error } = await subsQuery;
 
-  if (error || !subs?.length) {
+  if (error) {
+    console.error("[push] list subscriptions", error);
+    return;
+  }
+
+  if (!subs?.length) {
+    console.warn("[push] nenhuma assinatura push", {
+      corretorId,
+      destinatarioUserId: destinatarioUserId ?? "todos",
+    });
     return;
   }
 

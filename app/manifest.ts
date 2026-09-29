@@ -29,6 +29,18 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       {
         src: DESKIMOB_APPLE_ICON_PATH,
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: DESKIMOB_APPLE_ICON_PATH,
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: DESKIMOB_APPLE_ICON_PATH,
         sizes: "180x180",
         type: "image/png",
         purpose: "maskable",

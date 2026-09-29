@@ -4,13 +4,17 @@ import { useEffect } from "react";
 
 import { getUnreadNotificacoesCount } from "@/lib/actions/notificacoes";
 import { registerDeskimobServiceWorker, syncAppIconBadge } from "@/lib/notifications/app-badge";
+import { ensurePushSubscription } from "@/lib/notifications/push-client";
 
 const POLL_MS = 60_000;
 
-/** Mantém o badge do ícone do app (tela inicial) alinhado às notificações não lidas. */
+/** Mantém badge do ícone do PWA e assinatura push neste dispositivo. */
 export function AppBadgeSync() {
   useEffect(() => {
-    void registerDeskimobServiceWorker();
+    void (async () => {
+      await registerDeskimobServiceWorker();
+      await ensurePushSubscription({ requestPermission: false });
+    })();
 
     const refresh = () => {
       void getUnreadNotificacoesCount().then(syncAppIconBadge);
@@ -30,6 +34,7 @@ export function AppBadgeSync() {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         refresh();
+        void ensurePushSubscription({ requestPermission: false });
       }
     };
     document.addEventListener("visibilitychange", onVisible);

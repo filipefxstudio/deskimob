@@ -1,4 +1,4 @@
-/* Deskimob — service worker (Web Push + badge no ícone do app) */
+/* Deskimob — service worker v2 (Web Push + badge no ícone do app) */
 
 function applyAppIconBadge(count) {
   if (typeof navigator === "undefined" || !("setAppBadge" in navigator)) {

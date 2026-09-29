@@ -20,7 +20,12 @@ import {
   markAllNotificacoesLidas,
   markNotificacaoLida,
 } from "@/lib/actions/notificacoes";
-import { registerDeskimobServiceWorker, syncAppIconBadge } from "@/lib/notifications/app-badge";
+import { syncAppIconBadge } from "@/lib/notifications/app-badge";
+import {
+  ensurePushSubscription,
+  isPushConfiguredOnServer,
+  type PushClientStatus,
+} from "@/lib/notifications/push-client";
 import type { NotificacaoRow } from "@/lib/notifications/types";
 import { cn } from "@/lib/utils";
 
@@ -42,9 +47,8 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<NotificacaoRow[]>([]);
   const [unread, setUnread] = useState(0);
-  const [pushState, setPushState] = useState<"idle" | "loading" | "enabled" | "denied" | "unsupported">(
-    "idle",
-  );
+  const [pushState, setPushState] = useState<PushClientStatus | "loading">("needs_permission");
+  const [pushHint, setPushHint] = useState<string | null>(null);
 
   const refreshCount = useCallback(async () => {
     const count = await getUnreadNotificacoesCount();
@@ -80,61 +84,18 @@ export function NotificationBell() {
   }, [open, loadList]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setPushState("unsupported");
-      return;
-    }
-    if (Notification.permission === "granted") {
-      setPushState("enabled");
-      void registerDeskimobServiceWorker();
-    } else if (Notification.permission === "denied") {
-      setPushState("denied");
-    }
+    void (async () => {
+      const result = await ensurePushSubscription({ requestPermission: false });
+      setPushState(result.status);
+      setPushHint(result.message ?? null);
+    })();
   }, []);
 
   async function handleEnablePush() {
-    if (!("Notification" in window)) {
-      setPushState("unsupported");
-      return;
-    }
     setPushState("loading");
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      setPushState(permission === "denied" ? "denied" : "idle");
-      return;
-    }
-
-    const registration = await registerDeskimobServiceWorker();
-    if (!registration) {
-      setPushState("idle");
-      return;
-    }
-
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
-    if (!vapidKey || !("PushManager" in window)) {
-      setPushState("enabled");
-      return;
-    }
-
-    try {
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
-      const json = subscription.toJSON();
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint: json.endpoint,
-          keys: json.keys,
-        }),
-      });
-      setPushState("enabled");
-    } catch (error) {
-      console.error("[NotificationBell] push subscribe", error);
-      setPushState("enabled");
-    }
+    const result = await ensurePushSubscription({ requestPermission: true });
+    setPushState(result.status);
+    setPushHint(result.message ?? null);
   }
 
   async function handleItemClick(item: NotificacaoRow) {
@@ -162,7 +123,7 @@ export function NotificationBell() {
   }
 
   const showPushCta =
-    pushState !== "enabled" && pushState !== "denied" && pushState !== "unsupported";
+    pushState !== "subscribed" && pushState !== "denied" && pushState !== "unsupported";
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -195,20 +156,26 @@ export function NotificationBell() {
         </div>
 
         {showPushCta ? (
-          <div className="border-b bg-muted/40 px-3 py-2">
+          <div className="border-b bg-muted/40 px-3 py-2 space-y-1">
+            {!isPushConfiguredOnServer() ? (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                Push ainda não configurado no servidor (VAPID).
+              </p>
+            ) : null}
             <button
               type="button"
               className="flex w-full items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground"
               onClick={() => void handleEnablePush()}
-              disabled={pushState === "loading"}
+              disabled={pushState === "loading" || !isPushConfiguredOnServer()}
             >
               {pushState === "loading" ? (
                 <Loader2 className="size-3.5 shrink-0 animate-spin" />
               ) : (
                 <BellRing className="size-3.5 shrink-0 text-primary" />
               )}
-              <span>Ativar alertas no celular (push)</span>
+              <span>Ativar alertas neste aparelho (push)</span>
             </button>
+            {pushHint ? <p className="text-[11px] text-muted-foreground">{pushHint}</p> : null}
           </div>
         ) : null}
 
@@ -256,15 +223,4 @@ export function NotificationBell() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-function urlBase64ToUint8Array(base64String: string): BufferSource {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i += 1) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
 }

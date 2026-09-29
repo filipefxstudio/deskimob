@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { sendPushForCorretor } from "@/lib/notifications/push-send";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createClient } from "@/lib/supabase/server";
+
+export const runtime = "nodejs";
 
 interface PushSubscribeBody {
   endpoint?: string;
@@ -51,8 +54,22 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("[push/subscribe]", error);
-    return NextResponse.json({ error: "Não foi possível salvar a assinatura." }, { status: 500 });
+    const hint =
+      error.code === "42P01"
+        ? "Tabela push_subscriptions ausente — aplique as migrations no Supabase."
+        : "Não foi possível salvar a assinatura.";
+    return NextResponse.json({ error: hint }, { status: 500 });
   }
+
+  void sendPushForCorretor(
+    corretor.id,
+    {
+      title: "Deskimob",
+      body: "Alertas push ativados neste aparelho.",
+      url: "/dashboard",
+    },
+    { destinatarioUserId: user.id },
+  );
 
   return NextResponse.json({ success: true });
 }

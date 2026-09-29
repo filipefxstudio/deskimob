@@ -49,8 +49,11 @@ async function persistSubscriptionOnServer(subscription: PushSubscription): Prom
   if (!response.ok) {
     let detail = "Não foi possível registrar o dispositivo para push.";
     try {
-      const body = (await response.json()) as { error?: string };
+      const body = (await response.json()) as { error?: string; code?: string };
       if (body.error) detail = body.error;
+      if (body.code && !body.error?.includes(body.code)) {
+        detail = `${detail} (${body.code})`;
+      }
     } catch {
       /* ignore */
     }

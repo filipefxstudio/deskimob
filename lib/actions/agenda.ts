@@ -204,15 +204,19 @@ export async function createAgendaItem(
   }
 
   const quando = formatDateTimeBrasilia(dataAtividadeUtc);
-  void emitNotificacao({
-    corretorId: corretor.id,
-    tipo: "agenda",
-    titulo: input.tipo === "visita" ? "Visita agendada" : "Nova atividade na agenda",
-    mensagem: `${titulo} — ${quando}`,
-    href: input.lead_id ? `/dashboard/atendimentos/${input.lead_id}` : "/dashboard/agenda",
-    entidadeTipo: "agenda",
-    entidadeId: data.id,
-  });
+  try {
+    await emitNotificacao({
+      corretorId: corretor.id,
+      tipo: "agenda",
+      titulo: input.tipo === "visita" ? "Visita agendada" : "Nova atividade na agenda",
+      mensagem: `${titulo} — ${quando}`,
+      href: input.lead_id ? `/dashboard/atendimentos/${input.lead_id}` : "/dashboard/agenda",
+      entidadeTipo: "agenda",
+      entidadeId: data.id,
+    });
+  } catch (error) {
+    console.error("[createAgendaItem] notificacao/push", error);
+  }
 
   revalidatePath("/dashboard/agenda");
   revalidatePath("/dashboard");

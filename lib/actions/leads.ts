@@ -504,13 +504,17 @@ export async function createLead(input: CreateLeadInput): Promise<LeadActionResu
   const perfilResponsavel =
     input.perfil_id?.trim() || perfilLogado?.id || null;
 
-  void emitNotificacaoNovoAtendimento({
-    corretorId: corretor.id,
-    leadId: data.id,
-    leadNome: nome,
-    perfilId: perfilResponsavel,
-    origemLabel: input.midia_nome?.trim() || "Manual",
-  });
+  try {
+    await emitNotificacaoNovoAtendimento({
+      corretorId: corretor.id,
+      leadId: data.id,
+      leadNome: nome,
+      perfilId: perfilResponsavel,
+      origemLabel: input.midia_nome?.trim() || "Manual",
+    });
+  } catch (error) {
+    console.error("[createLead] notificacao/push", error);
+  }
 
   revalidatePath("/dashboard/atendimentos");
   revalidatePath("/dashboard/leads");

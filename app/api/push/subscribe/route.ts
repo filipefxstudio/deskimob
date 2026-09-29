@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     );
   }
 
-  void sendPushForCorretor(
+  await sendPushForCorretor(
     corretor.id,
     {
       title: "Deskimob",

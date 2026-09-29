@@ -94,7 +94,7 @@ export async function emitNotificacao(input: EmitNotificacaoInput): Promise<Noti
     input.destinatarioUserId,
   );
 
-  void sendPushForCorretor(
+  await sendPushForCorretor(
     input.corretorId,
     {
       title: input.titulo,

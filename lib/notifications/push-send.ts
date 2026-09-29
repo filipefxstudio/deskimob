@@ -68,11 +68,26 @@ export async function sendPushForCorretor(
     subsQuery = subsQuery.eq("user_id", destinatarioUserId);
   }
 
-  const { data: subs, error } = await subsQuery;
+  let { data: subs, error } = await subsQuery;
 
   if (error) {
     console.error("[push] list subscriptions", error);
     return;
+  }
+
+  if (!subs?.length && destinatarioUserId) {
+    const fallback = await supabase
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth, user_id")
+      .eq("corretor_id", corretorId);
+
+    if (fallback.data?.length) {
+      console.warn("[push] destinatario sem assinatura; enviando para todos os aparelhos do corretor", {
+        destinatarioUserId,
+        aparelhos: fallback.data.length,
+      });
+      subs = fallback.data;
+    }
   }
 
   if (!subs?.length) {
@@ -94,24 +109,36 @@ export async function sendPushForCorretor(
     badgeCount,
   });
 
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     subs.map(async (sub) => {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth },
-          },
-          json,
-        );
-      } catch (err) {
-        const status = (err as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) {
-          await supabase.from("push_subscriptions").delete().eq("id", sub.id);
-        } else {
-          console.error("[push] send failed", err);
-        }
-      }
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        },
+        json,
+      );
     }),
   );
+
+  let sent = 0;
+  for (let i = 0; i < results.length; i += 1) {
+    const result = results[i];
+    const sub = subs[i];
+    if (result.status === "fulfilled") {
+      sent += 1;
+      continue;
+    }
+    const err = result.reason;
+    const status = (err as { statusCode?: number }).statusCode;
+    if (status === 404 || status === 410) {
+      await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+    } else {
+      console.error("[push] send failed", { subId: sub.id, userId: sub.user_id, err });
+    }
+  }
+
+  if (sent > 0) {
+    console.info("[push] enviado", { corretorId, destinatarioUserId, sent, total: subs.length });
+  }
 }

@@ -750,15 +750,19 @@ export async function createAtendimento(
     imovelCodigo = imovelRow?.codigo_personalizado ?? imovelRow?.codigo ?? null;
   }
 
-  void emitNotificacaoNovoAtendimento({
-    corretorId: corretor.id,
-    leadId: insertedLeadId,
-    leadNome: nome,
-    perfilId,
-    origemLabel: midiaNome,
-    imovelTitulo,
-    imovelCodigo,
-  });
+  try {
+    await emitNotificacaoNovoAtendimento({
+      corretorId: corretor.id,
+      leadId: insertedLeadId,
+      leadNome: nome,
+      perfilId,
+      origemLabel: midiaNome,
+      imovelTitulo,
+      imovelCodigo,
+    });
+  } catch (error) {
+    console.error("[createAtendimento] notificacao/push", error);
+  }
 
   revalidateAtendimentoPaths(insertedLeadId);
   return { success: true, id: insertedLeadId, message: `Atendimento ${codigo} criado.` };

@@ -23,7 +23,7 @@ export function ImovelDetalheToolbar({
     <div
       ref={toolbarRef}
       className={cn(
-        "sticky top-0 z-30 -mx-4 border-b border-border/80 bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6",
+        "sticky top-0 z-30 min-w-0 border-b border-border/80 bg-background/95 py-3 backdrop-blur",
         className,
       )}
     >

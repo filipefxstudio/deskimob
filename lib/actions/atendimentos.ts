@@ -750,12 +750,17 @@ export async function createAtendimento(
     imovelCodigo = imovelRow?.codigo_personalizado ?? imovelRow?.codigo ?? null;
   }
 
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
   try {
     await emitNotificacaoNovoAtendimento({
       corretorId: corretor.id,
       leadId: insertedLeadId,
       leadNome: nome,
       perfilId,
+      authUserIdFallback: authUser?.id ?? null,
       origemLabel: midiaNome,
       imovelTitulo,
       imovelCodigo,

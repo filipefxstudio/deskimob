@@ -308,7 +308,7 @@ export function ImovelDetalhes({
   );
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-w-0 max-w-full flex-col">
       <ImovelGaleriaDetalhes
         fotos={fotos}
         titulo={titulo}
@@ -325,7 +325,7 @@ export function ImovelDetalhes({
       />
 
       <div
-        className="space-y-6 p-4 md:p-6"
+        className="min-w-0 max-w-full space-y-6 p-4 md:p-6"
         style={
           toolbarHeight > 0
             ? ({ "--imovel-toolbar-height": `${toolbarHeight}px` } as CSSProperties)
@@ -439,7 +439,7 @@ export function ImovelDetalhes({
         >
           <TabsList
             className={cn(
-              "sticky top-[var(--imovel-toolbar-height,4.5rem)] z-20 -mx-4 h-auto w-auto justify-start overflow-x-auto rounded-none border-b border-border/80 bg-background/95 p-0 px-4 backdrop-blur md:-mx-6 md:px-6",
+              "sticky top-[var(--imovel-toolbar-height,4.5rem)] z-20 h-auto w-full max-w-full min-w-0 justify-start overflow-x-auto rounded-none border-b border-border/80 bg-background/95 p-0 backdrop-blur",
             )}
           >
             <TabsTrigger

@@ -318,14 +318,14 @@ export function AtendimentoDadosTab({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-6">
+    <div className="grid min-w-0 max-w-full gap-6 lg:grid-cols-2">
+      <div className="min-w-0 space-y-6">
         <AtendimentoClienteSection lead={lead} />
 
       <section className="space-y-4 rounded-xl border border-border p-4">
         <h3 className="font-semibold text-primary">Status</h3>
-        <div className="grid grid-cols-2 gap-4 lg:flex lg:flex-wrap lg:items-end">
-          <div className="w-fit min-w-0 space-y-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="min-w-0 space-y-2">
             <Label>Temperatura</Label>
             <Select
               value={temperatura}
@@ -334,7 +334,7 @@ export function AtendimentoDadosTab({
                 save({ temperatura: v as TemperaturaLead });
               }}
             >
-              <SelectTrigger className="w-auto min-w-[9rem]"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {(Object.keys(TEMPERATURA_LEAD_LABELS) as TemperaturaLead[]).map((t) => (
                   <SelectItem key={t} value={t}>{TEMPERATURA_LEAD_LABELS[t]}</SelectItem>
@@ -342,7 +342,7 @@ export function AtendimentoDadosTab({
               </SelectContent>
             </Select>
           </div>
-          <div className="w-fit min-w-0 space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label>Etapa</Label>
             <Select
               value={etapa}
@@ -351,7 +351,7 @@ export function AtendimentoDadosTab({
                 save({ etapa: v as EtapaLead });
               }}
             >
-              <SelectTrigger className="w-auto min-w-[9rem]"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ETAPAS_ATENDIMENTO.map((e) => (
                   <SelectItem key={e} value={e}>{ETAPA_LEAD_LABELS[e]}</SelectItem>
@@ -359,13 +359,13 @@ export function AtendimentoDadosTab({
               </SelectContent>
             </Select>
           </div>
-          <div className="w-fit min-w-0 space-y-2">
+          <div className="min-w-0 space-y-2">
             <Label>Situação</Label>
             <Select
               value={situacao}
               onValueChange={(v) => handleSituacaoChange(v as SituacaoLead)}
             >
-              <SelectTrigger className="w-auto min-w-[9rem]"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {(Object.keys(SITUACAO_LEAD_LABELS) as SituacaoLead[]).map((s) => (
                   <SelectItem key={s} value={s}>{SITUACAO_LEAD_LABELS[s]}</SelectItem>
@@ -373,7 +373,7 @@ export function AtendimentoDadosTab({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex w-fit items-center gap-2 self-end pb-2">
+          <div className="flex min-w-0 items-center gap-2 sm:col-span-2">
             <Switch
               id="contato-feito"
               checked={contatoFeito}
@@ -382,7 +382,7 @@ export function AtendimentoDadosTab({
             />
             <Label htmlFor="contato-feito">Contato feito</Label>
           </div>
-          <div className="flex w-fit items-center gap-2 self-end pb-2">
+          <div className="flex min-w-0 items-center gap-2 sm:col-span-2">
             <Switch
               id="qualificado"
               checked={qualificado}
@@ -557,7 +557,7 @@ export function AtendimentoDadosTab({
       </section>
       </div>
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <section className="space-y-4 rounded-xl border border-border p-4">
           <h3 className="font-semibold text-primary">Agendar atividade</h3>
           <AgendarAtividadeForm

@@ -4,8 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 
+import { schedulePushDispatch } from "./push-dispatch";
 import { resolveDestinatarioUserId } from "./resolve-destinatario";
-import { sendPushForCorretor } from "./push-send";
 import type { EmitNotificacaoInput, NotificacaoRow } from "./types";
 
 async function countUnreadForDestinatario(
@@ -94,16 +94,14 @@ export async function emitNotificacao(input: EmitNotificacaoInput): Promise<Noti
     input.destinatarioUserId,
   );
 
-  await sendPushForCorretor(
-    input.corretorId,
-    {
-      title: input.titulo,
-      body: input.mensagem ?? undefined,
-      url: input.href ?? undefined,
-      badgeCount: unreadCount,
-    },
-    { destinatarioUserId: input.destinatarioUserId },
-  );
+  schedulePushDispatch({
+    corretorId: input.corretorId,
+    destinatarioUserId: input.destinatarioUserId,
+    title: input.titulo,
+    body: input.mensagem ?? undefined,
+    url: input.href ?? undefined,
+    badgeCount: unreadCount,
+  });
 
   return created;
 }
@@ -121,6 +119,7 @@ export async function emitNotificacaoNovoAtendimento(params: {
   leadId: string;
   leadNome: string;
   perfilId?: string | null;
+  authUserIdFallback?: string | null;
   origemLabel: string;
   imovelTitulo?: string | null;
   imovelCodigo?: string | null;
@@ -135,11 +134,15 @@ export async function emitNotificacaoNovoAtendimento(params: {
     }
   }
 
-  const destinatarioUserId = await resolveDestinatarioUserId(
+  let destinatarioUserId = await resolveDestinatarioUserId(
     supabase,
     params.corretorId,
     params.perfilId,
   );
+
+  if (!destinatarioUserId && params.authUserIdFallback?.trim()) {
+    destinatarioUserId = params.authUserIdFallback.trim();
+  }
 
   const midia = params.origemLabel.trim() || "Integração";
   const imovelParte = formatImovelParte(params.imovelTitulo, params.imovelCodigo);

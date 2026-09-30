@@ -137,6 +137,10 @@
     height: 100%;
     overflow: hidden;
   }
+  [data-dashboard-scroll] > * {
+    min-width: 0;
+    max-width: 100%;
+  }
   input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
   textarea {
     cursor: text;

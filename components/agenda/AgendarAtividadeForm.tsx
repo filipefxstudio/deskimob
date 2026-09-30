@@ -167,8 +167,9 @@ export function AgendarAtividadeForm({
             </div>
           ) : (
             <div className="relative">
-              <div className="flex gap-2">
+              <div className="flex min-w-0 gap-2">
                 <Input
+                  className="min-w-0 flex-1"
                   value={buscaLead}
                   onChange={(e) => setBuscaLead(e.target.value)}
                   placeholder="Buscar por nome, código ou telefone…"

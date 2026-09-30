@@ -40,6 +40,45 @@ async function countUnreadForUser(
   return count ?? undefined;
 }
 
+type PushSubRow = {
+  id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_id: string;
+};
+
+async function loadPushSubscriptions(
+  supabase: Awaited<ReturnType<typeof createServiceRoleClient>>,
+  corretorId: string,
+  destinatarioUserId?: string | null,
+): Promise<PushSubRow[]> {
+  if (destinatarioUserId) {
+    const { data: byUser, error: byUserError } = await supabase
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth, user_id")
+      .eq("user_id", destinatarioUserId);
+
+    if (byUserError) {
+      console.error("[push] load by user", byUserError);
+    } else if (byUser?.length) {
+      return byUser as PushSubRow[];
+    }
+  }
+
+  const { data: byCorretor, error: byCorretorError } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth, user_id")
+    .eq("corretor_id", corretorId);
+
+  if (byCorretorError) {
+    console.error("[push] load by corretor", byCorretorError);
+    return [];
+  }
+
+  return (byCorretor ?? []) as PushSubRow[];
+}
+
 export async function sendPushForCorretor(
   corretorId: string,
   payload: { title: string; body?: string; url?: string; badgeCount?: number },
@@ -58,39 +97,10 @@ export async function sendPushForCorretor(
     return;
   }
 
-  let subsQuery = supabase
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth, user_id")
-    .eq("corretor_id", corretorId);
+  const destinatarioUserId = options?.destinatarioUserId?.trim() || null;
+  const subs = await loadPushSubscriptions(supabase, corretorId, destinatarioUserId);
 
-  const destinatarioUserId = options?.destinatarioUserId?.trim();
-  if (destinatarioUserId) {
-    subsQuery = subsQuery.eq("user_id", destinatarioUserId);
-  }
-
-  let { data: subs, error } = await subsQuery;
-
-  if (error) {
-    console.error("[push] list subscriptions", error);
-    return;
-  }
-
-  if (!subs?.length && destinatarioUserId) {
-    const fallback = await supabase
-      .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth, user_id")
-      .eq("corretor_id", corretorId);
-
-    if (fallback.data?.length) {
-      console.warn("[push] destinatario sem assinatura; enviando para todos os aparelhos do corretor", {
-        destinatarioUserId,
-        aparelhos: fallback.data.length,
-      });
-      subs = fallback.data;
-    }
-  }
-
-  if (!subs?.length) {
+  if (!subs.length) {
     console.warn("[push] nenhuma assinatura push", {
       corretorId,
       destinatarioUserId: destinatarioUserId ?? "todos",
@@ -131,14 +141,27 @@ export async function sendPushForCorretor(
     }
     const err = result.reason;
     const status = (err as { statusCode?: number }).statusCode;
+    const body = (err as { body?: string }).body;
     if (status === 404 || status === 410) {
       await supabase.from("push_subscriptions").delete().eq("id", sub.id);
     } else {
-      console.error("[push] send failed", { subId: sub.id, userId: sub.user_id, err });
+      console.error("[push] send failed", {
+        subId: sub.id,
+        userId: sub.user_id,
+        status,
+        body,
+        err,
+      });
     }
   }
 
   if (sent > 0) {
     console.info("[push] enviado", { corretorId, destinatarioUserId, sent, total: subs.length });
+  } else {
+    console.error("[push] nenhum envio bem-sucedido — confira par VAPID (pública + privada) no servidor", {
+      corretorId,
+      destinatarioUserId,
+      tentativas: subs.length,
+    });
   }
 }

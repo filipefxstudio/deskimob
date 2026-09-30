@@ -95,14 +95,15 @@ export function AtendimentoTabs({ panels, headerActions }: AtendimentoTabsProps)
 
   return (
     <Tabs
+      className="min-w-0 max-w-full"
       value={selectedTab}
       onValueChange={(value) => handleTabChange(value as AtendimentoTabId)}
     >
-      <div className="sticky top-0 z-30 -mx-4 space-y-3 border-b border-border/80 bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
-        <div className="flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-30 min-w-0 space-y-3 border-b border-border/80 bg-background/95 py-3 backdrop-blur">
+        <div className="flex min-w-0 items-center justify-between gap-3">
           <Link
             href="/dashboard/atendimentos"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+            className="inline-flex min-w-0 items-center gap-1 text-sm text-muted-foreground hover:text-primary"
           >
             <ChevronLeft className="size-4" />
             Voltar para atendimentos
@@ -128,7 +129,7 @@ export function AtendimentoTabs({ panels, headerActions }: AtendimentoTabsProps)
           </Select>
         </div>
 
-        <TabsList className="hidden h-auto w-full flex-wrap justify-start gap-1 md:flex">
+        <TabsList className="hidden h-auto w-full max-w-full min-w-0 flex-wrap justify-start gap-1 md:flex">
           {TAB_ITEMS.map((tab) => (
             <TabsTrigger key={tab.id} value={tab.id} className="text-xs sm:text-sm">
               {tab.label}

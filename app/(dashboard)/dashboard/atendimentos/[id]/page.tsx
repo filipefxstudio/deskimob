@@ -56,7 +56,7 @@ export default async function AtendimentoDetailPage({ params }: PageProps) {
   ]);
 
   return (
-    <div className="flex-1 p-4 md:p-6">
+    <div className="min-w-0 max-w-full flex-1 p-4 md:p-6">
       <AtendimentoClient
         lead={lead}
         perfis={perfis}

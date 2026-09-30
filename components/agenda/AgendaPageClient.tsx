@@ -128,11 +128,11 @@ function resolvePeriodoRange(
 function statusBadgeClass(status: StatusAgenda): string {
   switch (status) {
     case "concluida":
-      return "bg-[#2DC653]/15 text-[#1a7a32]";
+      return "bg-success/15 text-success";
     case "cancelada":
       return "bg-muted text-muted-foreground";
     default:
-      return "bg-[#F18F01]/15 text-[#b36a00]";
+      return "bg-brand/15 text-brand";
   }
 }
 
@@ -488,10 +488,10 @@ export function AgendaPageClient({ initialItems }: AgendaPageClientProps) {
                   className={cn(
                     "min-h-20 rounded-lg border border-transparent p-1 text-left text-xs",
                     isSameMonth(dia, mesAtual) && "border-border/60",
-                    isToday && "border-primary bg-primary/5",
+                    isToday && "border-brand bg-brand/5",
                   )}
                 >
-                  <span className={cn("font-medium", isToday && "text-primary")}>
+                  <span className={cn("font-medium", isToday && "text-brand")}>
                     {format(dia, "d")}
                   </span>
                   <div className="mt-1 space-y-0.5">

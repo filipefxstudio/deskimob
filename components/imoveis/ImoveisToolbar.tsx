@@ -83,7 +83,7 @@ export function ImoveisToolbar({
           <Filter className="size-4" data-icon="inline-start" />
           Filtros
           {activeFilterCount > 0 ? (
-            <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
+            <span className="ml-1 rounded-full bg-brand px-1.5 py-0.5 text-xs text-brand-foreground">
               {activeFilterCount}
             </span>
           ) : null}

@@ -120,8 +120,8 @@ function SiteDominioAjudaDialog() {
 function StatusBadge({ status }: { status: DominioCustomStatus }) {
   const styles: Record<DominioCustomStatus, string> = {
     none: "bg-muted text-muted-foreground",
-    pending_dns: "bg-amber-100 text-amber-900",
-    active: "bg-emerald-100 text-emerald-900",
+    pending_dns: "bg-brand/15 text-brand",
+    active: "bg-success/15 text-success",
     error: "bg-destructive/10 text-destructive",
   };
 
@@ -309,7 +309,7 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
       </div>
 
       {!automationEnabled ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-md border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-foreground">
           Ativação automática indisponível no momento. Entre em contato com o suporte para vincular seu
           domínio, ou use o endereço por slug abaixo.
         </p>
@@ -318,9 +318,9 @@ export function SiteDominioAssistente({ corretor, automationEnabled }: SiteDomin
       {hasDomain && publicUrl ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {status.status === "active" ? (
-            <CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />
+            <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
           ) : (
-            <CircleDashed className="size-4 text-amber-600" aria-hidden="true" />
+            <CircleDashed className="size-4 text-brand" aria-hidden="true" />
           )}
           <a
             href={publicUrl}

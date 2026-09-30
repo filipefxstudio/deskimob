@@ -1,7 +1,7 @@
 /** Cor de destaque da marca — splash / barra de status ao instalar (Android). */
-export const DESKIMOB_PWA_THEME_COLOR = "#f18f01";
+export const DESKIMOB_PWA_THEME_COLOR = "#C85D32";
 
-export const DESKIMOB_PWA_BACKGROUND_COLOR = "#f18f01";
+export const DESKIMOB_PWA_BACKGROUND_COLOR = "#C85D32";
 
 export const DESKIMOB_PWA_NAME = "Deskimob";
 

@@ -147,7 +147,7 @@ export function NotificationBell() {
           {unread > 0 ? (
             <button
               type="button"
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-brand hover:underline"
               onClick={() => void handleMarkAllRead()}
             >
               Marcar todas como lidas
@@ -158,7 +158,7 @@ export function NotificationBell() {
         {showPushCta ? (
           <div className="border-b bg-muted/40 px-3 py-2 space-y-1">
             {!isPushConfiguredOnServer() ? (
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+              <p className="text-xs text-muted-foreground">
                 Push ainda não configurado no servidor (VAPID).
               </p>
             ) : null}
@@ -171,7 +171,7 @@ export function NotificationBell() {
               {pushState === "loading" ? (
                 <Loader2 className="size-3.5 shrink-0 animate-spin" />
               ) : (
-                <BellRing className="size-3.5 shrink-0 text-primary" />
+                <BellRing className="size-3.5 shrink-0 text-brand" />
               )}
               <span>Ativar alertas neste aparelho (push)</span>
             </button>
@@ -196,7 +196,7 @@ export function NotificationBell() {
               key={item.id}
               className={cn(
                 "cursor-pointer flex-col items-start gap-0.5 rounded-none border-b px-3 py-2.5 last:border-b-0",
-                !item.lida_em && "bg-primary/5",
+                !item.lida_em && "bg-brand/5",
               )}
               onSelect={(e) => {
                 e.preventDefault();

@@ -64,9 +64,9 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-md">
+    <Card className="w-full max-w-md border-border/80 shadow-xs">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl text-primary">Entrar</CardTitle>
+        <CardTitle className="text-2xl text-foreground">Entrar</CardTitle>
         <CardDescription>Acesse seu painel Deskimob</CardDescription>
       </CardHeader>
       <CardContent>

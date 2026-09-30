@@ -13,13 +13,13 @@ export type DefaultStatusImovelRow = {
 
 /** Status padrão por corretor — alinhado às migrations de seed/backfill. */
 export const DEFAULT_STATUS_IMOVEL: DefaultStatusImovelRow[] = [
-  { nome: "Em cadastro", cor: "#94A3B8", padrao: false, ativo: true, ordem: -2 },
-  { nome: "Aguardando aprovação", cor: "#F59E0B", padrao: false, ativo: true, ordem: -1 },
-  { nome: "Disponível", cor: "#2DC653", padrao: true, ativo: true, ordem: 1 },
-  { nome: "Reservado", cor: "#F18F01", padrao: true, ativo: true, ordem: 2 },
-  { nome: "Vendido", cor: "#1E3A5F", padrao: true, ativo: true, ordem: 3 },
-  { nome: "Locado", cor: "#7C3AED", padrao: true, ativo: true, ordem: 4 },
-  { nome: "Desativado", cor: "#6B7280", padrao: false, ativo: true, ordem: 99 },
+  { nome: "Em cadastro", cor: "#B8B8B8", padrao: false, ativo: true, ordem: -2 },
+  { nome: "Aguardando aprovação", cor: "#E07A52", padrao: false, ativo: true, ordem: -1 },
+  { nome: "Disponível", cor: "#7D8750", padrao: true, ativo: true, ordem: 1 },
+  { nome: "Reservado", cor: "#C85D32", padrao: true, ativo: true, ordem: 2 },
+  { nome: "Vendido", cor: "#252522", padrao: true, ativo: true, ordem: 3 },
+  { nome: "Locado", cor: "#5F6840", padrao: true, ativo: true, ordem: 4 },
+  { nome: "Desativado", cor: "#9A9595", padrao: false, ativo: true, ordem: 99 },
 ];
 
 export type StatusImovelResolveFailureReason =

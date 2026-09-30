@@ -55,7 +55,7 @@ export function ClienteCard({ cliente }: ClienteCardProps) {
           <p>Responsável: {responsavel}</p>
           <p>Cadastrado em: {dataCadastro}</p>
           {cliente.eh_construtor_investidor ? (
-            <p className="text-xs font-medium text-amber-600">Construtor / investidor</p>
+            <p className="text-xs font-medium text-muted-foreground">Construtor / investidor</p>
           ) : null}
         </div>
 

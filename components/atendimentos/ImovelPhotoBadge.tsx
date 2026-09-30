@@ -7,15 +7,15 @@ const BADGE_CONFIG: Record<
 > = {
   visita: {
     label: "Visita",
-    className: "bg-sky-600 text-white",
+    className: "bg-brand text-brand-foreground",
   },
   proposta: {
     label: "Proposta",
-    className: "bg-amber-600 text-white",
+    className: "bg-[color-mix(in_oklch,var(--brand),white_15%)] text-brand-foreground",
   },
   negocio_fechado: {
     label: "Neg. Fechado",
-    className: "bg-emerald-700 text-white",
+    className: "bg-success text-success-foreground",
   },
 };
 

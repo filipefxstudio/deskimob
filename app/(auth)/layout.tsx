@@ -24,10 +24,10 @@ export default async function AuthLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-background px-4 py-10">
       <div className="mb-8 text-center">
-        <p className="text-sm font-medium uppercase tracking-widest text-secondary">
+        <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           CRM Imobiliário
         </p>
-        <h1 className="mt-1 text-3xl font-bold text-primary">Deskimob</h1>
+        <h1 className="mt-1 text-3xl font-bold text-foreground">Deskimob</h1>
       </div>
       {children}
     </div>

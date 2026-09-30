@@ -341,7 +341,7 @@ export function ProprietarioSection({
                       <p className="font-medium">{cliente.nome}</p>
                       <p className="text-sm text-muted-foreground">{cliente.telefone}</p>
                       {cliente.aviso ? (
-                        <p className="mt-1 text-xs text-amber-600">{cliente.aviso}</p>
+                        <p className="mt-1 text-xs text-brand">{cliente.aviso}</p>
                       ) : null}
                     </button>
                   </li>

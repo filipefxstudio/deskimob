@@ -24,7 +24,7 @@ export function OnboardingBanner({ items, siteHref }: OnboardingBannerProps) {
       <CardContent className="p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-secondary">Primeiros passos</p>
+            <p className="text-sm font-medium text-brand">Primeiros passos</p>
             <p className="mt-1 text-base font-semibold text-primary">
               Complete seu setup ({concluidos}/{total})
             </p>
@@ -43,7 +43,7 @@ export function OnboardingBanner({ items, siteHref }: OnboardingBannerProps) {
             const content = (
               <>
                 {item.concluido ? (
-                  <Check className="size-4 shrink-0 text-[#2DC653]" aria-hidden />
+                  <Check className="size-4 shrink-0 text-success" aria-hidden />
                 ) : (
                   <Circle className="size-4 shrink-0 text-muted-foreground/50" aria-hidden />
                 )}

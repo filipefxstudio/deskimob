@@ -21,7 +21,7 @@ interface AbaStatusImovelProps {
 export function AbaStatusImovel({ statusList: initialStatus }: AbaStatusImovelProps) {
   const [statusList, setStatusList] = useState(initialStatus);
   const [novoNome, setNovoNome] = useState("");
-  const [novaCor, setNovaCor] = useState("#2DC653");
+  const [novaCor, setNovaCor] = useState("#7D8750");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

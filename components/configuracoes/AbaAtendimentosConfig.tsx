@@ -148,8 +148,8 @@ export function AbaAtendimentosConfig({
         </CardContent>
       </Card>
 
-      {feedback ? <p className="text-sm text-[#2DC653]">{feedback}</p> : null}
-      {error ? <p className="text-sm text-[#E63946]">{error}</p> : null}
+      {feedback ? <p className="text-sm text-success">{feedback}</p> : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }

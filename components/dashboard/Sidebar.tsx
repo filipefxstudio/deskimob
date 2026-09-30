@@ -14,6 +14,7 @@ import { Menu, X } from "lucide-react";
 
 import { AppHeader } from "@/components/dashboard/AppHeader";
 import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
+import { PwaSplash } from "@/components/dashboard/PwaSplash";
 import { AppBadgeSync } from "@/components/notifications/AppBadgeSync";
 import {
   Tooltip,
@@ -81,6 +82,7 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
           data-dashboard-app
         >
           <AppBadgeSync />
+          <PwaSplash />
           <AppHeader nome={nome} slug={slug} logoUrl={logoUrl} />
           <SidebarPanel />
           <div
@@ -126,8 +128,8 @@ function SidebarNavLink({
         "flex items-center rounded-lg font-medium transition-colors",
         collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
         isActive
-          ? "bg-white/15 text-white"
-          : "text-white/70 hover:bg-white/10 hover:text-white",
+          ? "bg-brand text-brand-foreground shadow-sm"
+          : "text-muted-foreground hover:bg-white/10 hover:text-white",
       )}
     >
       <Icon className="size-4 shrink-0" />
@@ -167,7 +169,7 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
           <p className="text-lg font-bold">DK</p>
         ) : (
           <>
-            <p className="text-xs font-medium uppercase tracking-widest text-white/70">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               CRM Imobiliário
             </p>
             <p className="mt-1 text-lg font-bold">Deskimob</p>
@@ -270,7 +272,7 @@ export function SidebarTrigger() {
     <button
       type="button"
       onClick={() => setOpen(true)}
-      className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-primary transition-colors hover:bg-muted md:hidden"
+      className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-muted md:hidden"
       aria-label="Abrir menu"
     >
       <Menu className="size-5" />

@@ -78,11 +78,11 @@ const STATUS_VISITA: Record<
   StatusVisita,
   { label: string; color: string }
 > = {
-  agendada: { label: "Agendada", color: "#2E86AB" },
-  confirmada: { label: "Confirmada", color: "#2DC653" },
-  realizada: { label: "Realizada", color: "#1A7A3C" },
-  cancelada: { label: "Cancelada", color: "#E63946" },
-  nao_compareceu: { label: "Não compareceu", color: "#F18F01" },
+  agendada: { label: "Agendada", color: "#252522" },
+  confirmada: { label: "Confirmada", color: "#7D8750" },
+  realizada: { label: "Realizada", color: "#5F6840" },
+  cancelada: { label: "Cancelada", color: "#C0392B" },
+  nao_compareceu: { label: "Não compareceu", color: "#C85D32" },
 };
 
 const PARECER_LABELS: Record<string, string> = {

@@ -24,9 +24,9 @@ export function CadastroForm() {
   const [state, formAction, isPending] = useActionState(cadastroAction, initialState);
 
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-md">
+    <Card className="w-full max-w-md border-border/80 shadow-xs">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl text-primary">Criar conta</CardTitle>
+        <CardTitle className="text-2xl text-foreground">Criar conta</CardTitle>
         <CardDescription>Comece a usar o Deskimob gratuitamente</CardDescription>
       </CardHeader>
       <CardContent>
@@ -97,7 +97,7 @@ export function CadastroForm() {
             <Input id="creci" name="creci" type="text" placeholder="123456-F" />
           </div>
           {state.success ? (
-            <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+            <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
               {state.success}
             </p>
           ) : null}

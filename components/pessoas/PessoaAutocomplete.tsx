@@ -256,7 +256,7 @@ export function PessoaAutocomplete({
         ) : null}
 
         {aviso ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p className="rounded-md border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-foreground">
             {aviso}
           </p>
         ) : null}

@@ -190,7 +190,7 @@ export function ImoveisSelecionadosTab({
               return <ImovelPhotoBadge variant="visita" />;
             }
             return item?.interesse_inicial ? (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+              <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-brand-foreground">
                 Interesse inicial
               </span>
             ) : null;

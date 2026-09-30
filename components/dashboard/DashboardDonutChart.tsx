@@ -59,7 +59,7 @@ export function DashboardDonutChart({
             {(centerLabel || centerValue !== undefined) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                 {centerValue !== undefined && (
-                  <span className="text-2xl font-bold tabular-nums text-primary">{centerValue}</span>
+                  <span className="text-2xl font-bold tabular-nums text-foreground">{centerValue}</span>
                 )}
                 {centerLabel && (
                   <span className="text-xs text-muted-foreground">{centerLabel}</span>
@@ -77,9 +77,9 @@ export function DashboardDonutChart({
                     className="size-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="text-primary">{item.label}</span>
+                  <span className="text-foreground">{item.label}</span>
                 </span>
-                <span className="font-semibold tabular-nums text-primary">{item.value}</span>
+                <span className="font-semibold tabular-nums text-foreground">{item.value}</span>
               </li>
             );
 

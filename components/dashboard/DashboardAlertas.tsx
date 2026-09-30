@@ -18,9 +18,9 @@ const iconById: Record<string, typeof AlertTriangle> = {
 };
 
 const styleMap = {
-  warning: "text-[#F18F01] bg-[#F18F01]/10",
-  info: "text-secondary bg-secondary/10",
-  danger: "text-[#E63946] bg-[#E63946]/10",
+  warning: "text-brand bg-brand/10",
+  info: "text-foreground bg-muted/50",
+  danger: "text-destructive bg-destructive/10",
 } as const;
 
 export function DashboardAlertas({ alertas }: DashboardAlertasProps) {
@@ -50,10 +50,10 @@ export function DashboardAlertas({ alertas }: DashboardAlertasProps) {
                   <Icon className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-primary">{alerta.mensagem}</p>
+                  <p className="text-sm font-medium text-foreground">{alerta.mensagem}</p>
                   <Link
                     href={alerta.href}
-                    className="mt-1 inline-block text-sm font-medium text-secondary hover:underline"
+                    className="mt-1 inline-block text-sm font-medium text-brand hover:underline"
                   >
                     {alerta.acaoLabel} →
                   </Link>

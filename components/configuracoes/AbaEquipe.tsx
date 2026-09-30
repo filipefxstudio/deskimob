@@ -200,7 +200,7 @@ export function AbaEquipe({ perfis: initialPerfis, corretor, isAdmin = false }: 
                   </p>
                   <p className="text-sm text-muted-foreground">{perfil.email}</p>
                   {isConvitePendente(perfil) ? (
-                    <p className="text-xs text-amber-600">Convite pendente — aguardando primeiro acesso</p>
+                    <p className="text-xs text-brand">Convite pendente — aguardando primeiro acesso</p>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-3">

@@ -1051,7 +1051,7 @@ export function ImovelForm({
           </div>
 
           {avisoDuplicidade ? (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-foreground">
               <p className="font-medium">⚠️ Atenção: conflito de endereço</p>
               <p className="mt-1">
                 {avisoDuplicidade.mensagem ??
@@ -1067,7 +1067,7 @@ export function ImovelForm({
           ) : null}
 
           {isDuplicar ? (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <div className="rounded-lg border border-brand/25 bg-brand/5 px-4 py-3 text-sm text-foreground">
               <p className="font-medium">Duplicar imóvel</p>
               <p className="mt-1">
                 Informe o complemento/identificação da nova unidade antes de salvar. Os demais
@@ -1467,7 +1467,7 @@ export function ImovelForm({
                           className={cn(
                             "rounded-full border px-3 py-1.5 text-sm transition-colors",
                             selected
-                              ? "border-primary bg-primary text-primary-foreground"
+                              ? "border-brand bg-brand text-brand-foreground"
                               : "border-border bg-background hover:bg-muted",
                           )}
                         >

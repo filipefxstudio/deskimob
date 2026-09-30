@@ -85,15 +85,10 @@ export function isEtapaLead(value: string): value is EtapaLead {
 
 
 export const TEMPERATURA_LEAD_COLORS: Record<TemperaturaLead, string> = {
-
-  quente: "#E63946",
-
-  morno: "#F18F01",
-
-  frio: "#2E86AB",
-
-  indefinido: "#9CA3AF",
-
+  quente: "#C85D32",
+  morno: "#E07A52",
+  frio: "#B8B8B8",
+  indefinido: "#9A9595",
 };
 
 

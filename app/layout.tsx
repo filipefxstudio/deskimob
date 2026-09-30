@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { Inter } from "next/font/google";
 
 import { Toaster } from "@/components/ui/toaster";
 import { deskimobFaviconMetadata } from "@/lib/site/deskimob-favicon";
@@ -11,10 +11,10 @@ import {
 
 import "./globals.css";
 
-const roboto = Roboto({
-  variable: "--font-roboto",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700", "900"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -42,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${roboto.variable} h-full antialiased`}>
-      <body className={`${roboto.className} flex min-h-full flex-col font-sans`}>
+    <html lang="pt-BR" className={`${inter.variable} h-full antialiased`}>
+      <body className={`${inter.className} flex min-h-full flex-col font-sans`}>
         {children}
         <Toaster />
       </body>

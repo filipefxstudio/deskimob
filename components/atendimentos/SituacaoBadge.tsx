@@ -5,9 +5,9 @@ import type { SituacaoLead } from "@/types";
 import { cn } from "@/lib/utils";
 
 const SITUACAO_COLORS: Record<SituacaoLead, string> = {
-  em_atendimento: "bg-[#2DC653]/15 text-[#1a7a34]",
+  em_atendimento: "bg-success/15 text-success",
   descartado: "bg-muted text-muted-foreground",
-  negocio_fechado: "bg-primary/15 text-primary",
+  negocio_fechado: "bg-success/20 text-[color-mix(in_oklch,var(--success),black_25%)]",
 };
 
 interface SituacaoBadgeProps {

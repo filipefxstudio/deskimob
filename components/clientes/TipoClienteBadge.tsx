@@ -7,15 +7,15 @@ const tipoConfig: Record<
 > = {
   lead: {
     label: "Lead",
-    className: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+    className: "bg-brand/15 text-brand",
   },
   proprietario: {
     label: "Proprietário",
-    className: "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200",
+    className: "bg-muted text-foreground",
   },
   ambos: {
     label: "Ambos",
-    className: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200",
+    className: "bg-success/15 text-[color-mix(in_oklch,var(--success),black_30%)]",
   },
 };
 

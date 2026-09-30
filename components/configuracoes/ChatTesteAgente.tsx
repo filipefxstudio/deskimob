@@ -118,7 +118,7 @@ export function ChatTesteAgente({ open, onOpenChange }: ChatTesteAgenteProps) {
               className={cn(
                 "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm",
                 mensagem.role === "user"
-                  ? "ml-auto bg-primary text-primary-foreground"
+                  ? "ml-auto bg-brand text-brand-foreground"
                   : "mr-auto border border-border bg-muted text-foreground",
               )}
             >

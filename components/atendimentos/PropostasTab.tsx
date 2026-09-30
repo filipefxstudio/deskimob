@@ -154,15 +154,15 @@ const STATUS_PROPOSTA: Record<
 
 > = {
 
-  em_analise: { label: "Em análise", color: "#2E86AB" },
+  em_analise: { label: "Em análise", color: "#252522" },
 
-  aceita: { label: "Aceita", color: "#1A7A3C" },
+  aceita: { label: "Aceita", color: "#7D8750" },
 
-  recusada: { label: "Recusada", color: "#E63946" },
+  recusada: { label: "Recusada", color: "#C0392B" },
 
-  cancelada: { label: "Cancelada", color: "#6B7280" },
+  cancelada: { label: "Cancelada", color: "#B8B8B8" },
 
-  contraproposta: { label: "Contraproposta", color: "#F18F01" },
+  contraproposta: { label: "Contraproposta", color: "#C85D32" },
 
 };
 

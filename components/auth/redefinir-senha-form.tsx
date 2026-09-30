@@ -28,15 +28,15 @@ export function RedefinirSenhaForm() {
   );
 
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-md">
+    <Card className="w-full max-w-md border-border/80 shadow-xs">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl text-primary">Nova senha</CardTitle>
+        <CardTitle className="text-2xl text-foreground">Nova senha</CardTitle>
         <CardDescription>Defina uma nova senha para sua conta.</CardDescription>
       </CardHeader>
       <CardContent>
         {state.success ? (
           <div className="space-y-4">
-            <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+            <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
               {state.success}
             </p>
             <Button asChild className="h-10 w-full">

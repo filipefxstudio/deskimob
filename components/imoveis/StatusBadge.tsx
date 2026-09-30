@@ -3,14 +3,14 @@ import { cn } from "@/lib/utils";
 import type { StatusImovel, StatusImovelSlug } from "@/types";
 
 const STATUS_COLORS: Record<StatusImovelSlug, string> = {
-  em_cadastro: "#94A3B8",
-  aguardando_aprovacao: "#F59E0B",
-  disponivel: "#2DC653",
-  reservado: "#F18F01",
-  vendido: "#1E3A5F",
-  locado: "#7C3AED",
-  desativado: "#6B7280",
-  desativado_temporariamente: "#9CA3AF",
+  em_cadastro: "#B8B8B8",
+  aguardando_aprovacao: "#E07A52",
+  disponivel: "#7D8750",
+  reservado: "#C85D32",
+  vendido: "#252522",
+  locado: "#5F6840",
+  desativado: "#9A9595",
+  desativado_temporariamente: "#C4C0C0",
 };
 
 interface StatusBadgeProps {

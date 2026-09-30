@@ -87,7 +87,7 @@ export function AppHeader({ nome, slug, logoUrl }: AppHeaderProps) {
         <button
           type="button"
           onClick={handleMenuClick}
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-primary transition-colors hover:bg-muted"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted"
           aria-label={
             collapsed ? "Expandir menu lateral" : "Recolher menu lateral"
           }
@@ -110,7 +110,7 @@ export function AppHeader({ nome, slug, logoUrl }: AppHeaderProps) {
             className="max-h-7 w-auto max-w-[120px] object-contain"
           />
         ) : (
-          <span className="truncate text-sm font-semibold text-primary">Deskimob</span>
+          <span className="truncate text-sm font-semibold text-foreground">Deskimob</span>
         )}
       </div>
 
@@ -183,7 +183,7 @@ export function AppHeader({ nome, slug, logoUrl }: AppHeaderProps) {
             <button
               type="button"
               className={cn(
-                "inline-flex h-8 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-sm text-primary transition-colors hover:bg-muted",
+                "inline-flex h-8 max-w-[180px] items-center gap-1.5 rounded-md px-2 text-sm text-foreground transition-colors hover:bg-muted",
               )}
             >
               <UserRound className="size-4 shrink-0" />

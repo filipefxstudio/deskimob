@@ -14,6 +14,7 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardFunilItem } from "@/lib/actions/dashboard";
+import { DESKIMOB } from "@/lib/design/deskimob-tokens";
 
 interface DashboardFunilProps {
   etapas: DashboardFunilItem[];
@@ -62,7 +63,7 @@ export function DashboardFunil({ etapas }: DashboardFunilProps) {
                 }}
               >
                 {chartData.map((entry) => (
-                  <Cell key={entry.id} fill="#2E86AB" />
+                  <Cell key={entry.id} fill={DESKIMOB.orange} />
                 ))}
               </Bar>
             </BarChart>
@@ -73,7 +74,7 @@ export function DashboardFunil({ etapas }: DashboardFunilProps) {
             <li key={etapa.id}>
               <Link
                 href={etapa.href}
-                className="flex items-center justify-between text-sm hover:text-secondary"
+                className="flex items-center justify-between text-sm hover:text-brand"
               >
                 <span>{etapa.label}</span>
                 <span className="font-semibold tabular-nums">{etapa.count}</span>

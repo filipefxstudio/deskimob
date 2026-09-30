@@ -402,7 +402,7 @@ export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
         className={cn(
           "flex flex-col items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center transition-colors",
           isDragOver
-            ? "border-primary bg-primary/5"
+            ? "border-brand bg-brand/5"
             : "border-border bg-muted/30",
           (disabled || isCompressing) && "pointer-events-none opacity-50",
         )}

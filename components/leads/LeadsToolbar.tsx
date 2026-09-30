@@ -56,7 +56,7 @@ export function LeadsToolbar({
           <Filter data-icon="inline-start" />
           Filtros
           {activeFilterCount > 0 ? (
-            <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+            <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-brand text-xs text-brand-foreground">
               {activeFilterCount}
             </span>
           ) : null}

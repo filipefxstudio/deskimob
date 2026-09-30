@@ -331,7 +331,7 @@ export function NovoAtendimentoForm({
             </div>
           </section>
 
-          {error ? <p className="text-sm text-[#E63946]">{error}</p> : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <div className="flex gap-2">
             <Button type="submit" loading={isPending} loadingText="Criando atendimento...">

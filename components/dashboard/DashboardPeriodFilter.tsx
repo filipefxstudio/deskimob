@@ -98,7 +98,7 @@ export function DashboardPeriodFilter({ value, onChange }: DashboardPeriodFilter
           <button
             type="button"
             onClick={applyCustomDates}
-            className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/90"
+            className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:bg-[color-mix(in_oklch,var(--brand),black_12%)]"
           >
             Aplicar
           </button>

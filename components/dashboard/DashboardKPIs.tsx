@@ -61,7 +61,7 @@ function Sparkline({ values }: { values: number[] }) {
       {values.map((value, index) => (
         <div
           key={index}
-          className="w-1.5 origin-bottom rounded-sm bg-secondary/60 animate-in fade-in slide-in-from-bottom-2"
+          className="w-1.5 origin-bottom rounded-sm bg-brand/45 animate-in fade-in slide-in-from-bottom-2"
           style={{
             height: `${Math.max((value / max) * 100, value > 0 ? 12 : 4)}%`,
             animationDelay: `${index * 60}ms`,
@@ -90,7 +90,7 @@ function KPICard({ kpi }: { kpi: DashboardKPIItem }) {
       <CardContent className="flex items-center justify-between gap-3 p-4">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-muted-foreground">{kpi.label}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
+          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
             {formatKPIValue(animated, kpi.format)}
           </p>
           {change !== null && (
@@ -99,11 +99,11 @@ function KPICard({ kpi }: { kpi: DashboardKPIItem }) {
                 "mt-1 flex items-center gap-0.5 text-xs font-medium",
                 invertChange
                   ? isPositive
-                    ? "text-[#E63946]"
-                    : "text-[#2DC653]"
+                    ? "text-destructive"
+                    : "text-success"
                   : isPositive
-                    ? "text-[#2DC653]"
-                    : "text-[#E63946]",
+                    ? "text-success"
+                    : "text-destructive",
               )}
             >
               {isPositive ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />}
@@ -111,7 +111,7 @@ function KPICard({ kpi }: { kpi: DashboardKPIItem }) {
             </p>
           )}
           {change === null && kpi.previousValue === 0 && kpi.value > 0 && (
-            <p className="mt-1 text-xs font-medium text-[#2DC653]">Novo no período</p>
+            <p className="mt-1 text-xs font-medium text-success">Novo no período</p>
           )}
         </div>
         <Sparkline values={kpi.sparkline} />

@@ -21,6 +21,11 @@ import {
   type TenantDbClient,
 } from "@/lib/supabase/tenant-access";
 import { createClient } from "@/lib/supabase/server";
+import {
+  DESKIMOB,
+  DESKIMOB_CHART_BAR_PALETTE,
+  DESKIMOB_SIGNAL,
+} from "@/lib/design/deskimob-tokens";
 import type { DashboardConfig, EtapaLead, FinalidadeImovel, Imovel, Lead, Negocio } from "@/types";
 
 export type DashboardTab = "venda" | "locacao";
@@ -383,13 +388,13 @@ function buildTemperatura(
   const count = (temp: string) => ativos.filter((l) => l.temperatura === temp).length;
 
   return [
-    { label: "Quente", value: count("quente"), color: "#E63946", href: `${base}&temperatura=quente` },
-    { label: "Morno", value: count("morno"), color: "#F18F01", href: `${base}&temperatura=morno` },
-    { label: "Frio", value: count("frio"), color: "#2E86AB", href: `${base}&temperatura=frio` },
+    { label: "Quente", value: count("quente"), color: DESKIMOB.orange, href: `${base}&temperatura=quente` },
+    { label: "Morno", value: count("morno"), color: DESKIMOB.orangeLight, href: `${base}&temperatura=morno` },
+    { label: "Frio", value: count("frio"), color: DESKIMOB.grayMedium, href: `${base}&temperatura=frio` },
     {
       label: "Indefinido",
       value: count("indefinido"),
-      color: "#9CA3AF",
+      color: DESKIMOB.grayLight,
       href: `${base}&temperatura=indefinido`,
     },
   ];
@@ -423,19 +428,19 @@ function buildQualidade(
     {
       label: "Qualificados",
       value: qualificados,
-      color: "#2DC653",
+      color: DESKIMOB.olive,
       href: `${base}&etapa=qualificado`,
     },
     {
       label: "Descartados",
       value: descartados,
-      color: "#E63946",
+      color: DESKIMOB.error,
       href: `${base}&situacao=descartado`,
     },
     {
       label: "Em atendimento",
       value: emAtendimento,
-      color: "#2E86AB",
+      color: DESKIMOB.charcoal,
       href: base,
     },
   ];
@@ -473,19 +478,19 @@ function buildTempoInteracao(
     {
       label: `Até ${config.leads_verde_dias} dias`,
       value: verde,
-      color: "#2DC653",
+      color: DESKIMOB_SIGNAL.good,
       href: base,
     },
     {
       label: `${config.leads_verde_dias + 1}–${config.leads_amarelo_dias} dias`,
       value: amarelo,
-      color: "#F18F01",
+      color: DESKIMOB_SIGNAL.warn,
       href: `${base}&sem_interacao=${config.leads_verde_dias}`,
     },
     {
       label: `+${config.leads_amarelo_dias} dias`,
       value: vermelho,
-      color: "#E63946",
+      color: DESKIMOB_SIGNAL.bad,
       href: `${base}&sem_interacao=${config.leads_amarelo_dias}`,
     },
   ];
@@ -505,7 +510,7 @@ function buildOrigem(
     origemMap.set(origem, (origemMap.get(origem) ?? 0) + 1);
   }
 
-  const colors = ["#1D3557", "#2E86AB", "#F18F01", "#E63946", "#2DC653", "#6C757D", "#457B9D", "#A8DADC"];
+  const colors = [...DESKIMOB_CHART_BAR_PALETTE];
   const base = `/dashboard/atendimentos?finalidade=${finalidadeLead}`;
 
   return Array.from(origemMap.entries())
@@ -536,8 +541,8 @@ function buildCaptacoes(
   ).length;
 
   return [
-    { label: "Ativados", value: ativados, color: "#2DC653" },
-    { label: "Desativados", value: desativados, color: "#E63946" },
+    { label: "Ativados", value: ativados, color: DESKIMOB.olive },
+    { label: "Desativados", value: desativados, color: DESKIMOB.error },
   ];
 }
 
@@ -568,19 +573,19 @@ function buildImoveisDesatualizados(
     {
       label: `Até ${config.imoveis_verde_dias} dias`,
       value: verde,
-      color: "#2DC653",
+      color: DESKIMOB_SIGNAL.good,
       href: "/dashboard/imoveis",
     },
     {
       label: `${config.imoveis_verde_dias + 1}–${config.imoveis_amarelo_dias} dias`,
       value: amarelo,
-      color: "#F18F01",
+      color: DESKIMOB_SIGNAL.warn,
       href: "/dashboard/imoveis",
     },
     {
       label: `+${config.imoveis_amarelo_dias} dias`,
       value: vermelho,
-      color: "#E63946",
+      color: DESKIMOB_SIGNAL.bad,
       href: "/dashboard/imoveis",
     },
   ];
@@ -600,7 +605,7 @@ function buildRankingImoveisBairro(
     bairroMap.set(bairro, (bairroMap.get(bairro) ?? 0) + 1);
   }
 
-  const colors = ["#1D3557", "#2E86AB", "#F18F01", "#E63946", "#2DC653"];
+  const colors = [...DESKIMOB_CHART_BAR_PALETTE];
 
   return Array.from(bairroMap.entries())
     .sort((a, b) => b[1] - a[1])
@@ -630,7 +635,7 @@ function buildBairrosLeads(
     }
   }
 
-  const colors = ["#457B9D", "#2E86AB", "#F18F01", "#E63946", "#6C757D"];
+  const colors = [...DESKIMOB_CHART_BAR_PALETTE];
   const base = `/dashboard/atendimentos?finalidade=${finalidadeLead}`;
 
   return Array.from(bairroMap.entries())

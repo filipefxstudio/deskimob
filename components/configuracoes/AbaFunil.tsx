@@ -131,8 +131,8 @@ export function AbaFunil({ initialConfig }: AbaFunilProps) {
             Salvar alertas
           </Button>
 
-          {feedback ? <p className="text-sm text-[#2DC653]">{feedback}</p> : null}
-          {error ? <p className="text-sm text-[#E63946]">{error}</p> : null}
+          {feedback ? <p className="text-sm text-success">{feedback}</p> : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </form>
 
         <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">

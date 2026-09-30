@@ -18,14 +18,14 @@ interface KanbanColumnProps {
 
 const accentStyles = {
   default: "border-border/80 bg-muted/20",
-  success: "border-emerald-500/40 bg-emerald-50/80",
-  danger: "border-red-500/40 bg-red-50/80",
+  success: "border-success/30 bg-success/5",
+  danger: "border-destructive/30 bg-destructive/5",
 } as const;
 
 const headerAccentStyles = {
-  default: "text-primary",
-  success: "text-emerald-700",
-  danger: "text-red-700",
+  default: "text-foreground",
+  success: "text-success",
+  danger: "text-destructive",
 } as const;
 
 export function KanbanColumn({

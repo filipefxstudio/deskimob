@@ -32,8 +32,8 @@ export function MobileBottomNav() {
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
                   isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-primary",
+                    ? "text-brand"
+                    : "text-muted-foreground hover:text-brand",
                 )}
                 aria-current={isActive ? "page" : undefined}
               >
@@ -51,8 +51,8 @@ export function MobileBottomNav() {
             className={cn(
               "flex h-full w-full flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-colors",
               configActive
-                ? "text-primary"
-                : "text-muted-foreground hover:text-primary",
+                ? "text-brand"
+                : "text-muted-foreground hover:text-brand",
             )}
             aria-label="Abrir menu completo"
           >

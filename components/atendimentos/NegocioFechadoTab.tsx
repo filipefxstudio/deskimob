@@ -134,7 +134,7 @@ export function NegocioFechadoTab({
                 )}
 
                 <div className="flex min-w-0 flex-col items-start text-left sm:min-w-[220px]">
-                  <span className="text-sm font-semibold text-emerald-700">Negócio fechado</span>
+                  <span className="text-sm font-semibold text-success">Negócio fechado</span>
                   <p className="mt-1 text-lg font-semibold text-primary">
                     {formatCurrency(Number(negocio.valor_fechamento))}
                   </p>

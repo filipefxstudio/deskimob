@@ -297,7 +297,7 @@ export function AbaMarcaDagua({ initialConfig }: AbaMarcaDaguaProps) {
               />
             ) : null}
           </div>
-          <p className="text-xs text-amber-600">
+          <p className="text-xs text-muted-foreground">
             A marca d&apos;água será aplicada apenas nas novas fotos enviadas. Fotos já cadastradas
             não serão alteradas.
           </p>

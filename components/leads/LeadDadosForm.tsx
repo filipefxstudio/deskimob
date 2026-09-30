@@ -218,7 +218,7 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
                 href={waLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-lg border border-[#2DC653]/40 bg-[#2DC653]/10 px-3 py-1.5 text-xs text-[#1a7a34]"
+                className="inline-flex items-center gap-1 rounded-lg border border-success/40 bg-success/10 px-3 py-1.5 text-xs text-success"
               >
                 <WhatsAppIcon className="size-3.5" /> WhatsApp
               </a>
@@ -501,7 +501,7 @@ export function LeadDadosForm({ lead, perfis, imoveisIndicados }: LeadDadosFormP
         </form>
       </section>
 
-      {feedback ? <p className="text-sm text-[#2DC653]">{feedback}</p> : null}
+      {feedback ? <p className="text-sm text-success">{feedback}</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {isPending ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

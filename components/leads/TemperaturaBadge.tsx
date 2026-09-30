@@ -14,11 +14,13 @@ export function TemperaturaBadge({
   showLabel = true,
 }: TemperaturaBadgeProps) {
   const color = TEMPERATURA_LEAD_COLORS[temperatura];
+  const lightBg = temperatura === "frio" || temperatura === "indefinido";
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+        lightBg ? "text-foreground" : "text-white",
         className,
       )}
       style={{ backgroundColor: color }}

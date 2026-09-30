@@ -30,9 +30,9 @@ export function EsqueciSenhaForm({ initialError }: EsqueciSenhaFormProps) {
   const errorMessage = state.error ?? initialError;
 
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-md">
+    <Card className="w-full max-w-md border-border/80 shadow-xs">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl text-primary">Esqueci minha senha</CardTitle>
+        <CardTitle className="text-2xl text-foreground">Esqueci minha senha</CardTitle>
         <CardDescription>
           Informe seu e-mail e enviaremos um link para redefinir a senha.
         </CardDescription>
@@ -40,7 +40,7 @@ export function EsqueciSenhaForm({ initialError }: EsqueciSenhaFormProps) {
       <CardContent>
         {state.success ? (
           <div className="space-y-4">
-            <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+            <p className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
               {state.success}
             </p>
             <Button asChild className="h-10 w-full">

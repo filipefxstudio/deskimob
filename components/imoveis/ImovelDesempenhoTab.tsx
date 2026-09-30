@@ -13,9 +13,14 @@ import {
   YAxis,
 } from "recharts";
 
+import { DESKIMOB, DESKIMOB_CHART_BAR_PALETTE } from "@/lib/design/deskimob-tokens";
 import type { ImovelDesempenho } from "@/types";
 
-const CHART_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+function parecerBarColor(parecer: string): string {
+  if (parecer === "positivo") return DESKIMOB.olive;
+  if (parecer === "negativo") return DESKIMOB.error;
+  return DESKIMOB.charcoal;
+}
 
 interface ImovelDesempenhoTabProps {
   desempenho: ImovelDesempenho;
@@ -25,7 +30,7 @@ function KpiCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-primary">{value}</p>
+      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -57,7 +62,7 @@ export function ImovelDesempenhoTab({ desempenho }: ImovelDesempenhoTabProps) {
                 <XAxis type="number" allowDecimals={false} />
                 <YAxis type="category" dataKey="label" width={110} tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="total" fill="#2563eb" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="total" fill={DESKIMOB.orange} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -80,7 +85,10 @@ export function ImovelDesempenhoTab({ desempenho }: ImovelDesempenhoTabProps) {
                   label={({ name, value }) => `${name}: ${value}`}
                 >
                   {origem.map((entry, index) => (
-                    <Cell key={entry.origem} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    <Cell
+                      key={entry.origem}
+                      fill={DESKIMOB_CHART_BAR_PALETTE[index % DESKIMOB_CHART_BAR_PALETTE.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -107,7 +115,7 @@ export function ImovelDesempenhoTab({ desempenho }: ImovelDesempenhoTabProps) {
                     className="h-2 rounded-full"
                     style={{
                       width,
-                      backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                      backgroundColor: parecerBarColor(item.parecer),
                     }}
                   />
                 </div>

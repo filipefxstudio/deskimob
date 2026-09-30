@@ -62,7 +62,7 @@ export function LeadCard({
           style={dragStyle as CSSProperties | undefined}
           className={cn(
             "relative rounded-lg border border-border/70 bg-card p-3 shadow-sm transition-shadow",
-            snapshot.isDragging && "shadow-md ring-2 ring-secondary/30",
+            snapshot.isDragging && "shadow-sm ring-2 ring-brand/20",
             isUpdating && "pointer-events-none opacity-60",
           )}
         >
@@ -76,14 +76,14 @@ export function LeadCard({
               <div className="flex flex-wrap items-center gap-1.5">
                 <Link
                   href={`/dashboard/atendimentos/${lead.id}`}
-                  className="truncate font-medium text-primary hover:underline"
+                  className="truncate font-medium text-brand hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {nome}
                 </Link>
                 {lead.atendido_por === "agente_ia" ? (
                   <span
-                    className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                    className="inline-flex items-center gap-0.5 rounded-full bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand"
                     title="Atendido por agente IA"
                   >
                     <Bot className="size-3" />
@@ -109,8 +109,8 @@ export function LeadCard({
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
                 lead.origem === "whatsapp"
-                  ? "bg-[#2DC653]/15 text-[#1a7a34]"
-                  : "bg-secondary/10 text-secondary",
+                  ? "bg-success/15 text-success"
+                  : "bg-muted text-muted-foreground",
               )}
             >
               <OrigemIcon origem={lead.origem} />

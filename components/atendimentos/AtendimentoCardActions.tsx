@@ -78,7 +78,7 @@ export function AtendimentoCardActions({
           aria-label="WhatsApp"
           className={cn(
             iconButtonClass,
-            "border-[#2DC653]/40 bg-[#2DC653]/10 text-[#1a7a34] hover:bg-[#2DC653]/20",
+            "border-success/40 bg-success/10 text-success hover:bg-success/20",
           )}
           onClick={(e) => {
             e.preventDefault();

@@ -1,13 +1,14 @@
 import { getDbTimestampMs } from "@/lib/dates/format";
+import { DESKIMOB_SIGNAL } from "@/lib/design/deskimob-tokens";
 import { getUltimaInteracaoEm } from "@/lib/leads/format";
 import type { Lead } from "@/types";
 
 export type LeadInatividadeNivel = "verde" | "amarelo" | "vermelho";
 
 export const LEAD_INATIVIDADE_CORES: Record<LeadInatividadeNivel, string> = {
-  verde: "#2DC653",
-  amarelo: "#F18F01",
-  vermelho: "#E63946",
+  verde: DESKIMOB_SIGNAL.good,
+  amarelo: DESKIMOB_SIGNAL.warn,
+  vermelho: DESKIMOB_SIGNAL.bad,
 };
 
 export interface LeadInatividadeAlertConfig {

@@ -10,18 +10,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  Building2,
-  Calendar,
-  LayoutDashboard,
-  Menu,
-  Settings,
-  User,
-  Users,
-  X,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { AppHeader } from "@/components/dashboard/AppHeader";
+import { MobileBottomNav } from "@/components/dashboard/MobileBottomNav";
 import { AppBadgeSync } from "@/components/notifications/AppBadgeSync";
 import {
   Tooltip,
@@ -30,6 +22,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  dashboardNavItems,
+  isDashboardNavActive,
+  type DashboardNavItem,
+} from "@/lib/dashboard/nav-items";
 
 const SIDEBAR_COLLAPSED_KEY = "fx-sidebar-collapsed";
 
@@ -49,15 +46,6 @@ export function useSidebarContext() {
   }
   return context;
 }
-
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/agenda", label: "Agenda", icon: Calendar },
-  { href: "/dashboard/imoveis", label: "Imóveis", icon: Building2 },
-  { href: "/dashboard/atendimentos", label: "Atendimentos", icon: Users },
-  { href: "/dashboard/clientes", label: "Pessoas", icon: User },
-  { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
-] as const;
 
 interface DashboardShellProps {
   nome: string;
@@ -102,12 +90,13 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
             )}
           >
             <main
-              className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-gutter:stable]"
+              className="min-h-0 min-w-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] [scrollbar-gutter:stable] md:pb-0"
               data-dashboard-scroll
             >
               {children}
             </main>
           </div>
+          <MobileBottomNav />
         </div>
       </TooltipProvider>
     </SidebarContext.Provider>
@@ -124,7 +113,7 @@ function SidebarNavLink({
 }: {
   href: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: DashboardNavItem["icon"];
   isActive: boolean;
   collapsed: boolean;
   onNavigate?: () => void;
@@ -187,11 +176,8 @@ function SidebarContent({ collapsed, onNavigate }: SidebarContentProps) {
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 text-sm">
-        {navItems.map(({ href, label, icon }) => {
-          const isActive =
-            href === "/dashboard"
-              ? pathname === "/dashboard"
-              : pathname.startsWith(href);
+        {dashboardNavItems.map(({ href, label, icon }) => {
+          const isActive = isDashboardNavActive(pathname, href);
 
           return (
             <SidebarNavLink

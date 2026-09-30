@@ -195,6 +195,9 @@ export function AppHeader({ nome, slug, logoUrl }: AppHeaderProps) {
             <DropdownMenuItem asChild>
               <Link href="/dashboard/configuracoes?aba=perfil">Meu perfil</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/configuracoes">Configurações</Link>
+            </DropdownMenuItem>
             {siteUrl ? (
               <DropdownMenuItem asChild>
                 <a href={siteUrl} target="_blank" rel="noopener noreferrer">

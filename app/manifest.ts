@@ -1,47 +1,44 @@
 import type { MetadataRoute } from "next";
 
 import {
-  DESKIMOB_APPLE_ICON_PATH,
-  DESKIMOB_FAVICON_PNG_PATH,
-} from "@/lib/site/deskimob-favicon";
+  DESKIMOB_PWA_BACKGROUND_COLOR,
+  DESKIMOB_PWA_DESCRIPTION,
+  DESKIMOB_PWA_ICON_PATHS,
+  DESKIMOB_PWA_NAME,
+  DESKIMOB_PWA_SHORT_NAME,
+  DESKIMOB_PWA_START_URL,
+  DESKIMOB_PWA_THEME_COLOR,
+} from "@/lib/site/deskimob-pwa";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Deskimob — CRM Imobiliário",
-    short_name: "Deskimob",
-    description: "CRM imobiliário para corretores",
-    start_url: "/dashboard",
+    id: "/",
+    name: DESKIMOB_PWA_NAME,
+    short_name: DESKIMOB_PWA_SHORT_NAME,
+    description: DESKIMOB_PWA_DESCRIPTION,
+    start_url: DESKIMOB_PWA_START_URL,
     scope: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#457B9D",
+    orientation: "portrait",
+    background_color: DESKIMOB_PWA_BACKGROUND_COLOR,
+    theme_color: DESKIMOB_PWA_THEME_COLOR,
+    lang: "pt-BR",
     icons: [
       {
-        src: DESKIMOB_FAVICON_PNG_PATH,
-        sizes: "32x32",
-        type: "image/png",
-      },
-      {
-        src: DESKIMOB_APPLE_ICON_PATH,
-        sizes: "180x180",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: DESKIMOB_APPLE_ICON_PATH,
+        src: DESKIMOB_PWA_ICON_PATHS.icon192,
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: DESKIMOB_APPLE_ICON_PATH,
+        src: DESKIMOB_PWA_ICON_PATHS.icon512,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: DESKIMOB_APPLE_ICON_PATH,
-        sizes: "180x180",
+        src: DESKIMOB_PWA_ICON_PATHS.icon512Maskable,
+        sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
       },

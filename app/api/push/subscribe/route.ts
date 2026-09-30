@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sendPushForCorretor } from "@/lib/notifications/push-send";
+import { savePushSubscription } from "@/lib/notifications/push-subscription-store";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -69,38 +70,38 @@ export async function POST(request: Request) {
     );
   }
 
-  const row = {
+  const saveResult = await savePushSubscription(admin, {
     corretor_id: corretor.id,
     user_id: user.id,
     endpoint,
     p256dh,
     auth,
-  };
-
-  const { error: upsertError } = await admin.from("push_subscriptions").upsert(row, {
-    onConflict: "user_id,endpoint",
   });
 
-  if (upsertError) {
-    console.error("[push/subscribe]", upsertError);
+  if (saveResult.error) {
+    console.error("[push/subscribe]", saveResult.error);
     return NextResponse.json(
       {
-        error: mapSubscribeError(upsertError.code, upsertError.message ?? ""),
-        code: upsertError.code,
+        error: mapSubscribeError(saveResult.error.code, saveResult.error.message),
+        code: saveResult.error.code,
       },
       { status: 500 },
     );
   }
 
-  await sendPushForCorretor(
-    corretor.id,
-    {
-      title: "Deskimob",
-      body: "Alertas push ativados neste aparelho.",
-      url: "/dashboard",
-    },
-    { destinatarioUserId: user.id },
-  );
+  try {
+    await sendPushForCorretor(
+      corretor.id,
+      {
+        title: "Deskimob",
+        body: "Alertas push ativados neste aparelho.",
+        url: "/dashboard",
+      },
+      { destinatarioUserId: user.id },
+    );
+  } catch (error) {
+    console.error("[push/subscribe] test push failed (assinatura já salva)", error);
+  }
 
   return NextResponse.json({ success: true });
 }

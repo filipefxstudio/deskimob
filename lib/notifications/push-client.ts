@@ -55,7 +55,7 @@ async function persistSubscriptionOnServer(subscription: PushSubscription): Prom
         detail = `${detail} (${body.code})`;
       }
     } catch {
-      /* ignore */
+      detail = `${detail} (HTTP ${response.status})`;
     }
     return detail;
   }
@@ -110,12 +110,26 @@ export async function ensurePushSubscription(options?: {
   try {
     await navigator.serviceWorker.ready;
 
+    const applicationServerKey = urlBase64ToUint8Array(vapidKey);
     let subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      try {
+        const persistExisting = await persistSubscriptionOnServer(subscription);
+        if (!persistExisting) {
+          return { status: "subscribed" };
+        }
+      } catch {
+        /* tentar recriar assinatura abaixo */
+      }
+      await subscription.unsubscribe().catch(() => undefined);
+      subscription = null;
+    }
 
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        applicationServerKey,
       });
     }
 

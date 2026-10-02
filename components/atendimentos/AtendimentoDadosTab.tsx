@@ -558,20 +558,14 @@ export function AtendimentoDadosTab({
       </div>
 
       <div className="min-w-0 space-y-6">
-        <section className="space-y-4 rounded-xl border border-border p-4">
-          <h3 className="font-semibold text-primary">Agendar atividade</h3>
-          <AgendarAtividadeForm
-            leadId={lead.id}
-            leadNome={lead.nome ?? undefined}
-            requireFuture
-            onSuccess={() => router.refresh()}
-          />
-        </section>
+        <AgendarAtividadeForm
+          leadId={lead.id}
+          leadNome={lead.nome ?? undefined}
+          requireFuture
+          onSuccess={() => router.refresh()}
+        />
 
-        <section className="space-y-4 rounded-xl border border-border p-4">
-          <h3 className="font-semibold text-primary">Registrar interação</h3>
-          <InteracaoForm leadId={lead.id} onSuccess={() => router.refresh()} />
-        </section>
+        <InteracaoForm leadId={lead.id} onSuccess={() => router.refresh()} />
 
         <section className="space-y-4 rounded-xl border border-border p-4">
           <h3 className="font-semibold text-primary">Histórico de interações</h3>

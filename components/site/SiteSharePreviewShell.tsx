@@ -19,6 +19,7 @@ export function SiteSharePreviewShell({ corretor, children }: SiteSharePreviewSh
   return (
     <SiteProvider corretor={corretor} basePath="" hasImoveisLocacao={false} whatsappChatEnabled={false}>
       <div
+        data-public-site
         className="min-h-dvh bg-white text-[#2D3748]"
         style={
           {

@@ -58,6 +58,7 @@ export async function SiteLayoutShell({ corretor, basePath, children }: SiteLayo
       whatsappChatEnabled={whatsappChatEnabled}
     >
       <div
+        data-public-site
         className="flex min-h-full flex-col bg-white text-[#2D3748]"
         style={
           {

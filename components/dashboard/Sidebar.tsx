@@ -80,6 +80,7 @@ export function DashboardShell({ nome, slug, logoUrl, children }: DashboardShell
         <div
           className="flex h-full min-h-0 flex-col overflow-hidden bg-background"
           data-dashboard-app
+          data-deskimob-crm
         >
           <AppBadgeSync />
           <PwaSplash />

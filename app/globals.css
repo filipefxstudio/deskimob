@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-brand: var(--brand);
@@ -52,8 +52,48 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Padrão global = site público e rotas neutras (pré identidade visual CRM set/2026) */
 :root {
-  /* Deskimob — identidade oficial */
+  --background: #f6f7f7;
+  --foreground: #333939;
+  --card: #ffffff;
+  --card-foreground: #333939;
+  --popover: #ffffff;
+  --popover-foreground: #333939;
+  --primary: #444d4d;
+  --primary-foreground: #ffffff;
+  --secondary: #626b6b;
+  --secondary-foreground: #ffffff;
+  --muted: #eceeee;
+  --muted-foreground: #5c6565;
+  --accent: #f18f01;
+  --accent-foreground: #ffffff;
+  --brand: #f18f01;
+  --brand-foreground: #ffffff;
+  --success: #626b6b;
+  --success-foreground: #ffffff;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #d4d8d8;
+  --input: #d4d8d8;
+  --ring: #757e7e;
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #f6f7f7;
+  --sidebar-foreground: #333939;
+  --sidebar-primary: #444d4d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eceeee;
+  --sidebar-accent-foreground: #333939;
+  --sidebar-border: #d4d8d8;
+  --sidebar-ring: #757e7e;
+}
+
+/* Identidade Deskimob CRM (commit set/2026) — só dentro do painel / login */
+[data-deskimob-crm] {
   --deskimob-orange: #c85d32;
   --deskimob-orange-hover: #b0532c;
   --deskimob-olive: #7d8750;
@@ -68,13 +108,10 @@
   --card-foreground: #252522;
   --popover: #ffffff;
   --popover-foreground: #252522;
-  /* Estrutural: sidebar, títulos via text-primary, tooltips escuros */
   --primary: #252522;
   --primary-foreground: #ffffff;
-  /* Marca: CTAs, links, foco, seleções */
   --brand: #c85d32;
   --brand-foreground: #ffffff;
-  /* Secundário destacado (oliva) */
   --secondary: #7d8750;
   --secondary-foreground: #ffffff;
   --success: #7d8750;
@@ -92,7 +129,6 @@
   --chart-3: #252522;
   --chart-4: #9a9595;
   --chart-5: #c4c0c0;
-  --radius: 0.625rem;
   --sidebar: #252522;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #c85d32;
@@ -101,9 +137,12 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 0.1);
   --sidebar-ring: #c85d32;
+
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-.dark {
+[data-deskimob-crm].dark,
+.dark [data-deskimob-crm] {
   --background: #1c1c1a;
   --foreground: #f5f4f4;
   --card: #252522;
@@ -141,6 +180,13 @@
   --sidebar-ring: #d97347;
 }
 
+/* Site público: cores do corretor (--primary/--accent inline); CTAs usam --accent como brand */
+[data-public-site] {
+  --brand: var(--accent);
+  --brand-foreground: #ffffff;
+  font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -151,16 +197,15 @@
   html {
     @apply font-sans;
   }
-  h1 {
+  [data-deskimob-crm] h1 {
     @apply text-[1.75rem] font-bold leading-tight text-foreground md:text-[2rem];
   }
-  h2 {
+  [data-deskimob-crm] h2 {
     @apply text-[1.375rem] font-bold leading-snug text-foreground md:text-2xl;
   }
-  h3 {
+  [data-deskimob-crm] h3 {
     @apply text-lg font-semibold text-foreground md:text-xl;
   }
-  /* Dashboard: uma única área de rolagem (main), sem scroll duplo no documento. */
   html:has([data-dashboard-app]) {
     height: 100%;
     overflow: hidden;

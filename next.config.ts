@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["sharp"],
+  outputFileTracingIncludes: {
+    "/api/imoveis/**": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "30mb",

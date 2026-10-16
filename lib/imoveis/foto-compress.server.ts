@@ -5,14 +5,44 @@ import {
   FOTO_MAX_HEIGHT,
   FOTO_MAX_WIDTH,
 } from "@/lib/imoveis/foto-compress.constants";
+import sharp from "@/lib/imoveis/sharp.server";
 import {
   isValidImageBuffer,
   looksLikeUtf8CorruptedBinary,
 } from "@/lib/supabase/storage-upload";
 
-async function getSharp() {
-  const { default: sharp } = await import("sharp");
-  return sharp;
+/** Aceita buffer já comprimido no navegador quando o Sharp não está disponível. */
+const FOTO_SERVER_FALLBACK_MAX_BYTES = 600 * 1024;
+
+function sniffImageContentType(buffer: Buffer): string {
+  if (buffer[0] === 0xff && buffer[1] === 0xd8) {
+    return "image/jpeg";
+  }
+
+  if (buffer[0] === 0x89 && buffer[1] === 0x50) {
+    return "image/png";
+  }
+
+  if (buffer[0] === 0x47 && buffer[1] === 0x49) {
+    return "image/gif";
+  }
+
+  return "image/webp";
+}
+
+function acceptPrecompressedBuffer(
+  buffer: Buffer,
+  maxBytes: number,
+): { buffer: Buffer; contentType: string } | null {
+  if (looksLikeUtf8CorruptedBinary(buffer) || !isValidImageBuffer(buffer)) {
+    return null;
+  }
+
+  if (buffer.length > maxBytes) {
+    return null;
+  }
+
+  return { buffer, contentType: sniffImageContentType(buffer) };
 }
 
 export async function compressImageBufferForStorage(
@@ -26,17 +56,6 @@ export async function compressImageBufferForStorage(
 
   if (!isValidImageBuffer(buffer)) {
     return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
-  }
-
-  let sharp: Awaited<ReturnType<typeof getSharp>>;
-
-  try {
-    sharp = await getSharp();
-  } catch (error) {
-    console.error("[compressImageBufferForStorage] sharp unavailable", error);
-    return {
-      error: "Processamento de imagem indisponível no servidor. Tente novamente mais tarde.",
-    };
   }
 
   try {
@@ -92,7 +111,16 @@ export async function compressImageBufferForStorage(
 
     return { buffer: result, contentType: "image/jpeg" };
   } catch (error) {
-    console.error("[compressImageBufferForStorage] failed", error);
+    console.error("[compressImageBufferForStorage] sharp failed", error);
+
+    const fallback =
+      acceptPrecompressedBuffer(buffer, FOTO_SERVER_FALLBACK_MAX_BYTES) ??
+      acceptPrecompressedBuffer(buffer, FOTO_MAX_BYTES);
+
+    if (fallback) {
+      return fallback;
+    }
+
     return { error: "Não foi possível processar a imagem. Tente outro arquivo." };
   }
 }

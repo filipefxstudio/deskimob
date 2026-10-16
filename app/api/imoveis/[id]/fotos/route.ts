@@ -1,4 +1,4 @@
-import { uploadImovelFotos } from "@/lib/actions/imoveis";
+import { uploadImovelFotos } from "@/lib/imoveis/imovel-foto-upload.server";
 import { FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE } from "@/lib/imoveis/foto-compress.constants";
 import { createClient } from "@/lib/supabase/server";
 

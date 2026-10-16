@@ -28,56 +28,71 @@ export async function compressImageBufferForStorage(
     return { error: "Formato de imagem não reconhecido. Use JPG, PNG ou WebP." };
   }
 
-  const sharp = await getSharp();
-  let quality = 85;
-  let result: Buffer | null = null;
+  let sharp: Awaited<ReturnType<typeof getSharp>>;
 
-  while (quality >= 55) {
-    result = await sharp(buffer, { failOn: "error" })
-      .rotate()
-      .resize({
-        width: FOTO_MAX_WIDTH,
-        height: FOTO_MAX_HEIGHT,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality, mozjpeg: true })
-      .toBuffer();
+  try {
+    sharp = await getSharp();
+  } catch (error) {
+    console.error("[compressImageBufferForStorage] sharp unavailable", error);
+    return {
+      error: "Processamento de imagem indisponível no servidor. Tente novamente mais tarde.",
+    };
+  }
 
-    if (result.length <= FOTO_MAX_BYTES) {
-      break;
+  try {
+    let quality = 85;
+    let result: Buffer | null = null;
+
+    while (quality >= 55) {
+      result = await sharp(buffer, { failOn: "error" })
+        .rotate()
+        .resize({
+          width: FOTO_MAX_WIDTH,
+          height: FOTO_MAX_HEIGHT,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer();
+
+      if (result.length <= FOTO_MAX_BYTES) {
+        break;
+      }
+
+      quality -= 5;
     }
 
-    quality -= 5;
-  }
+    if (!result || !isValidImageBuffer(result)) {
+      return { error: "Não foi possível processar a imagem." };
+    }
 
-  if (!result || !isValidImageBuffer(result)) {
-    return { error: "Não foi possível processar a imagem." };
-  }
+    if (result.length > FOTO_MAX_BYTES) {
+      const meta = await sharp(result).metadata();
+      const currentWidth = meta.width ?? FOTO_MAX_WIDTH;
+      const currentHeight = meta.height ?? FOTO_MAX_HEIGHT;
+      const scale = Math.sqrt(FOTO_MAX_BYTES / result.length) * 0.92;
+      const targetWidth = Math.max(640, Math.floor(currentWidth * scale));
+      const targetHeight = Math.max(480, Math.floor(currentHeight * scale));
 
-  if (result.length > FOTO_MAX_BYTES) {
-    const meta = await sharp(result).metadata();
-    const currentWidth = meta.width ?? FOTO_MAX_WIDTH;
-    const currentHeight = meta.height ?? FOTO_MAX_HEIGHT;
-    const scale = Math.sqrt(FOTO_MAX_BYTES / result.length) * 0.92;
-    const targetWidth = Math.max(640, Math.floor(currentWidth * scale));
-    const targetHeight = Math.max(480, Math.floor(currentHeight * scale));
+      result = await sharp(buffer, { failOn: "error" })
+        .rotate()
+        .resize({
+          width: targetWidth,
+          height: targetHeight,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: 72, mozjpeg: true })
+        .toBuffer();
+    }
 
-    result = await sharp(buffer, { failOn: "error" })
-      .rotate()
-      .resize({
-        width: targetWidth,
-        height: targetHeight,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: 72, mozjpeg: true })
-      .toBuffer();
-  }
+    if (!isValidImageBuffer(result)) {
+      return { error: "Não foi possível processar a imagem. Tente outro arquivo." };
+    }
 
-  if (!isValidImageBuffer(result)) {
+    return { buffer: result, contentType: "image/jpeg" };
+  } catch (error) {
+    console.error("[compressImageBufferForStorage] failed", error);
     return { error: "Não foi possível processar a imagem. Tente outro arquivo." };
   }
-
-  return { buffer: result, contentType: "image/jpeg" };
 }

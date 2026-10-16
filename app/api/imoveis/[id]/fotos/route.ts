@@ -33,11 +33,19 @@ export async function POST(
     return Response.json({ error: "Não foi possível ler o envio das fotos." }, { status: 400 });
   }
 
-  const result = await uploadImovelFotos(imovelId, formData);
+  try {
+    const result = await uploadImovelFotos(imovelId, formData);
 
-  if (result.error) {
-    return Response.json(result, { status: 400 });
+    if (result.error) {
+      return Response.json(result, { status: 400 });
+    }
+
+    return Response.json(result);
+  } catch (error) {
+    console.error("[api/imoveis/fotos]", error);
+    return Response.json(
+      { error: "Erro interno ao enviar as fotos. Tente novamente." },
+      { status: 500 },
+    );
   }
-
-  return Response.json(result);
 }

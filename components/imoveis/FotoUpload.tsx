@@ -29,6 +29,8 @@ import {
   FOTO_MAX_BYTES_LABEL,
   FOTO_MAX_HEIGHT,
   FOTO_MAX_WIDTH,
+  FOTO_UPLOAD_BATCH_MAX_BYTES,
+  resolveFotoFileMime,
 } from "@/lib/imoveis/foto-compress.constants";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +47,7 @@ interface FotoUploadProps {
   fotos: FotoItem[];
   onChange: (fotos: FotoItem[]) => void;
   disabled?: boolean;
+  onCompressingChange?: (compressing: boolean) => void;
 }
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -212,7 +215,12 @@ function FotoOverlayItem({ foto, index }: { foto: FotoItem; index: number }) {
   );
 }
 
-export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
+export function FotoUpload({
+  fotos,
+  onChange,
+  disabled,
+  onCompressingChange,
+}: FotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -229,6 +237,10 @@ export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
   useEffect(() => {
     fotosRef.current = fotos;
   }, [fotos]);
+
+  useEffect(() => {
+    onCompressingChange?.(isCompressing);
+  }, [isCompressing, onCompressingChange]);
 
   useEffect(() => {
     return () => {
@@ -251,7 +263,9 @@ export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
 
       try {
         for (const file of Array.from(files)) {
-          if (!ACCEPTED_TYPES.includes(file.type)) {
+          const mime = resolveFotoFileMime(file);
+
+          if (!ACCEPTED_TYPES.includes(mime)) {
             errors.push(`${file.name}: formato não suportado.`);
             continue;
           }
@@ -261,22 +275,30 @@ export function FotoUpload({ fotos, onChange, disabled }: FotoUploadProps) {
             continue;
           }
 
-          let processedFile = file;
+          let processedFile =
+            mime !== file.type && mime
+              ? new File([file], file.name, { type: mime, lastModified: file.lastModified })
+              : file;
 
-          if (COMPRESSIBLE_TYPES.includes(file.type)) {
+          if (COMPRESSIBLE_TYPES.includes(mime)) {
             try {
-              processedFile = await compressImageFile(file);
+              processedFile = await compressImageFile(processedFile);
               if (processedFile.size > FOTO_MAX_BYTES) {
                 warnings.push(
-                  `${file.name}: ainda acima de ${FOTO_MAX_BYTES_LABEL} após compressão.`,
+                  `${file.name}: ainda acima de ${FOTO_MAX_BYTES_LABEL} após compressão; o servidor tentará reduzir novamente.`,
                 );
               }
             } catch {
-              warnings.push(
-                `${file.name}: não foi possível comprimir. Usando arquivo original.`,
+              errors.push(
+                `${file.name}: não foi possível comprimir. Tente outra imagem ou um arquivo menor.`,
               );
-              processedFile = file;
+              continue;
             }
+          } else if (processedFile.size > FOTO_UPLOAD_BATCH_MAX_BYTES) {
+            errors.push(
+              `${file.name}: arquivo grande demais (${FOTO_MAX_BYTES_LABEL} não se aplica a GIF). Use um GIF menor.`,
+            );
+            continue;
           }
 
           nextFotos.push(createFotoItem(processedFile, nextFotos.length));

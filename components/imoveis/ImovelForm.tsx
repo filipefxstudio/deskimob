@@ -45,10 +45,10 @@ import {
   updateImovel,
 } from "@/lib/actions/imoveis";
 import {
-  FOTO_MAX_BYTES,
+  FOTO_UPLOAD_BATCH_MAX_BYTES,
   FOTO_UPLOAD_BATCH_SIZE,
   FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
-  parseFotoUploadHttpError,
+  resolveFotoUploadClientError,
 } from "@/lib/imoveis/foto-compress.constants";
 import {
   podeAprovarImovel,
@@ -207,6 +207,7 @@ export function ImovelForm({
     isEdit ? (imovel.codigo ?? null) : null,
   );
   const [isPending, startTransition] = useTransition();
+  const [fotosCompressing, setFotosCompressing] = useState(false);
 
   const initialFormValues = useMemo(
     () => {
@@ -385,7 +386,7 @@ export function ImovelForm({
       const batch = newFotos.slice(offset, offset + FOTO_UPLOAD_BATCH_SIZE);
       const batchBytes = batch.reduce((total, foto) => total + foto.file.size, 0);
 
-      if (batchBytes > FOTO_MAX_BYTES * FOTO_UPLOAD_BATCH_SIZE * 1.25) {
+      if (batchBytes > FOTO_UPLOAD_BATCH_MAX_BYTES) {
         return {
           error: FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
         };
@@ -419,9 +420,7 @@ export function ImovelForm({
         result = JSON.parse(bodyText) as typeof result;
       } catch {
         return {
-          error:
-            parseFotoUploadHttpError(response.status, bodyText) ??
-            FOTO_UPLOAD_PAYLOAD_LIMIT_MESSAGE,
+          error: resolveFotoUploadClientError(response.status, bodyText),
         };
       }
 
@@ -429,8 +428,7 @@ export function ImovelForm({
         return {
           error:
             result.error ??
-            parseFotoUploadHttpError(response.status, bodyText) ??
-            "Não foi possível enviar as fotos.",
+            resolveFotoUploadClientError(response.status, bodyText),
         };
       }
     }
@@ -1765,7 +1763,12 @@ export function ImovelForm({
           <CardTitle>9. Fotos</CardTitle>
         </CardHeader>
         <CardContent>
-          <FotoUpload fotos={fotos} onChange={setFotos} disabled={isPending} />
+          <FotoUpload
+            fotos={fotos}
+            onChange={setFotos}
+            disabled={isPending}
+            onCompressingChange={setFotosCompressing}
+          />
         </CardContent>
       </Card>
 
@@ -1839,6 +1842,7 @@ export function ImovelForm({
           type="submit"
           loading={isPending}
           loadingText="Salvando..."
+          disabled={isPending || fotosCompressing}
           className="min-w-36"
         >
           {isEdit ? "Salvar" : "Cadastrar imóvel"}

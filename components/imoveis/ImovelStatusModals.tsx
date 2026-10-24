@@ -55,13 +55,12 @@ export function ImovelDesativarModal({
       return;
     }
 
-    if (motivosDesativacao) {
-      setMotivos(resolveMotivosDesativacaoAtivos(motivosDesativacao));
-      return;
-    }
-
     void getMotivosDesativacao().then((items) => {
-      setMotivos(resolveMotivosDesativacaoAtivos(items));
+      const fromServer =
+        motivosDesativacao && motivosDesativacao.length > 0
+          ? motivosDesativacao
+          : items;
+      setMotivos(resolveMotivosDesativacaoAtivos(fromServer));
     });
   }, [open, motivosDesativacao]);
 
@@ -103,7 +102,7 @@ export function ImovelDesativarModal({
               <SelectTrigger id="motivo-desativacao">
                 <SelectValue placeholder="Selecione o motivo" />
               </SelectTrigger>
-              <SelectContent className="z-[100]">
+              <SelectContent position="popper" className="z-[10000]">
                 {motivos.map((item) => (
                   <SelectItem key={item.id} value={item.nome}>
                     {item.nome}

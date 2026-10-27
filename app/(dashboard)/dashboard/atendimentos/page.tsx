@@ -11,6 +11,7 @@ import { getDashboardConfig } from "@/lib/actions/dashboard-config";
 import { getTiposImovelCustom } from "@/lib/actions/configuracoes";
 import {
   getLeads,
+  getLeadsAtivosCount,
   getMidiasOrigem,
   getPerfisForLeads,
 } from "@/lib/actions/leads";
@@ -96,9 +97,10 @@ export default async function AtendimentosRoutePage({ searchParams }: PageProps)
 
   const initialBusca = typeof params.busca === "string" ? params.busca : "";
 
-  const [leads, midias, perfis, motivos, podeTransferir, podeExcluir, tiposImovel, dashboardConfig] =
+  const [leads, ativosCount, midias, perfis, motivos, podeTransferir, podeExcluir, tiposImovel, dashboardConfig] =
     await Promise.all([
     getLeads({ ativos_apenas: false }),
+    getLeadsAtivosCount(),
     getMidiasOrigem(),
     getPerfisForLeads(),
     getMotivosDescarte(),
@@ -119,6 +121,7 @@ export default async function AtendimentosRoutePage({ searchParams }: PageProps)
     <div className="flex-1 p-4 md:p-6">
       <AtendimentosPage
         initialLeads={leads}
+        ativosCountInicial={ativosCount}
         corretorId={corretor.id}
         midias={midias}
         perfis={perfis}

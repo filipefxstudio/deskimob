@@ -11,6 +11,7 @@ import {
   type DashboardPeriodPreset,
 } from "@/lib/dashboard/period";
 import { getUltimaAtividadeEm, isLeadAtivo } from "@/lib/leads/format";
+import { leadMatchesFinalidadeBusca } from "@/lib/leads/finalidade-busca";
 import { formatMidiaOrigemLead } from "@/lib/leads/midia-origem";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
 import { getCorretorForUser } from "@/lib/supabase/get-corretor";
@@ -166,7 +167,7 @@ function computePeriodMetrics(
   start: Date,
   end: Date,
 ): PeriodMetrics {
-  const leadsFiltered = leads.filter((l) => l.finalidade_busca === finalidadeLead);
+  const leadsFiltered = leads.filter((l) => leadMatchesFinalidadeBusca(l, finalidadeLead));
   const imoveisFiltered = imoveis.filter((i) =>
     finalidadeLead === "compra" ? i.finalidade === "venda" : i.finalidade === "locacao",
   );
@@ -324,7 +325,7 @@ function buildFunil(
   finalidadeLead: "compra" | "locacao",
   tab: DashboardTab,
 ): DashboardFunilItem[] {
-  const filtered = leads.filter((l) => l.finalidade_busca === finalidadeLead);
+  const filtered = leads.filter((l) => leadMatchesFinalidadeBusca(l, finalidadeLead));
   const base = `/dashboard/atendimentos?finalidade=${finalidadeLead}`;
 
   const etapaCount = (etapas: EtapaLead[]) =>
@@ -381,7 +382,7 @@ function buildTemperatura(
   finalidadeLead: "compra" | "locacao",
 ): DashboardChartSlice[] {
   const ativos = leads.filter(
-    (l) => l.finalidade_busca === finalidadeLead && isLeadAtivo(l),
+    (l) => leadMatchesFinalidadeBusca(l, finalidadeLead) && isLeadAtivo(l),
   );
   const base = `/dashboard/atendimentos?finalidade=${finalidadeLead}`;
 
@@ -404,7 +405,7 @@ function buildQualidade(
   leads: LeadRow[],
   finalidadeLead: "compra" | "locacao",
 ): DashboardChartSlice[] {
-  const filtered = leads.filter((l) => l.finalidade_busca === finalidadeLead);
+  const filtered = leads.filter((l) => leadMatchesFinalidadeBusca(l, finalidadeLead));
   const base = `/dashboard/atendimentos?finalidade=${finalidadeLead}`;
 
   const qualificadosEtapas: EtapaLead[] = [
@@ -453,7 +454,7 @@ function buildTempoInteracao(
   finalidadeLead: "compra" | "locacao",
 ): DashboardChartSlice[] {
   const ativos = leads.filter(
-    (l) => l.finalidade_busca === finalidadeLead && isLeadAtivo(l),
+    (l) => leadMatchesFinalidadeBusca(l, finalidadeLead) && isLeadAtivo(l),
   );
   const base = `/dashboard/atendimentos?finalidade=${finalidadeLead}`;
   const now = new Date();
@@ -501,7 +502,7 @@ function buildOrigem(
   finalidadeLead: "compra" | "locacao",
 ): DashboardBarItem[] {
   const ativos = leads.filter(
-    (l) => l.finalidade_busca === finalidadeLead && isLeadAtivo(l),
+    (l) => leadMatchesFinalidadeBusca(l, finalidadeLead) && isLeadAtivo(l),
   );
 
   const origemMap = new Map<string, number>();
@@ -623,7 +624,7 @@ function buildBairrosLeads(
   finalidadeLead: "compra" | "locacao",
 ): DashboardBarItem[] {
   const ativos = leads.filter(
-    (l) => l.finalidade_busca === finalidadeLead && isLeadAtivo(l),
+    (l) => leadMatchesFinalidadeBusca(l, finalidadeLead) && isLeadAtivo(l),
   );
 
   const bairroMap = new Map<string, number>();
@@ -687,7 +688,7 @@ function buildAlertas(
   }
 
   const leadsSemContato = leads.filter((l) => {
-    if (l.finalidade_busca !== finalidadeLead || !isLeadAtivo(l)) return false;
+    if (!leadMatchesFinalidadeBusca(l, finalidadeLead) || !isLeadAtivo(l)) return false;
     const ultima = getUltimaInteracaoLead(l, lastByLead);
     return daysSince(ultima) > config.leads_amarelo_dias;
   }).length;
@@ -887,7 +888,7 @@ function buildDashboardDataForTab(
   const interacoes = filteredRaw.interacoes;
   const negociosAll = filteredRaw.negociosAll;
   const negocios = negociosAll.filter(
-    (n) => n.lead?.finalidade_busca === finalidadeLead,
+    (n) => n.lead != null && leadMatchesFinalidadeBusca(n.lead, finalidadeLead),
   );
   const fotos = filteredRaw.fotos;
   const imovelIdsComFoto = new Set(fotos.map((f) => f.imovel_id));

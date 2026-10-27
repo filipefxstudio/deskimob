@@ -7,6 +7,11 @@ import { parseLocalDateTimeInput } from "@/lib/dates/format";
 
 import { ETAPAS_LEAD, ETAPAS_LEAD_LEGACY, isEtapaLead } from "@/lib/constants/leads";
 import { leadMatchesEtapaFilter } from "@/lib/leads/etapa-order";
+import { countActiveLeads } from "@/lib/leads/count-active";
+import {
+  leadMatchesFinalidadeBusca,
+  type FinalidadeBuscaLead,
+} from "@/lib/leads/finalidade-busca";
 import { isLeadAtivo } from "@/lib/leads/format";
 import { podeAvancarEtapa } from "@/lib/leads/etapa-order";
 import { calcularTempoPrimeiraRespostaIfNeeded } from "@/lib/leads/primeira-resposta";
@@ -170,11 +175,17 @@ function applyClientSideFilters(leads: Lead[], filters?: LeadsFilterParams): Lea
       return false;
     }
 
-    if (filters.finalidade_busca && lead.finalidade_busca !== filters.finalidade_busca) {
+    if (
+      filters.finalidade_busca &&
+      !leadMatchesFinalidadeBusca(lead, filters.finalidade_busca as FinalidadeBuscaLead)
+    ) {
       return false;
     }
 
-    if (filters.finalidade && lead.finalidade_busca !== filters.finalidade) {
+    if (
+      filters.finalidade &&
+      !leadMatchesFinalidadeBusca(lead, filters.finalidade)
+    ) {
       return false;
     }
 
@@ -349,6 +360,51 @@ export async function getLeads(filters?: LeadsFilterParams): Promise<Lead[]> {
     : leads.filter((lead) => leadVisivelParaUsuario(lead, access));
 
   return applyClientSideFilters(leadsVisiveis, filters);
+}
+
+type LeadAtivoCountRow = Pick<
+  Lead,
+  "id" | "etapa" | "situacao" | "finalidade_busca" | "perfil_id" | "observacoes"
+>;
+
+async function fetchLeadAtivoCountRows(
+  supabase: TenantDbClient,
+  corretorId: string,
+): Promise<LeadAtivoCountRow[]> {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("id, etapa, situacao, finalidade_busca, perfil_id, observacoes")
+    .eq("corretor_id", corretorId);
+
+  if (error) {
+    logPostgrestError("getLeadsAtivosCount", error);
+    return [];
+  }
+
+  return (data ?? []) as LeadAtivoCountRow[];
+}
+
+/** Contagem de leads ativos alinhada ao dashboard (todos os registros, sem limite de listagem). */
+export async function getLeadsAtivosCount(options?: {
+  finalidade?: FinalidadeBuscaLead;
+}): Promise<number> {
+  const corretor = await getCorretorForUser();
+  if (!corretor) {
+    return 0;
+  }
+
+  const access = await resolveTenantAccess(corretor);
+  const rows = await fetchWithTenantFallback(
+    corretor.id,
+    (client) => fetchLeadAtivoCountRows(client, corretor.id),
+    (result) => result.length === 0,
+  );
+
+  const visible = access.verTodos
+    ? rows
+    : rows.filter((lead) => leadVisivelParaUsuario(lead, access));
+
+  return countActiveLeads(visible, options?.finalidade);
 }
 
 const LEAD_DETAIL_SELECT_TIERS = [

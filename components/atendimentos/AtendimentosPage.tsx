@@ -38,7 +38,8 @@ import {
 } from "@/lib/constants/config";
 import { getDbTimestampMs } from "@/lib/dates/format";
 import { ETAPA_FUNIL_ORDEM } from "@/lib/leads/etapa-order";
-import { getUltimaInteracaoEm, isLeadAtivo } from "@/lib/leads/format";
+import { countActiveLeads } from "@/lib/leads/count-active";
+import { getUltimaInteracaoEm } from "@/lib/leads/format";
 import { getLeadMidiaNome } from "@/lib/leads/midia-origem";
 import { marcarContatoFeito, qualificarLead } from "@/lib/actions/atendimentos";
 import { searchAtendimentosListing } from "@/lib/actions/leads";
@@ -50,6 +51,7 @@ import type { Lead, MidiaOrigem, MotivoDescarte, TipoImovelCustom } from "@/type
 
 interface AtendimentosPageProps {
   initialLeads: Lead[];
+  ativosCountInicial: number;
   corretorId: string;
   midias: MidiaOrigem[];
   perfis: { id: string; nome: string }[];
@@ -123,6 +125,7 @@ function sortLeads(leads: Lead[], mode: AtendimentosSortMode): Lead[] {
 
 export function AtendimentosPage({
   initialLeads,
+  ativosCountInicial,
   corretorId,
   midias,
   perfis,
@@ -241,14 +244,11 @@ export function AtendimentosPage({
   ]);
 
   const ativosCount = useMemo(() => {
-    return initialLeads.filter((lead) => {
-      if (!isLeadAtivo(lead)) return false;
-      if (filters.finalidade !== "all" && lead.finalidade_busca !== filters.finalidade) {
-        return false;
-      }
-      return true;
-    }).length;
-  }, [initialLeads, filters.finalidade]);
+    if (filters.finalidade === "all") {
+      return ativosCountInicial;
+    }
+    return countActiveLeads(initialLeads, filters.finalidade);
+  }, [initialLeads, filters.finalidade, ativosCountInicial]);
 
   function runCardAction(
     leadId: string,

@@ -7,7 +7,6 @@ import {
   getUltimaAtividadeEm,
   isLeadAtivo,
   isLeadQualificado,
-  isLeadVisivelFunil,
 } from "@/lib/leads/format";
 import { contemNormalizado, normalizar } from "@/lib/utils/normalizar";
 import type { Lead, SituacaoLead } from "@/types";
@@ -152,10 +151,6 @@ export function matchesLeadsFilters(
   } else if (filters.situacao !== "all") {
     const leadSituacao = lead.situacao ?? "em_atendimento";
     if (leadSituacao !== filters.situacao) {
-      return false;
-    }
-  } else if (viewMode === "kanban") {
-    if (!isLeadVisivelFunil(lead)) {
       return false;
     }
   } else if (!isLeadAtivo(lead)) {

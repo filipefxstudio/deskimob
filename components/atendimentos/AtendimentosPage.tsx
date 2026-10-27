@@ -240,10 +240,15 @@ export function AtendimentosPage({
     serverSearchActive,
   ]);
 
-  const ativosCount = useMemo(
-    () => initialLeads.filter(isLeadAtivo).length,
-    [initialLeads],
-  );
+  const ativosCount = useMemo(() => {
+    return initialLeads.filter((lead) => {
+      if (!isLeadAtivo(lead)) return false;
+      if (filters.finalidade !== "all" && lead.finalidade_busca !== filters.finalidade) {
+        return false;
+      }
+      return true;
+    }).length;
+  }, [initialLeads, filters.finalidade]);
 
   function runCardAction(
     leadId: string,

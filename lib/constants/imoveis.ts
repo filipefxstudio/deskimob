@@ -80,6 +80,7 @@ export const STATUS_NOME_TO_SLUG: Record<string, StatusImovelSlug> = {
   Vendido: "vendido",
   Locado: "locado",
   Desativado: "desativado",
+  "Desativado temporariamente": "desativado_temporariamente",
 };
 
 export const STATUS_IMOVEL_WORKFLOW = ["Em cadastro", "Aguardando aprovação"] as const;

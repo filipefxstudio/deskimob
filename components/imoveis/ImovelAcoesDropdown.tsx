@@ -20,7 +20,7 @@ import {
 } from "@/components/imoveis/ImovelStatusModals";
 import { toast } from "@/hooks/use-toast";
 import { aprovarImovel, getImovelShareUrl, reprovarImovel, republicarImovel, validarAtualizacao } from "@/lib/actions/imoveis";
-import { STATUS_IMOVEL_SISTEMA } from "@/lib/constants/imoveis";
+import { STATUS_IMOVEL_SISTEMA, STATUS_NOME_TO_SLUG } from "@/lib/constants/imoveis";
 import { podeAprovarImovel, podeAlterarStatusImovel } from "@/lib/imoveis/aprovacao";
 import { isImovelDuplicavel, isImovelRepublicavel } from "@/lib/imoveis/republicar";
 import { cn } from "@/lib/utils";
@@ -73,9 +73,14 @@ export function ImovelAcoesDropdown({
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const manualStatusList = statusList.filter(
-    (status) => !(STATUS_IMOVEL_SISTEMA as readonly string[]).includes(status.nome),
-  );
+  const manualStatusList = statusList.filter((status) => {
+    if ((STATUS_IMOVEL_SISTEMA as readonly string[]).includes(status.nome)) {
+      return false;
+    }
+
+    const slug = STATUS_NOME_TO_SLUG[status.nome];
+    return slug !== "desativado" && status.nome !== "Desativado";
+  });
   const canChangeStatus = podeAlterarStatusImovel(imovel, perfil);
   const canApprove =
     podeAprovarImovel(perfil) && imovel.status_aprovacao === "aguardando_aprovacao";
@@ -352,7 +357,11 @@ export function ImovelAcoesDropdown({
             <button
               type="button"
               disabled={isPending}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+              aria-expanded={statusSubmenuOpen}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                statusSubmenuOpen && "bg-muted/80",
+              )}
               onClick={(event) => {
                 stopCardNav(event);
                 setStatusSubmenuOpen((open) => !open);
@@ -362,28 +371,57 @@ export function ImovelAcoesDropdown({
                 <ActionMenuIcon action="alterarStatus" />
                 Alterar status
               </span>
-              <ChevronDown className="size-3.5 opacity-60" />
+              <ChevronDown
+                className={cn(
+                  "size-3.5 opacity-60 transition-transform duration-200 ease-out",
+                  statusSubmenuOpen && "rotate-180",
+                )}
+              />
             </button>
 
-            {statusSubmenuOpen ? (
-              <div className="border-t border-border py-1">
-                {manualStatusList.map((status) => (
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+                statusSubmenuOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}
+              aria-hidden={!statusSubmenuOpen}
+            >
+              <div className="overflow-hidden">
+                <div
+                  className={cn(
+                    "border-t border-border bg-muted/25 py-1 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+                    statusSubmenuOpen ? "opacity-100" : "opacity-0",
+                  )}
+                >
+                  {manualStatusList.map((status) => (
+                    <button
+                      key={status.id}
+                      type="button"
+                      disabled={isPending || imovel.status_imovel_id === status.id}
+                      className="flex w-full items-center gap-2 px-4 py-2 pl-6 text-left text-sm hover:bg-muted disabled:opacity-50"
+                      onClick={(event) => handleStatusPick(status.id, event)}
+                    >
+                      <span
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: status.cor }}
+                      />
+                      {status.nome}
+                    </button>
+                  ))}
                   <button
-                    key={status.id}
                     type="button"
-                    disabled={isPending || imovel.status_imovel_id === status.id}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-muted disabled:opacity-50"
-                    onClick={(event) => handleStatusPick(status.id, event)}
+                    className={cn(
+                      "flex w-full items-center gap-2 px-4 py-2 pl-6 text-left text-sm hover:bg-muted",
+                      ACTION_MENU_DESTRUCTIVE_CLASS,
+                    )}
+                    onClick={handleDesativar}
                   >
-                    <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: status.cor }}
-                    />
-                    {status.nome}
+                    <ActionMenuIcon action="desativar" />
+                    Desativar
                   </button>
-                ))}
+                </div>
               </div>
-            ) : null}
+            </div>
           </>
         ) : null}
       </div>
@@ -447,17 +485,6 @@ export function ImovelAcoesDropdown({
         </button>
       ) : null}
 
-      <button
-        type="button"
-        className={cn(
-          "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted",
-          ACTION_MENU_DESTRUCTIVE_CLASS,
-        )}
-        onClick={handleDesativar}
-      >
-        <ActionMenuIcon action="desativar" />
-        Desativar
-      </button>
     </div>
   ) : null;
 

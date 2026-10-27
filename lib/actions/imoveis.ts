@@ -477,6 +477,13 @@ export async function updateImovelStatus(
     .maybeSingle();
 
   const slug = slugFromStatusRecord(status);
+
+  if (slug === "desativado") {
+    return {
+      error: "Para desativar o imóvel, use a opção Desativar em Alterar status.",
+    };
+  }
+
   const supabase = await createClient();
 
   const updatePayload: Record<string, unknown> = {
@@ -484,8 +491,14 @@ export async function updateImovelStatus(
     status: slug,
   };
 
-  if (slug === "vendido" || slug === "locado" || slug === "desativado") {
+  if (slug === "vendido" || slug === "locado") {
     updatePayload.data_desativacao = new Date().toISOString();
+  }
+
+  if (slug === "desativado_temporariamente") {
+    updatePayload.publicado_site = false;
+    updatePayload.destaque_site = false;
+    updatePayload.publicado_portais = false;
   }
 
   const { error } = await supabase

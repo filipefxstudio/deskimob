@@ -741,6 +741,7 @@ export async function addInteracao(
   }
 
   const supabase = await createClient();
+  const perfil = await getPerfilForUser(corretor.id);
   const { data: lead, error: leadError } = await supabase
     .from("leads")
     .select("id")
@@ -759,6 +760,7 @@ export async function addInteracao(
   const { error } = await supabase.from("lead_interacoes").insert({
     lead_id: leadId,
     corretor_id: corretor.id,
+    perfil_id: perfil?.id ?? null,
     tipo: input.tipo,
     conteudo: descricao,
     de: "corretor",

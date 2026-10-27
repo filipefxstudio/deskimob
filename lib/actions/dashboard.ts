@@ -1,5 +1,9 @@
 "use server";
 
+import {
+  fetchDashboardContatoMetricas,
+  type DashboardContatoMetricas,
+} from "@/lib/actions/dashboard-contatos";
 import { getAgendaHoje, getVisitasProximas24h } from "@/lib/actions/agenda";
 import { getDashboardConfig } from "@/lib/actions/dashboard-config";
 import { DEFAULT_DASHBOARD_CONFIG } from "@/lib/constants/dashboard";
@@ -73,7 +77,7 @@ export interface DashboardAlertaItem {
   tipo: "warning" | "info" | "danger";
 }
 
-export interface DashboardData {
+export interface DashboardDataCore {
   kpis: DashboardKPIItem[];
   funil: DashboardFunilItem[];
   temperatura: DashboardChartSlice[];
@@ -85,6 +89,10 @@ export interface DashboardData {
   rankingImoveisBairro: DashboardBarItem[];
   bairrosLeads: DashboardBarItem[];
   alertas: DashboardAlertaItem[];
+}
+
+export interface DashboardData extends DashboardDataCore {
+  contatoMetricas: DashboardContatoMetricas;
 }
 
 export interface GetDashboardDataParams {
@@ -872,7 +880,7 @@ type DashboardSharedContext = {
 function buildDashboardDataForTab(
   tab: DashboardTab,
   context: DashboardSharedContext,
-): DashboardData {
+): DashboardDataCore {
   const { periodPreset, customStart, customEnd, filteredRaw, dashboardConfig } = context;
   const { start, end, previousStart, previousEnd } = resolvePeriodRange(
     periodPreset,
@@ -986,10 +994,16 @@ export async function getDashboardData(
     config,
     agendaHoje,
     visitas24h,
+    contatoMetricas,
   ] = await Promise.all([
     getDashboardConfig(),
     getAgendaHoje(),
     getVisitasProximas24h(),
+    fetchDashboardContatoMetricas(params.tab, {
+      periodPreset: params.periodPreset,
+      customStart: params.customStart,
+      customEnd: params.customEnd,
+    }),
   ]);
 
   const dashboardConfig =
@@ -1002,15 +1016,18 @@ export async function getDashboardData(
       atualizado_em: new Date().toISOString(),
     } satisfies DashboardConfig);
 
-  return buildDashboardDataForTab(params.tab, {
-    filteredRaw,
-    dashboardConfig,
-    agendaHojeCount: agendaHoje.length,
-    visitas24hCount: visitas24h.length,
-    periodPreset: params.periodPreset,
-    customStart: params.customStart,
-    customEnd: params.customEnd,
-  });
+  return {
+    ...buildDashboardDataForTab(params.tab, {
+      filteredRaw,
+      dashboardConfig,
+      agendaHojeCount: agendaHoje.length,
+      visitas24hCount: visitas24h.length,
+      periodPreset: params.periodPreset,
+      customStart: params.customStart,
+      customEnd: params.customEnd,
+    }),
+    contatoMetricas,
+  };
 }
 
 export async function getDashboardDataBothTabs(params: Omit<GetDashboardDataParams, "tab">) {
@@ -1054,9 +1071,28 @@ export async function getDashboardDataBothTabs(params: Omit<GetDashboardDataPara
     customEnd: params.customEnd,
   };
 
+  const [contatoVenda, contatoLocacao] = await Promise.all([
+    fetchDashboardContatoMetricas("venda", {
+      periodPreset: params.periodPreset,
+      customStart: params.customStart,
+      customEnd: params.customEnd,
+    }),
+    fetchDashboardContatoMetricas("locacao", {
+      periodPreset: params.periodPreset,
+      customStart: params.customStart,
+      customEnd: params.customEnd,
+    }),
+  ]);
+
   return {
-    venda: buildDashboardDataForTab("venda", sharedContext),
-    locacao: buildDashboardDataForTab("locacao", sharedContext),
+    venda: {
+      ...buildDashboardDataForTab("venda", sharedContext),
+      contatoMetricas: contatoVenda,
+    },
+    locacao: {
+      ...buildDashboardDataForTab("locacao", sharedContext),
+      contatoMetricas: contatoLocacao,
+    },
   };
 }
 

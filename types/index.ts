@@ -456,6 +456,7 @@ export interface LeadInteracao {
   id: string;
   lead_id: string;
   corretor_id: string;
+  perfil_id?: string | null;
   tipo: TipoInteracao;
   conteudo: string;
   de: DeInteracao;
